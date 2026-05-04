@@ -62,61 +62,30 @@ export default function graphMemory(pi: ExtensionAPI) {
     if (nodeCount > 0) ctx.ui.setStatus("graph-memory", `memory: ${nodeCount} nodes / ${edgeCount} links`);
   });
 
-  pi.registerCommand("graph-memory", {
-    description: "Manage persistent graph memory: add, link, search, show, list, forget",
-    handler: async (args, ctx) => {
-      await loadStore();
-      const trimmed = args.trim();
-      if (!trimmed || trimmed === "list") return ctx.ui.notify(formatList(), "info");
+  pi.on("before_agent_start", async (event) => {
+    await loadStore();
+    const memoryContext = buildMemoryContext(event.prompt);
+    const instructions = [
+      "Graph memory is your private durable knowledge graph across sessions.",
+      `Storage: ${STORE_PATH}`,
+      "Use graph_memory to remember stable facts, user preferences, project decisions, important entities, and relationships that may help future sessions.",
+      "Do not ask the user to manage graph memory manually; treat it as your own memory system.",
+      "Only store durable information, not short-lived implementation details unless they define project state or decisions.",
+      memoryContext,
+    ].filter(Boolean).join("\n");
 
-      const [command, ...rest] = splitArgs(trimmed);
-
-      if (command === "add") {
-        const title = rest[0];
-        const notes = rest.slice(1).join(" ");
-        if (!title) return ctx.ui.notify("Usage: /graph-memory add <title> [notes]", "warning");
-        const node = await mutate(() => upsertNode({ title, notes }));
-        return ctx.ui.notify(`Remembered ${node.id}`, "success");
-      }
-
-      if (command === "link") {
-        const [from, relation, to] = rest;
-        if (!from || !relation || !to) return ctx.ui.notify("Usage: /graph-memory link <from> <relation> <to>", "warning");
-        await mutate(() => linkNodes(from, relation, to));
-        return ctx.ui.notify(`Linked ${from} -[${relation}]-> ${to}`, "success");
-      }
-
-      if (command === "search") {
-        const query = rest.join(" ");
-        if (!query) return ctx.ui.notify("Usage: /graph-memory search <query>", "warning");
-        return ctx.ui.notify(formatSearch(query), "info");
-      }
-
-      if (command === "show") {
-        const idOrTitle = rest.join(" ");
-        if (!idOrTitle) return ctx.ui.notify("Usage: /graph-memory show <id-or-title>", "warning");
-        return ctx.ui.notify(formatNode(idOrTitle), "info");
-      }
-
-      if (command === "forget") {
-        const idOrTitle = rest.join(" ");
-        if (!idOrTitle) return ctx.ui.notify("Usage: /graph-memory forget <id-or-title>", "warning");
-        const removed = await mutate(() => forgetNode(idOrTitle));
-        return ctx.ui.notify(removed ? `Forgot ${idOrTitle}` : `Memory not found: ${idOrTitle}`, removed ? "success" : "warning");
-      }
-
-      ctx.ui.notify("Usage: /graph-memory add|link|search|show|list|forget", "warning");
-    },
+    return { systemPrompt: `${event.systemPrompt}\n\n<graph_memory>\n${instructions}\n</graph_memory>` };
   });
 
   pi.registerTool({
     name: "graph_memory",
     label: "Graph Memory",
-    description: "Persistent knowledge graph for remembering facts, concepts, decisions, projects, people, resources, tasks, and their relationships.",
-    promptSnippet: "Store and query durable graph-style knowledge across sessions.",
+    description: "Agent-only persistent knowledge graph for remembering facts, concepts, decisions, projects, people, resources, tasks, and their relationships across sessions.",
+    promptSnippet: "Agent memory: store and query durable graph-style knowledge across sessions.",
     promptGuidelines: [
-      "Use graph_memory to persist important user preferences, decisions, project facts, entities, and relationships that should survive future sessions.",
+      "Use graph_memory as your own memory system to persist important user preferences, decisions, project facts, entities, and relationships that should survive future sessions.",
       "Use graph_memory search or show before assuming whether a durable fact is already known.",
+      "Do not ask the user to operate graph_memory manually; use it proactively when durable knowledge should be remembered.",
     ],
     parameters: Type.Object({
       action: Type.Union([
@@ -246,6 +215,30 @@ export default function graphMemory(pi: ExtensionAPI) {
     return [`Matches for '${query}':`, ...matches.map((node) => `- ${node.id} (${node.type}) — ${node.title}\n  ${oneLine(node.notes)}`), ``, `Store: ${STORE_PATH}`].join("\n");
   }
 
+  function buildMemoryContext(prompt: string) {
+    if (store.nodes.length === 0) return "No graph memories stored yet.";
+
+    const terms = extractTerms(prompt);
+    const scored = store.nodes
+      .map((node) => ({ node, score: scoreNode(node, terms) }))
+      .filter((entry) => entry.score > 0)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, 8)
+      .map((entry) => entry.node);
+
+    const selected = scored.length > 0 ? scored : store.nodes.slice(0, 5);
+    const lines = selected.map((node) => {
+      const links = store.edges
+        .filter((edge) => edge.from === node.id || edge.to === node.id)
+        .slice(0, 4)
+        .map((edge) => `${edge.from} -[${edge.relation}]-> ${edge.to}`)
+        .join("; ");
+      return `- ${node.id} (${node.type}) ${node.title}: ${oneLine(node.notes)}${links ? ` | links: ${links}` : ""}`;
+    });
+
+    return [`Relevant graph memories:`, ...lines].join("\n");
+  }
+
   function formatNode(key: string) {
     const node = findNode(key);
     if (!node) return `Memory not found: ${key}\n\nStore: ${STORE_PATH}`;
@@ -342,17 +335,27 @@ function renderMarkdown(store: GraphStore) {
   return lines.join("\n");
 }
 
-function splitArgs(input: string) {
-  const matches = input.match(/"[^"]*"|'[^']*'|\S+/g) || [];
-  return matches.map((value) => value.replace(/^['"]|['"]$/g, ""));
-}
-
 function slugify(value: string) {
   return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "memory";
 }
 
 function unique(values: string[]) {
   return [...new Set(values.map((value) => value.trim()).filter(Boolean))];
+}
+
+function extractTerms(value: string) {
+  return unique(
+    value
+      .toLowerCase()
+      .split(/[^a-z0-9]+/g)
+      .filter((term) => term.length >= 3),
+  );
+}
+
+function scoreNode(node: MemoryNode, terms: string[]) {
+  if (terms.length === 0) return 0;
+  const haystack = [node.id, node.title, node.type, node.notes, node.tags.join(" ")].join(" ").toLowerCase();
+  return terms.reduce((score, term) => score + (haystack.includes(term) ? 1 : 0), 0);
 }
 
 function isNodeType(value: string): value is NodeType {

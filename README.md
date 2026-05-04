@@ -68,8 +68,8 @@ npm run check
   - a small status indicator when loaded
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
 - `extensions/graph-memory/` registers:
-  - `/graph-memory` command
-  - `graph_memory` tool
+  - agent-facing `graph_memory` tool
+  - automatic relevant-memory injection into the agent system prompt
   - persistent markdown knowledge graph storage at `~/.pi/agent/graph-memory.md`
 - `extensions/todo/` registers:
   - `/todo` command

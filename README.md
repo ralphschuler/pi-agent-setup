@@ -116,6 +116,7 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
 
 - `project-bootstrap` — workflow for standardizing project repositories.
 - `code-review` — structured review checklist and response format.
+- `systematic-debugging` — evidence-first bug diagnosis and root-cause workflow.
 
 Use skills directly with commands such as:
 
@@ -154,9 +155,12 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 ├── skills/
 │   ├── code-review/
 │   │   └── SKILL.md
-│   └── project-bootstrap/
+│   ├── project-bootstrap/
+│   │   ├── SKILL.md
+│   │   └── scripts/tree-summary.sh
+│   └── systematic-debugging/
 │       ├── SKILL.md
-│       └── scripts/tree-summary.sh
+│       └── references/debugging-playbook.md
 ├── prompts/
 ├── themes/
 ├── scripts/

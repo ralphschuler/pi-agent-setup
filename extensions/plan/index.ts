@@ -3,7 +3,7 @@ import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
-const PLANNING_TOOLS = new Set(["read", "bash", "grep", "find", "ls", "ask_user_question", "questionnaire", "human_in_loop", "todo", "graph_memory"]);
+const PLANNING_TOOLS = new Set(["read", "bash", "grep", "find", "ls", "ask_user_question", "questionnaire", "human_in_loop", "subagent", "todo", "graph_memory"]);
 
 export default function planCommand(pi: ExtensionAPI) {
   let planningActive = false;
@@ -104,7 +104,7 @@ function planningInstructions() {
     "Goal: refine the user's task until requirements, constraints, risks, acceptance criteria, files/areas to inspect, and implementation approach have 100% coverage.",
     "Planning rules:",
     "- Do not modify files, write files, or apply changes before user approval.",
-    "- Research with read-only tools as needed.",
+    "- Research with read-only tools as needed. You may use subagent for read-only scout/research/review/context-building work before approval, but do not delegate edits until the plan is approved.",
     "- Ask clarifying questions with human_in_loop whenever any requirement, constraint, acceptance criterion, or risk is unknown.",
     "- Prefer concise grouped questions. Continue asking until there are no material unknowns.",
     "- Use todo for durable open planning/application tasks when useful.",

@@ -36,6 +36,11 @@ if [[ "$PULL" == "1" && -d "$ROOT_DIR/.git" ]]; then
   git -C "$ROOT_DIR" pull --ff-only
 fi
 
+if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
+  echo "Updating package dependencies"
+  npm --prefix "$ROOT_DIR" install
+fi
+
 if [[ "$RUN_CHECK" == "1" ]]; then
   bash "$ROOT_DIR/scripts/check.sh"
 fi

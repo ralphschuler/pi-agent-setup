@@ -58,6 +58,18 @@ bash scripts/check.sh
 npm run check
 ```
 
+## Subagents
+
+This setup bundles `pi-subagents` and loads its `subagent` tool. The agent can:
+
+- inspect available agents with `subagent({ action: "list" })`
+- dynamically create task-specific agents with `subagent({ action: "create", ... })`
+- run one-off specialists
+- run parallel task arrays with `tasks: [...]`
+- run chains with sequential and parallel steps
+
+The `subagent-orchestrator` extension injects guidance so the main agent uses subagents for specialist research, independent review, context building, and safe parallel execution while keeping one parent agent responsible for synthesis.
+
 ## Included examples
 
 ### Extensions
@@ -70,6 +82,8 @@ npm run check
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool
   - TUI clarification controls for select, confirm, input, and editor prompts
+- `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation, chains, and parallel execution.
+- `pi-subagents` is bundled as a dependency and contributes the `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, `context-builder`, `researcher`, `delegate`, and `oracle`.
 - `extensions/plan/` registers:
   - `/plan <task>` command
   - clarification-first workflow that blocks writes until the plan is reviewed
@@ -114,6 +128,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   ├── plan/
 │   │   └── index.ts
 │   ├── safety-guard/
+│   │   └── index.ts
+│   ├── subagent-orchestrator/
 │   │   └── index.ts
 │   └── todo/
 │       └── index.ts

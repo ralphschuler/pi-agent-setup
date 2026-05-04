@@ -34,6 +34,11 @@ if ! command -v pi >/dev/null 2>&1; then
   exit 1
 fi
 
+if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
+  echo "Installing package dependencies"
+  npm --prefix "$ROOT_DIR" install
+fi
+
 if [[ "$SCOPE" == "local" ]]; then
   echo "Installing pi package locally: $ROOT_DIR"
   pi install -l "$ROOT_DIR"

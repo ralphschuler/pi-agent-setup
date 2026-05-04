@@ -26,6 +26,10 @@ require_dir skills
 require_dir prompts
 require_dir themes
 
+if command -v npm >/dev/null 2>&1 && [[ ! -d node_modules/pi-subagents ]]; then
+  echo "Warning: node_modules/pi-subagents is missing. Run npm install before using subagents." >&2
+fi
+
 while IFS= read -r skill; do
   dir="$(basename "$(dirname "$skill")")"
   name="$(awk -F': *' '/^name:/ {print $2; exit}' "$skill" | tr -d '"'"'"'' )"

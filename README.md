@@ -67,6 +67,10 @@ npm run check
   - `hello_setup` tool
   - a small status indicator when loaded
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
+- `extensions/graph-memory/` registers:
+  - `/graph-memory` command
+  - `graph_memory` tool
+  - persistent markdown knowledge graph storage at `~/.pi/agent/graph-memory.md`
 - `extensions/todo/` registers:
   - `/todo` command
   - `todo` tool
@@ -95,6 +99,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 .
 ├── extensions/
 │   ├── hello-tool/
+│   │   └── index.ts
+│   ├── graph-memory/
 │   │   └── index.ts
 │   ├── safety-guard/
 │   │   └── index.ts

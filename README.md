@@ -67,6 +67,10 @@ npm run check
   - `hello_setup` tool
   - a small status indicator when loaded
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
+- `extensions/plan/` registers:
+  - `/plan <task>` command
+  - clarification-first workflow that blocks writes until the plan is reviewed
+  - review UI with apply, refine, or cancel choices
 - `extensions/graph-memory/` registers:
   - agent-facing `graph_memory` tool
   - automatic relevant-memory injection into the agent system prompt
@@ -101,6 +105,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   ├── hello-tool/
 │   │   └── index.ts
 │   ├── graph-memory/
+│   │   └── index.ts
+│   ├── plan/
 │   │   └── index.ts
 │   ├── safety-guard/
 │   │   └── index.ts

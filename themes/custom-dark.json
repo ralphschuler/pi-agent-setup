@@ -1,0 +1,14 @@
+{
+  "name": "custom-dark",
+  "description": "Minimal custom dark theme bootstrap for pi.",
+  "colors": {
+    "primary": "#8ab4f8",
+    "secondary": "#c58af9",
+    "success": "#81c995",
+    "warning": "#fdd663",
+    "error": "#f28b82",
+    "text": "#e8eaed",
+    "muted": "#9aa0a6",
+    "background": "#202124"
+  }
+}

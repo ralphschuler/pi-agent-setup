@@ -1,0 +1,38 @@
+{
+  "name": "pi-agent-setup",
+  "version": "0.1.0",
+  "description": "Bootstrap repository for a custom pi agent setup with extensions, skills, prompts, themes, and install scripts.",
+  "private": true,
+  "keywords": [
+    "pi-package",
+    "pi",
+    "agent",
+    "extensions",
+    "skills"
+  ],
+  "type": "module",
+  "scripts": {
+    "install:pi": "bash scripts/install.sh",
+    "uninstall:pi": "bash scripts/uninstall.sh",
+    "update:pi": "bash scripts/update.sh",
+    "check": "bash scripts/check.sh"
+  },
+  "peerDependencies": {
+    "@mariozechner/pi-coding-agent": "*",
+    "typebox": "*"
+  },
+  "pi": {
+    "extensions": [
+      "./extensions"
+    ],
+    "skills": [
+      "./skills"
+    ],
+    "prompts": [
+      "./prompts"
+    ],
+    "themes": [
+      "./themes"
+    ]
+  }
+}

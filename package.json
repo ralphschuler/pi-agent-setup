@@ -17,11 +17,8 @@
     "install:pi": "bash scripts/install.sh",
     "uninstall:pi": "bash scripts/uninstall.sh",
     "update:pi": "bash scripts/update.sh",
-    "check": "bash scripts/check.sh"
-  },
-  "dependencies": {
-    "@aliou/pi-processes": "^0.8.1",
-    "pi-subagents": "^0.24.0"
+    "check": "bash scripts/check.sh",
+    "test:docker": "bash scripts/test-docker.sh"
   },
   "peerDependencies": {
     "@mariozechner/pi-agent-core": "*",
@@ -39,18 +36,13 @@
   },
   "pi": {
     "extensions": [
-      "./extensions",
-      "./node_modules/pi-subagents/src/extension/index.ts",
-      "./node_modules/@aliou/pi-processes/src/index.ts"
+      "./extensions"
     ],
     "skills": [
-      "./skills",
-      "./node_modules/pi-subagents/skills",
-      "./node_modules/@aliou/pi-processes/skills/pi-processes"
+      "./skills"
     ],
     "prompts": [
-      "./prompts",
-      "./node_modules/pi-subagents/prompts"
+      "./prompts"
     ],
     "themes": [
       "./themes"

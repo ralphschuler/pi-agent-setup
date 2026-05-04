@@ -10,7 +10,7 @@ export default function backgroundProcesses(pi: ExtensionAPI) {
 
 function instructions() {
   return [
-    "Background process support is available through the process tool when the @aliou/pi-processes package is loaded.",
+    "Background process support is available through this package's custom process tool.",
     "Use process for long-running commands instead of shell background patterns like &, nohup, disown, or setsid.",
     "Good fits: dev servers, test watchers, build watchers, local APIs, log tails, and preview servers.",
     "Workflow:",

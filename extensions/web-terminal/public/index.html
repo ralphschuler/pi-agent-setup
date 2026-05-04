@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="theme-color" content="#0b0b12" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="Pi" />
+    <title>Pi Web Terminal</title>
+    <link rel="manifest" href="/manifest.webmanifest" />
+    <link rel="icon" href="/icon.svg" />
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css" />
+    <link rel="stylesheet" href="/styles.css" />
+  </head>
+  <body>
+    <div id="app">
+      <header class="topbar">
+        <div><strong>π web</strong><small id="status">connecting…</small></div>
+        <div class="top-actions"><button id="install" hidden>Install</button><button id="refresh">Refresh</button></div>
+      </header>
+      <main>
+        <section class="screen active" id="screen-terminal"><div class="terminal-card"><div class="traffic"><span></span><span></span><span></span></div><div id="terminal"></div></div></section>
+        <section class="screen" id="screen-chat"><div id="chat-log" class="feed"></div><form id="chat-form" class="composer"><textarea id="chat-input" placeholder="Message pi or type /command"></textarea><button>Send</button></form></section>
+        <section class="screen" id="screen-status"><div class="grid" id="status-grid"></div></section>
+        <section class="screen" id="screen-tasks"><div class="toolbar"><button data-load="tasks">Reload</button></div><div class="list" id="tasks-list"></div></section>
+        <section class="screen" id="screen-files"><div class="toolbar"><button id="file-up">Up</button><span id="file-path">.</span></div><div class="list" id="files-list"></div><pre id="file-content"></pre></section>
+        <section class="screen" id="screen-logs"><div class="toolbar"><select id="log-level"><option value="">All</option><option>info</option><option>warning</option><option>error</option></select></div><div class="feed" id="logs-list"></div></section>
+        <section class="screen" id="screen-cron"><div class="list" id="cron-list"></div></section>
+        <section class="screen" id="screen-skills"><input class="search" data-target="skills-list" placeholder="Search tools…"><div class="list" id="skills-list"></div></section>
+        <section class="screen" id="screen-crm"><div class="list" id="crm-list"></div></section>
+        <section class="screen" id="screen-calendar"><div class="list" id="calendar-list"></div></section>
+        <section class="screen" id="screen-extensions"><div class="list" id="extensions-list"></div></section>
+        <section class="screen" id="screen-settings"><div class="grid" id="settings-grid"></div></section>
+      </main>
+      <nav class="tabs">
+        <button data-tab="terminal" class="active">⌨️<span>Terminal</span></button><button data-tab="chat">💬<span>Chat</span></button><button data-tab="status">📊<span>Status</span></button><button data-tab="tasks">📋<span>Tasks</span></button><button data-tab="files">📁<span>Files</span></button><button data-tab="logs">📜<span>Logs</span></button><button data-tab="cron">⏰<span>Cron</span></button><button data-tab="skills">🧠<span>Skills</span></button><button data-tab="crm">👥<span>CRM</span></button><button data-tab="calendar">📅<span>Calendar</span></button><button data-tab="extensions">🧩<span>Ext</span></button><button data-tab="settings">⚙️<span>Settings</span></button>
+      </nav>
+    </div>
+    <script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+    <script src="/app.js" type="module"></script>
+  </body>
+</html>

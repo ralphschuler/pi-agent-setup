@@ -1,6 +1,6 @@
 # Custom Pi Agent Setup
 
-This repository is a bootstrap pi package for your custom agent setup. It bundles:
+This repository is a bootstrap pi package for your custom agent setup. It provides:
 
 - `extensions/` — TypeScript pi extensions
 - `skills/` — on-demand agent skills
@@ -60,7 +60,7 @@ npm run check
 
 ## Background processes
 
-This setup bundles `@aliou/pi-processes` and loads its `process` tool. The agent can start and manage long-running commands such as dev servers, test watchers, build watchers, local APIs, and log tails without blocking the conversation. Use `/ps` in the TUI to inspect/manage processes.
+This setup includes a custom `process` tool. The agent can start and manage long-running commands such as dev servers, test watchers, build watchers, local APIs, and log tails without blocking the conversation. Use `/ps` to inspect processes.
 
 ## Cronjobs
 
@@ -68,15 +68,14 @@ The `cronjob` tool lets the agent schedule durable future work. Jobs are stored 
 
 ## Subagents
 
-This setup bundles `pi-subagents` and loads its `subagent` tool. The agent can:
+This setup includes a custom `subagent` tool. The agent can:
 
 - inspect available agents with `subagent({ action: "list" })`
 - dynamically create task-specific agents with `subagent({ action: "create", ... })`
-- run one-off specialists
-- run parallel task arrays with `tasks: [...]`
-- run chains with sequential and parallel steps
+- run bounded specialist agents for reconnaissance, planning, implementation handoffs, research, and review
+- run independent task arrays in parallel with optional concurrency and output files
 
-The `subagent-orchestrator` extension injects guidance so the main agent uses subagents for specialist research, independent review, context building, and safe parallel execution while keeping one parent agent responsible for synthesis.
+The `subagent-orchestrator` extension injects guidance so the main agent uses subagents for specialist research, independent review, and context building while keeping one parent agent responsible for synthesis.
 
 ## Included examples
 
@@ -90,14 +89,25 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool
   - TUI clarification controls for select, confirm, input, and editor prompts
+- `extensions/browser-bridge/` registers:
+  - `/browser-bridge` command with setup details for connecting another machine's browser
+  - agent-facing `browser_bridge` tool for navigation, clicking, typing, page inspection, JavaScript evaluation, and screenshots
+  - a Chrome/Edge companion extension under `extensions/browser-bridge/browser-extension/`
+- `extensions/web-terminal/` registers:
+  - `/web-terminal` command with an authenticated browser/PWA URL
+  - agent-facing `web_terminal` setup/status tool
+  - a Hyper-inspired xterm.js terminal UI that launches a child `pi -c` session through a pseudo-terminal
 - `extensions/background-processes/` adds agent-facing guidance for long-running commands.
-- `@aliou/pi-processes` is bundled as a dependency and contributes the `process` tool plus `/ps` process management UI.
+- `extensions/processes/` registers the custom `process` tool plus a themed `/ps` process dashboard and custom tool result rendering.
 - `extensions/cronjobs/` registers:
   - agent-facing `cronjob` tool
   - persistent markdown schedule storage at `~/.pi/agent/cronjobs.md`
   - one-shot, interval, daily, and simple 5-field cron schedules
-- `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation, chains, and parallel execution.
-- `pi-subagents` is bundled as a dependency and contributes the `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, `context-builder`, `researcher`, `delegate`, and `oracle`.
+- `extensions/custom-agents/` registers:
+  - `/agent` command with a themed catalog UI for listing, creating, showing, and deleting custom subagent markdown definitions
+  - shared custom-agent catalog helpers using standard custom-agent folders: `~/.pi/agent/agents`, `~/.agents`, nearest `.pi/agents`, and legacy nearest `.agents`
+- `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation and delegation, and injects the current custom-agent catalog so agents can reuse or create specialists when missing.
+- `extensions/subagents/` registers the custom `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, and `researcher`; it supports single-agent and parallel task-array runs with custom TUI rendering.
 - `extensions/plan/` registers:
   - `/plan <task>` command
   - clarification-first workflow that blocks writes until the plan is reviewed
@@ -138,22 +148,41 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   │   └── index.ts
 │   ├── background-processes/
 │   │   └── index.ts
+│   ├── browser-bridge/
+│   │   ├── README.md
+│   │   ├── browser-extension/
+│   │   └── index.ts
 │   ├── cronjobs/
 │   │   └── index.ts
+│   ├── custom-agents/
+│   │   ├── index.ts
+│   │   └── registry.ts
 │   ├── graph-memory/
 │   │   └── index.ts
 │   ├── human-in-loop/
 │   │   └── index.ts
 │   ├── plan/
 │   │   └── index.ts
+│   ├── processes/
+│   │   └── index.ts
 │   ├── safety-guard/
+│   │   └── index.ts
+│   ├── subagents/
 │   │   └── index.ts
 │   ├── subagent-orchestrator/
 │   │   └── index.ts
-│   └── todo/
-│       └── index.ts
+│   ├── todo/
+│   │   └── index.ts
+│   └── web-terminal/
+│       ├── README.md
+│       ├── index.ts
+│       └── public/
 ├── skills/
 │   ├── code-review/
+│   │   └── SKILL.md
+│   ├── pi-processes/
+│   │   └── SKILL.md
+│   ├── pi-subagents/
 │   │   └── SKILL.md
 │   ├── project-bootstrap/
 │   │   ├── SKILL.md

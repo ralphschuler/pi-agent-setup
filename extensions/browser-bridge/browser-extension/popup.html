@@ -1,0 +1,28 @@
+<!doctype html>
+<html>
+  <head>
+    <meta charset="utf-8" />
+    <style>
+      body { font: 13px system-ui, sans-serif; min-width: 320px; padding: 12px; }
+      label { display: block; margin: 8px 0 4px; font-weight: 600; }
+      input[type="text"] { box-sizing: border-box; width: 100%; padding: 6px; }
+      button { margin-top: 10px; padding: 6px 10px; }
+      .status { margin: 8px 0; padding: 8px; border-radius: 6px; background: #eee; }
+      .ok { background: #d7f7df; }
+      .bad { background: #ffe0e0; }
+      code { word-break: break-all; }
+    </style>
+  </head>
+  <body>
+    <h3>Pi Browser Bridge</h3>
+    <div id="status" class="status">Loading…</div>
+    <label for="serverUrl">WebSocket URL</label>
+    <input id="serverUrl" type="text" placeholder="ws://PI_MACHINE_IP:17373/bridge" />
+    <label for="token">Token</label>
+    <input id="token" type="text" placeholder="Paste token from /browser-bridge" />
+    <label><input id="autoConnect" type="checkbox" /> Auto-connect</label>
+    <button id="save">Save & connect</button>
+    <p>Run <code>/browser-bridge</code> in pi to see the URL and token.</p>
+    <script src="popup.js"></script>
+  </body>
+</html>

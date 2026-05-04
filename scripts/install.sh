@@ -39,6 +39,9 @@ if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
   npm --prefix "$ROOT_DIR" install --legacy-peer-deps
 fi
 
+echo "Validating package"
+bash "$ROOT_DIR/scripts/check.sh"
+
 if [[ "$SCOPE" == "local" ]]; then
   echo "Installing pi package locally: $ROOT_DIR"
   pi install -l "$ROOT_DIR"

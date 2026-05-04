@@ -20,13 +20,13 @@ pi -c
 - **Terminal** — Hyper-inspired xterm.js terminal connected to a child pi session.
 - **Chat** — send prompts to the current pi session and stream responses via SSE.
 - **Status** — agent health, system metrics, cwd, terminal clients, and tool count.
-- **Tasks** — view `td` issues; API also supports create/start/close/reopen.
+- **Tasks** — optional `td` integration for viewing issues; API also supports create/start/close/reopen when `td` is installed.
 - **Files** — browse workspace files and read file contents with cwd sandboxing.
 - **Logs** — live SSE log stream for agent, tool, chat, and terminal activity.
-- **Cron** — view `pi-cron` jobs; API also supports toggle/run.
+- **Cron** — optional `pi-cron` integration for viewing jobs; API also supports toggle/run when `pi-cron` is installed.
 - **Skills** — searchable registered tool/skill list.
-- **CRM** — view `pi-crm` contacts; API also supports contact creation.
-- **Calendar** — view `pi-calendar` events; API also supports event creation.
+- **CRM** — optional `pi-crm` integration for viewing contacts and creating contacts when `pi-crm` is installed.
+- **Calendar** — optional `pi-calendar` integration for viewing events and creating events when `pi-calendar` is installed.
 - **Extensions** — grouped registered tools/extensions.
 - **Settings** — connection and runtime configuration.
 
@@ -39,6 +39,8 @@ pi -c
 - `PI_WEB_TERMINAL_TERM` — child `TERM`, default `xterm-256color`
 
 The implementation uses the system `script` command to allocate a pseudo-terminal without native dependencies. If your system does not provide `script`, install `util-linux` (Linux) or set `PI_WEB_TERMINAL_COMMAND` and adapt the extension to your PTY launcher.
+
+Optional mobile integrations call external CLIs when present: `td`, `pi-cron`, `pi-crm`, and `pi-calendar`. Missing commands are reported as integration errors in the UI rather than required for the terminal itself.
 
 ## Security
 

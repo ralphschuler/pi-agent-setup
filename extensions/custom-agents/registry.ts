@@ -214,7 +214,7 @@ export function formatAgentCatalog(agents: CustomAgentInfo[]) {
 export function formatSubagentOrchestrationInstructions(agents: CustomAgentInfo[]) {
   const catalog = formatAgentCatalog(agents);
   return [
-    "Custom agent instructions are available from the /agent extension and standard user/project agent folders."
+    "Custom agent instructions are available from the /agent extension and standard user/project agent folders.",
     "Prefer an existing custom agent when its description matches the requested work. Use the runtime name exactly as listed.",
     "If a needed specialist is missing, create it dynamically with subagent action=create before running it. Use these defaults unless the task requires otherwise: package='custom', scope='project', inheritProjectContext=true, inheritSkills=true, defaultContext='fresh', systemPromptMode='replace'.",
     "When creating a missing specialist, derive a narrow name, description, tool limits, success criteria, escalation rules, and output contract from the user's task and the custom-agent catalog style. Then run the newly created agent by its runtime name.",

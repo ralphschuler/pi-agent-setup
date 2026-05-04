@@ -26,8 +26,13 @@ require_dir skills
 require_dir prompts
 require_dir themes
 
-if command -v npm >/dev/null 2>&1 && [[ ! -d node_modules/pi-subagents ]]; then
-  echo "Warning: node_modules/pi-subagents is missing. Run npm install before using subagents." >&2
+if command -v npm >/dev/null 2>&1; then
+  if [[ ! -d node_modules/pi-subagents ]]; then
+    echo "Warning: node_modules/pi-subagents is missing. Run npm install before using subagents." >&2
+  fi
+  if [[ ! -d node_modules/@aliou/pi-processes ]]; then
+    echo "Warning: node_modules/@aliou/pi-processes is missing. Run npm install before using background processes." >&2
+  fi
 fi
 
 while IFS= read -r skill; do

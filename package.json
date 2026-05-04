@@ -9,7 +9,8 @@
     "agent",
     "extensions",
     "skills",
-    "subagents"
+    "subagents",
+    "processes"
   ],
   "type": "module",
   "scripts": {
@@ -19,6 +20,7 @@
     "check": "bash scripts/check.sh"
   },
   "dependencies": {
+    "@aliou/pi-processes": "^0.8.1",
     "pi-subagents": "^0.24.0"
   },
   "peerDependencies": {
@@ -28,14 +30,23 @@
     "@mariozechner/pi-tui": "*",
     "typebox": "*"
   },
+  "peerDependenciesMeta": {
+    "@mariozechner/pi-agent-core": { "optional": true },
+    "@mariozechner/pi-ai": { "optional": true },
+    "@mariozechner/pi-coding-agent": { "optional": true },
+    "@mariozechner/pi-tui": { "optional": true },
+    "typebox": { "optional": true }
+  },
   "pi": {
     "extensions": [
       "./extensions",
-      "./node_modules/pi-subagents/src/extension/index.ts"
+      "./node_modules/pi-subagents/src/extension/index.ts",
+      "./node_modules/@aliou/pi-processes/src/index.ts"
     ],
     "skills": [
       "./skills",
-      "./node_modules/pi-subagents/skills"
+      "./node_modules/pi-subagents/skills",
+      "./node_modules/@aliou/pi-processes/skills/pi-processes"
     ],
     "prompts": [
       "./prompts",

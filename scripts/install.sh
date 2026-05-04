@@ -36,7 +36,7 @@ fi
 
 if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
   echo "Installing package dependencies"
-  npm --prefix "$ROOT_DIR" install
+  npm --prefix "$ROOT_DIR" install --legacy-peer-deps
 fi
 
 if [[ "$SCOPE" == "local" ]]; then

@@ -58,6 +58,10 @@ bash scripts/check.sh
 npm run check
 ```
 
+## Background processes
+
+This setup bundles `@aliou/pi-processes` and loads its `process` tool. The agent can start and manage long-running commands such as dev servers, test watchers, build watchers, local APIs, and log tails without blocking the conversation. Use `/ps` in the TUI to inspect/manage processes.
+
 ## Subagents
 
 This setup bundles `pi-subagents` and loads its `subagent` tool. The agent can:
@@ -82,6 +86,8 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool
   - TUI clarification controls for select, confirm, input, and editor prompts
+- `extensions/background-processes/` adds agent-facing guidance for long-running commands.
+- `@aliou/pi-processes` is bundled as a dependency and contributes the `process` tool plus `/ps` process management UI.
 - `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation, chains, and parallel execution.
 - `pi-subagents` is bundled as a dependency and contributes the `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, `context-builder`, `researcher`, `delegate`, and `oracle`.
 - `extensions/plan/` registers:
@@ -120,6 +126,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 .
 ├── extensions/
 │   ├── hello-tool/
+│   │   └── index.ts
+│   ├── background-processes/
 │   │   └── index.ts
 │   ├── graph-memory/
 │   │   └── index.ts

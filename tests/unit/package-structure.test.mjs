@@ -1,0 +1,49 @@
+import assert from "node:assert/strict";
+import fs from "node:fs";
+import path from "node:path";
+import test from "node:test";
+
+import { readJson, readText, repoRoot } from "../helpers.mjs";
+
+test("package exposes pi resources and test scripts", () => {
+  const pkg = readJson("package.json");
+
+  assert.equal(pkg.type, "module");
+  assert.deepEqual(pkg.pi.extensions, ["./extensions"]);
+  assert.deepEqual(pkg.pi.skills, ["./skills"]);
+  assert.deepEqual(pkg.pi.prompts, ["./prompts"]);
+  assert.deepEqual(pkg.pi.themes, ["./themes"]);
+
+  for (const script of ["check", "test", "test:unit", "test:integration", "test:e2e", "test:coverage", "test:ci", "test:docker"]) {
+    assert.equal(typeof pkg.scripts[script], "string", `missing npm script ${script}`);
+  }
+});
+
+test("all concrete extension directories have an entrypoint", () => {
+  const extensionsDir = path.join(repoRoot, "extensions");
+  const dirs = fs.readdirSync(extensionsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+
+  for (const dir of dirs) {
+    if (dir.name === "shared") continue;
+    assert.ok(fs.existsSync(path.join(extensionsDir, dir.name, "index.ts")), `${dir.name} missing index.ts`);
+  }
+});
+
+test("skills have required frontmatter matching directory names", () => {
+  const skillsDir = path.join(repoRoot, "skills");
+  const skillDirs = fs.readdirSync(skillsDir, { withFileTypes: true }).filter((entry) => entry.isDirectory());
+
+  for (const dir of skillDirs) {
+    const content = readText(path.join("skills", dir.name, "SKILL.md"));
+    assert.match(content, new RegExp(`^name:\\s*${dir.name}$`, "m"), `${dir.name} name mismatch`);
+    assert.match(content, /^description:\s*\S/m, `${dir.name} missing description`);
+  }
+});
+
+test("README documents included extension entrypoints", () => {
+  const readme = readText("README.md");
+
+  for (const name of ["caveman", "hello-tool", "processes", "subagents", "todo", "web-terminal"]) {
+    assert.match(readme, new RegExp(`extensions/${name}/`), `README missing ${name}`);
+  }
+});

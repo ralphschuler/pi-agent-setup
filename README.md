@@ -6,7 +6,8 @@ This repository is a bootstrap pi package for your custom agent setup. It provid
 - `skills/` — on-demand agent skills
 - `prompts/` — reusable prompt templates
 - `themes/` — theme examples
-- `scripts/` — install, uninstall, update, and validation scripts
+- `scripts/` — install, uninstall, update, validation, and Docker test scripts
+- `tests/` — unit, integration, and e2e tests with a 100% line-coverage gate
 
 ## Install
 
@@ -50,12 +51,20 @@ For a project-local install:
 bash scripts/uninstall.sh --local
 ```
 
-## Validate
+## Validate and test
 
 ```bash
 bash scripts/check.sh
 # or
 npm run check
+
+npm test              # unit + integration + e2e tests
+npm run test:unit     # unit tests
+npm run test:integration
+npm run test:e2e
+npm run test:coverage # enforces 100% line coverage for the Node test harness
+npm run test:ci       # check + tests + coverage gate
+npm run test:docker   # Docker build/smoke test
 ```
 
 ## Background processes
@@ -85,6 +94,7 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - `/hello-setup` command
   - `hello_setup` tool
   - a small status indicator when loaded
+- `extensions/caveman/` registers `/caveman` to toggle caveman language and choose `lite`, `full`, or `ultra` intensity.
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool
@@ -127,6 +137,8 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
 - `project-bootstrap` — workflow for standardizing project repositories.
 - `code-review` — structured review checklist and response format.
 - `systematic-debugging` — evidence-first bug diagnosis and root-cause workflow.
+- `pi-processes` — guidance for using the background `process` tool safely for dev servers, watchers, and log tails.
+- `pi-subagents` — guidance for orchestrating scout/planner/worker/reviewer subagents, parallel review, and handoff workflows.
 
 Use skills directly with commands such as:
 
@@ -145,6 +157,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 .
 ├── extensions/
 │   ├── hello-tool/
+│   │   └── index.ts
+│   ├── caveman/
 │   │   └── index.ts
 │   ├── background-processes/
 │   │   └── index.ts

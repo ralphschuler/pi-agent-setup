@@ -45,6 +45,12 @@ done < <(find skills -name SKILL.md -type f | sort)
 
 if command -v node >/dev/null 2>&1; then
   node -e "JSON.parse(require('fs').readFileSync('package.json','utf8'))"
+  while IFS= read -r json_file; do
+    node -e "JSON.parse(require('fs').readFileSync(process.argv[1],'utf8'))" "$json_file"
+  done < <(find extensions themes -name '*.json' -type f | sort)
+  while IFS= read -r source_file; do
+    node --check "$source_file"
+  done < <(find extensions tests -type f \( -name '*.ts' -o -name '*.js' -o -name '*.mjs' \) | sort)
 fi
 
 if [[ "$fail" -ne 0 ]]; then

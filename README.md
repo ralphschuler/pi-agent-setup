@@ -62,6 +62,10 @@ npm run check
 
 This setup bundles `@aliou/pi-processes` and loads its `process` tool. The agent can start and manage long-running commands such as dev servers, test watchers, build watchers, local APIs, and log tails without blocking the conversation. Use `/ps` in the TUI to inspect/manage processes.
 
+## Cronjobs
+
+The `cronjob` tool lets the agent schedule durable future work. Jobs are stored in markdown at `~/.pi/agent/cronjobs.md` and are sent back into pi as user messages when due. Supported schedules include ISO timestamps, `every <n> minutes|hours|days`, `daily HH:MM`, and simple 5-field cron expressions.
+
 ## Subagents
 
 This setup bundles `pi-subagents` and loads its `subagent` tool. The agent can:
@@ -88,6 +92,10 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - TUI clarification controls for select, confirm, input, and editor prompts
 - `extensions/background-processes/` adds agent-facing guidance for long-running commands.
 - `@aliou/pi-processes` is bundled as a dependency and contributes the `process` tool plus `/ps` process management UI.
+- `extensions/cronjobs/` registers:
+  - agent-facing `cronjob` tool
+  - persistent markdown schedule storage at `~/.pi/agent/cronjobs.md`
+  - one-shot, interval, daily, and simple 5-field cron schedules
 - `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation, chains, and parallel execution.
 - `pi-subagents` is bundled as a dependency and contributes the `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, `context-builder`, `researcher`, `delegate`, and `oracle`.
 - `extensions/plan/` registers:
@@ -128,6 +136,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   ├── hello-tool/
 │   │   └── index.ts
 │   ├── background-processes/
+│   │   └── index.ts
+│   ├── cronjobs/
 │   │   └── index.ts
 │   ├── graph-memory/
 │   │   └── index.ts

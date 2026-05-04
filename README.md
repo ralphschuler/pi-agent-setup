@@ -67,6 +67,11 @@ npm run check
   - `hello_setup` tool
   - a small status indicator when loaded
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
+- `extensions/todo/` registers:
+  - `/todo` command
+  - `todo` tool
+  - a TUI widget that appears when there are pending or in-progress tasks
+  - persistent markdown storage at `~/.pi/agent/todo.md`
 
 ### Skills
 
@@ -91,7 +96,9 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 ├── extensions/
 │   ├── hello-tool/
 │   │   └── index.ts
-│   └── safety-guard/
+│   ├── safety-guard/
+│   │   └── index.ts
+│   └── todo/
 │       └── index.ts
 ├── skills/
 │   ├── code-review/

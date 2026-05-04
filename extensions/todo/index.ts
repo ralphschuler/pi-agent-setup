@@ -90,62 +90,31 @@ export default function todo(pi: ExtensionAPI) {
     updateWidget(ctx);
   });
 
-  pi.registerCommand("todo", {
-    description: "Manage persistent markdown todos: add <text>, done <id>, start <id>, list, clear-completed",
-    handler: async (args, ctx) => {
-      await loadStore();
-      const parts = args.trim() ? args.trim().split(/\s+/) : ["list"];
-      const [command, ...rest] = parts;
-      const text = rest.join(" ").trim();
+  pi.on("before_agent_start", async (event) => {
+    await loadStore();
+    const active = visibleItems();
+    const instructions = [
+      "Todo is your private durable task list across sessions.",
+      `Storage: ${STORE_PATH}`,
+      "Use the todo tool to track multi-step work, user requests that remain open, and follow-up tasks that should survive future sessions.",
+      "Do not ask the user to manage todo manually; treat it as your own persistent task system.",
+      "Keep todo current: add tasks when work should be remembered, start tasks when actively working, complete tasks when finished, and clear completed tasks when appropriate.",
+      active.length === 0
+        ? "No active todos."
+        : [`Active todos:`, ...active.map((item) => `- ${statusIcon[item.status]} #${item.id} ${item.status}: ${item.text}`)].join("\n"),
+    ].join("\n");
 
-      if (command === "add") {
-        if (!text) return ctx.ui.notify("Usage: /todo add <task>", "warning");
-        const item = await mutate(() => addTodo(text), ctx);
-        return ctx.ui.notify(`Added todo #${item.id}`, "success");
-      }
-
-      if (command === "done" || command === "complete") {
-        const id = Number(rest[0]);
-        if (!Number.isInteger(id)) return ctx.ui.notify("Usage: /todo done <id>", "warning");
-        const item = await mutate(() => setStatus(id, "completed"), ctx);
-        return ctx.ui.notify(item ? `Completed todo #${id}` : `Todo #${id} not found`, item ? "success" : "warning");
-      }
-
-      if (command === "start") {
-        const id = Number(rest[0]);
-        if (!Number.isInteger(id)) return ctx.ui.notify("Usage: /todo start <id>", "warning");
-        const item = await mutate(() => setStatus(id, "in_progress"), ctx);
-        return ctx.ui.notify(item ? `Started todo #${id}` : `Todo #${id} not found`, item ? "success" : "warning");
-      }
-
-      if (command === "pending") {
-        const id = Number(rest[0]);
-        if (!Number.isInteger(id)) return ctx.ui.notify("Usage: /todo pending <id>", "warning");
-        const item = await mutate(() => setStatus(id, "pending"), ctx);
-        return ctx.ui.notify(item ? `Marked todo #${id} pending` : `Todo #${id} not found`, item ? "success" : "warning");
-      }
-
-      if (command === "clear-completed") {
-        const removed = await mutate(() => clearCompleted(), ctx);
-        return ctx.ui.notify(`Removed ${removed} completed todo(s)`, "success");
-      }
-
-      if (command !== "list") {
-        return ctx.ui.notify("Usage: /todo add|start|pending|done|list|clear-completed", "warning");
-      }
-
-      updateWidget(ctx);
-      ctx.ui.notify(formatTodos(), "info");
-    },
+    return { systemPrompt: `${event.systemPrompt}\n\n<todo>\n${instructions}\n</todo>` };
   });
 
   pi.registerTool({
     name: "todo",
     label: "Todo",
-    description: "Manage the persistent markdown todo list shown in the pi TUI.",
-    promptSnippet: "Manage persistent markdown todos displayed in the TUI widget.",
+    description: "Agent-only persistent markdown todo list shown in the pi TUI when active tasks exist.",
+    promptSnippet: "Agent todo memory: manage durable markdown todos displayed in the TUI widget.",
     promptGuidelines: [
-      "Use todo when the user asks to add, list, start, complete, or clear persistent markdown todos.",
+      "Use todo as your own persistent task system for multi-step work, open user requests, and follow-up tasks that should survive future sessions.",
+      "Do not ask the user to operate todo manually; use it proactively and keep it current.",
     ],
     parameters: Type.Object({
       action: Type.Union([

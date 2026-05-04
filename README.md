@@ -72,8 +72,8 @@ npm run check
   - automatic relevant-memory injection into the agent system prompt
   - persistent markdown knowledge graph storage at `~/.pi/agent/graph-memory.md`
 - `extensions/todo/` registers:
-  - `/todo` command
-  - `todo` tool
+  - agent-facing `todo` tool
+  - automatic active-todo injection into the agent system prompt
   - a TUI widget that appears when there are pending or in-progress tasks
   - persistent markdown storage at `~/.pi/agent/todo.md`
 

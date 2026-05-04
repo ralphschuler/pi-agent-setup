@@ -67,6 +67,9 @@ npm run check
   - `hello_setup` tool
   - a small status indicator when loaded
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
+- `extensions/human-in-loop/` registers:
+  - agent-facing `human_in_loop` tool
+  - TUI clarification controls for select, confirm, input, and editor prompts
 - `extensions/plan/` registers:
   - `/plan <task>` command
   - clarification-first workflow that blocks writes until the plan is reviewed
@@ -105,6 +108,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   ├── hello-tool/
 │   │   └── index.ts
 │   ├── graph-memory/
+│   │   └── index.ts
+│   ├── human-in-loop/
 │   │   └── index.ts
 │   ├── plan/
 │   │   └── index.ts

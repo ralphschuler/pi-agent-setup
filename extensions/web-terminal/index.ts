@@ -19,7 +19,16 @@ const INITIAL_TOKEN = process.env.PI_WEB_TERMINAL_TOKEN || crypto.randomBytes(18
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const IS_CHILD = process.env.PI_WEB_TERMINAL_CHILD === "1";
 
-export function localAddresses(port: number, host = DEFAULT_HOST) {
+function configuredHost() {
+  return process.env.PI_WEB_TERMINAL_HOST || DEFAULT_HOST;
+}
+
+function configuredPort() {
+  const configured = Number(process.env.PI_WEB_TERMINAL_PORT || DEFAULT_PORT);
+  return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_PORT;
+}
+
+export function localAddresses(port: number, host = configuredHost()) {
   const addresses = [`http://localhost:${port}`];
   if (host === "0.0.0.0" || host === "::") {
     for (const entries of Object.values(os.networkInterfaces())) {
@@ -72,7 +81,8 @@ export default function webTerminal(pi: ExtensionAPI) {
   if (IS_CHILD) return;
 
   let server: http.Server | undefined;
-  let port = DEFAULT_PORT;
+  let host = configuredHost();
+  let port = configuredPort();
   let currentToken = INITIAL_TOKEN;
   let currentCwd = process.cwd();
   const clients = new Map<string, WebSocketClient>();
@@ -93,16 +103,42 @@ export default function webTerminal(pi: ExtensionAPI) {
   }
 
   function setupUrls() {
-    return localAddresses(port).map((url) => `${url}/login?token=${encodeURIComponent(currentToken)}`);
+    return localAddresses(port, host).map((url) => `${url}/login?token=${encodeURIComponent(currentToken)}`);
   }
 
   function statusText() {
     if (!server) return "web terminal: inactive";
-    return clients.size > 0 ? `web terminal: ${clients.size} connected on :${port}` : `web terminal: waiting on :${port}`;
+    const bind = `${host}:${port}`;
+    return clients.size > 0 ? `web terminal: ${clients.size} connected on ${bind}` : `web terminal: waiting on ${bind}`;
+  }
+
+  async function stopServer() {
+    for (const client of clients.values()) {
+      client.child?.kill("SIGTERM");
+      client.socket.destroy();
+    }
+    clients.clear();
+    for (const res of eventClients) {
+      try {
+        res.end();
+      } catch {}
+    }
+    eventClients.clear();
+    for (const res of logClients) {
+      try {
+        res.end();
+      } catch {}
+    }
+    logClients.clear();
+    await new Promise<void>((resolve) => server?.close(() => resolve()) ?? resolve());
+    server = undefined;
   }
 
   async function startServer(cwd: string) {
     currentCwd = cwd;
+    const desiredHost = configuredHost();
+    const desiredPort = configuredPort();
+    if (server && (host !== desiredHost || port !== desiredPort)) await stopServer();
     if (server) return;
     server = http.createServer((req, res) => {
       const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
@@ -162,8 +198,10 @@ export default function webTerminal(pi: ExtensionAPI) {
         reject(error);
       };
       activeServer.once("error", onError);
-      activeServer.listen(port, DEFAULT_HOST, () => {
+      activeServer.listen(desiredPort, desiredHost, () => {
         activeServer.off("error", onError);
+        host = desiredHost;
+        port = desiredPort;
         resolve();
       });
     });
@@ -229,25 +267,7 @@ export default function webTerminal(pi: ExtensionAPI) {
   });
 
   pi.on("session_shutdown", async () => {
-    for (const client of clients.values()) {
-      client.child?.kill("SIGTERM");
-      client.socket.destroy();
-    }
-    clients.clear();
-    for (const res of eventClients) {
-      try {
-        res.end();
-      } catch {}
-    }
-    eventClients.clear();
-    for (const res of logClients) {
-      try {
-        res.end();
-      } catch {}
-    }
-    logClients.clear();
-    await new Promise<void>((resolve) => server?.close(() => resolve()) ?? resolve());
-    server = undefined;
+    await stopServer();
   });
 
   pi.registerCommand("web-terminal", {
@@ -278,7 +298,7 @@ export default function webTerminal(pi: ExtensionAPI) {
       if (params.action === "status" && !server) {
         return {
           content: [{ type: "text", text: "Web terminal server: inactive\nRun setup to activate the web terminal server." }],
-          details: { active: false, host: DEFAULT_HOST, port, clients: clients.size, urls: [] },
+          details: { active: false, host: configuredHost(), port: configuredPort(), clients: clients.size, urls: [] },
         };
       }
 
@@ -290,14 +310,14 @@ export default function webTerminal(pi: ExtensionAPI) {
           {
             type: "text",
             text: [
-              `Web terminal server: ${DEFAULT_HOST}:${port}`,
+              `Web terminal server: ${host}:${port}`,
               `Connected terminals: ${clients.size}`,
               `Open: ${urls.join(" or ")}`,
               `Token: ${currentToken}`,
             ].join("\n"),
           },
         ],
-        details: { active: true, host: DEFAULT_HOST, port, clients: clients.size, urls, token: currentToken },
+        details: { active: true, host, port, clients: clients.size, urls, token: currentToken },
       };
     },
   });

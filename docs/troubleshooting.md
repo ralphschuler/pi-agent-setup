@@ -47,6 +47,7 @@ SEARXNG_URL=https://your-searxng.example
 - Run `/web-terminal` for the authenticated setup URL.
 - By default it binds to localhost.
 - LAN access requires `PI_WEB_TERMINAL_HOST=0.0.0.0`.
+- If status still shows `127.0.0.1`, export the variable in the shell that starts `pi`, then run `/reload` or restart pi and run `/web-terminal` again. Use the shown LAN URL, not `localhost`, from Safari on another device.
 
 ## GitHub Pages does not deploy
 

@@ -4,43 +4,22 @@ import { Type } from "typebox";
 import crypto from "node:crypto";
 import fs from "node:fs";
 import http from "node:http";
-import os from "node:os";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { env, LOCALHOST_BIND_HOST, localNetworkUrls, normalizeHost, normalizePort } from "../shared/local-network.ts";
 import { isAuthed, isTrustedOrigin, requiresCsrfCheck } from "./auth.ts";
 import { broadcast, type SseClient } from "./events.ts";
 import { json, safeHandleApi } from "./http.ts";
 import { handleApi } from "./routes.ts";
 import { handleTerminalUpgrade, type WebSocketClient } from "./terminal-session.ts";
 
-function env(name: string) {
-  const exact = process.env[name];
-  if (exact !== undefined) return exact;
-  const match = Object.keys(process.env).find((key) => key.toUpperCase() === name);
-  return match ? process.env[match] : undefined;
-}
-
-const DEFAULT_HOST = env("PI_WEB_TERMINAL_HOST") || "127.0.0.1";
+const DEFAULT_HOST = env("PI_WEB_TERMINAL_HOST") || LOCALHOST_BIND_HOST;
 const DEFAULT_PORT = Number(env("PI_WEB_TERMINAL_PORT") || 17474);
 const INITIAL_TOKEN = env("PI_WEB_TERMINAL_TOKEN") || crypto.randomBytes(18).toString("base64url");
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const IS_CHILD = process.env.PI_WEB_TERMINAL_CHILD === "1";
 let runtimeHost: string | undefined;
 let runtimePort: number | undefined;
-
-function normalizeHost(value: unknown) {
-  const host = typeof value === "string" ? value.trim() : "";
-  if (!host) return undefined;
-  if (!/^[a-zA-Z0-9:._-]+$/.test(host)) throw new Error("Invalid host. Use an IP address or hostname.");
-  return host;
-}
-
-function normalizePort(value: unknown) {
-  if (value === undefined || value === null || value === "") return undefined;
-  const port = Number(value);
-  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid port. Use 1-65535.");
-  return port;
-}
 
 function configureBind(options: { host?: unknown; port?: unknown }) {
   const host = normalizeHost(options.host);
@@ -59,17 +38,7 @@ function configuredPort() {
 }
 
 export function localAddresses(port: number, host = configuredHost()) {
-  const addresses = [`http://localhost:${port}`];
-  if (host === "0.0.0.0" || host === "::") {
-    for (const entries of Object.values(os.networkInterfaces())) {
-      for (const entry of entries || []) {
-        if (entry.family === "IPv4" && !entry.internal) addresses.push(`http://${entry.address}:${port}`);
-      }
-    }
-  } else if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
-    addresses.push(`http://${host}:${port}`);
-  }
-  return [...new Set(addresses)];
+  return localNetworkUrls(port, host);
 }
 
 function contentType(file: string) {

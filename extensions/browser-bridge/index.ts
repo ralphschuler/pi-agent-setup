@@ -1,15 +1,15 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import http from "node:http";
-import os from "node:os";
 import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { LOCALHOST_BIND_HOST, localNetworkUrls } from "../shared/local-network.ts";
 import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
 import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 
 const DEFAULT_PORT = Number(process.env.PI_BROWSER_BRIDGE_PORT || 17373);
-const DEFAULT_HOST = process.env.PI_BROWSER_BRIDGE_HOST || "127.0.0.1";
+const DEFAULT_HOST = process.env.PI_BROWSER_BRIDGE_HOST || LOCALHOST_BIND_HOST;
 const TOKEN = process.env.PI_BROWSER_BRIDGE_TOKEN || crypto.randomBytes(18).toString("base64url");
 const EXTENSION_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "browser-extension");
 
@@ -26,17 +26,7 @@ type PendingRequest = {
 };
 
 function localAddresses(port: number, host = DEFAULT_HOST) {
-  const addresses = [`http://localhost:${port}`];
-  if (host === "0.0.0.0" || host === "::") {
-    for (const entries of Object.values(os.networkInterfaces())) {
-      for (const entry of entries || []) {
-        if (entry.family === "IPv4" && !entry.internal) addresses.push(`http://${entry.address}:${port}`);
-      }
-    }
-  } else if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
-    addresses.push(`http://${host}:${port}`);
-  }
-  return [...new Set(addresses)];
+  return localNetworkUrls(port, host);
 }
 
 export default function browserBridge(pi: ExtensionAPI) {

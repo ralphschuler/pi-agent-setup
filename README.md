@@ -54,7 +54,7 @@ npm run test:docker
 ## What is included
 
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
-  - `extensions/auto-compact/`, `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/github-handoff/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
+  - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/github-handoff/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
 - `skills/` — on-demand workflows for project bootstrap, code review, debugging, processes, and subagents.
 - `prompts/` — reusable prompt templates such as review, research, and refine-codebase.
 - `themes/` — custom TUI themes, including synthwave.

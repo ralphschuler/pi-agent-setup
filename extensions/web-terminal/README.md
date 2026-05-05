@@ -17,7 +17,7 @@ pi -c
 
 ## PWA behavior
 
-The web UI is intentionally terminal-only: no bottom navigation, chat, files, logs, tools, or settings screens. Markdown rendering is handled by the child `pi` TUI running inside xterm.js; the browser terminal renders the ANSI styling emitted by `pi`.
+The web UI is intentionally terminal-only: no bottom navigation, chat, files, logs, tools, or settings screens. Plain Markdown output from the child command is converted to ANSI styling before it reaches xterm.js. Existing terminal control sequences are passed through unchanged. Set `PI_WEB_TERMINAL_MARKDOWN=0` to disable this fallback renderer.
 
 ## Configuration
 

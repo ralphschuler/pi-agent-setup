@@ -46,7 +46,6 @@ nav:
   - Architecture: architecture.md
   - Extensions:
       - Overview: extensions/index.md
-      - Auto compact: extensions/auto-compact.md
       - Background processes guidance: extensions/background-processes.md
       - Browser bridge: extensions/browser-bridge.md
       - Caveman: extensions/caveman.md

@@ -11,6 +11,7 @@ const SKIP_DIRS = new Set(["node_modules", ".git", ".todos", "dist", "build", ".
 export type WebTerminalApiContext = {
   pi: ExtensionAPI;
   cwd: string;
+  host: string;
   port: number;
   clients: { size: number };
   eventClients: Set<SseClient>;
@@ -74,7 +75,7 @@ export async function handleApi(req: http.IncomingMessage, res: http.ServerRespo
   }
   if (p === "/settings")
     return json(res, 200, {
-      host: process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1",
+      host: ctx.host,
       port: ctx.port,
       tokenSet: true,
       command: process.env.PI_WEB_TERMINAL_COMMAND || "pi -c",

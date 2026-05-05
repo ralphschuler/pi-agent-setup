@@ -62,7 +62,8 @@ test("web and browser servers default to localhost with opt-in LAN binding", () 
   const web = readText("extensions/web-terminal/index.ts");
   const browser = readText("extensions/browser-bridge/index.ts");
 
-  assert.match(web, /PI_WEB_TERMINAL_HOST \|\| "127\.0\.0\.1"/);
+  assert.match(web, /PI_WEB_TERMINAL_HOST"\) \|\| "127\.0\.0\.1"/);
+  assert.match(web, /key\.toUpperCase\(\) === name/);
   assert.match(web, /function configuredHost\(\)/);
   assert.match(web, /activeServer\.listen\(desiredPort, desiredHost/);
   assert.match(web, /if \(server && \(host !== desiredHost \|\| port !== desiredPort\)\) await stopServer\(\)/);
@@ -124,17 +125,20 @@ test("browser bridge documents broad host permissions", () => {
 
 test("process tool implements advertised alerts and log watches", () => {
   const source = readText("extensions/processes/index.ts");
+  const domain = readText("extensions/processes/domain.ts");
 
-  for (const phrase of ["alertOnSuccess", "alertOnFailure", "alertOnKill", "logWatches", "notifyProcessExit", "checkLogWatches"]) {
+  for (const phrase of ["alertOnSuccess", "alertOnFailure", "alertOnKill", "logWatches", "notifyProcessExit"]) {
     assert.match(source, new RegExp(phrase), `missing ${phrase}`);
   }
-  assert.match(source, /Invalid log watch regex/);
-  assert.match(source, /Unsafe log watch regex/);
-  assert.match(source, /regex = new RegExp\(input\.pattern\)/);
-  assert.match(source, /watch\.regex\.test\(text\)/);
-  assert.doesNotMatch(source, /new RegExp\(watch\.pattern\)/);
+  for (const phrase of ["normalizeLogWatches", "checkLogWatches", "serializeProcess", "appendBoundedLog"]) {
+    assert.match(domain, new RegExp(phrase), `missing domain ${phrase}`);
+  }
+  assert.match(domain, /Invalid log watch regex/);
+  assert.match(domain, /Unsafe log watch regex/);
+  assert.match(domain, /regex = new RegExp\(input\.pattern\)/);
+  assert.match(domain, /watch\.regex\.test\(text\)/);
+  assert.doesNotMatch(domain, /new RegExp\(watch\.pattern\)/);
   assert.match(source, /LOG_FILE_LIMIT/);
-  assert.match(source, /appendBoundedLog/);
 });
 
 test("repository has type and lint hygiene scripts", () => {

@@ -49,7 +49,7 @@ function buildIssuePrompt(scope: string) {
     "7. After creation, report the created issue URLs and any items intentionally skipped as duplicates/non-actionable.",
     "",
     "Safety rules:",
-    "- Ask for clarification before creating issues if the target repo or issue scope is ambiguous.",
+    "- Use human_in_loop for every user-facing clarification or approval question, including ambiguous target repo or issue scope.",
     "- Do not include secrets, private tokens, or unrelated conversation content in issue bodies.",
     "- Do not modify files unless needed for temporary issue body drafts; clean up temporary files afterward.",
   ].join("\n");
@@ -68,9 +68,9 @@ function buildPickIssuePrompt(scope: string) {
     "Required process:",
     "1. Inspect git status, current branch, remotes, default branch, and GitHub CLI auth status.",
     "2. Use `gh issue list`/`gh issue view` to inspect open issues in the current repo. Consider labels, severity/priority wording, blockers, recency, and dependencies.",
-    "3. Select the highest-priority issue that is actionable now. If selection is ambiguous, ask the user to choose among 2-5 candidates.",
+    "3. Select the highest-priority issue that is actionable now. If selection is ambiguous, use human_in_loop select to ask the user to choose among 2-5 candidates.",
     "4. Output the selected issue into the session, including title, URL, labels, body summary, acceptance criteria, and relevant files/commands.",
-    "5. Ensure the working tree is clean before creating a branch. If dirty, stop and ask the user how to proceed.",
+    "5. Ensure the working tree is clean before creating a branch. If dirty, stop and use human_in_loop to ask the user how to proceed.",
     "6. Create a branch named like `issue-<number>-<short-slug>` from the default branch or current base after confirming it is safe.",
     "7. Push the branch and create a draft/WIP PR with `gh pr create --draft` (or title prefixed with `WIP:` if draft PRs are unavailable).",
     "8. Link the PR to the issue using closing/linking text in the PR body, e.g. `Closes #<number>` or `Refs #<number>` depending on whether the PR is intended to close it.",
@@ -97,7 +97,7 @@ function buildPrPrompt(scope: string) {
     "Required process:",
     "1. Inspect git status, current branch, remotes, recent commits, and GitHub CLI auth status.",
     "2. Inspect the current diff and relevant conversation context to understand what changed and why.",
-    "3. If changes are uncommitted, summarize them and ask for approval before committing unless the user already explicitly requested commit/push/PR creation.",
+    "3. If changes are uncommitted, summarize them and use human_in_loop to ask for approval before committing unless the user already explicitly requested commit/push/PR creation.",
     "4. Ensure validation status is known. Run appropriate checks if they have not been run for the current changes, or clearly state why they were skipped.",
     "5. Choose or create a sensible branch name if not already on a feature branch.",
     "6. Commit changes with a clear message when needed, push the branch, and create a PR with `gh pr create`.",
@@ -108,6 +108,6 @@ function buildPrPrompt(scope: string) {
     "- Do not create a PR from dirty or unvalidated changes without clearly reporting what is included.",
     "- Do not include secrets, private tokens, or unrelated conversation content in the PR body.",
     "- If `gh` is unavailable or unauthenticated, report exact setup steps and do not fake PR creation.",
-    "- Ask for clarification if the base branch, target repo, or desired PR scope is ambiguous.",
+    "- Use human_in_loop for every user-facing clarification or approval question, including ambiguous base branch, target repo, or desired PR scope.",
   ].join("\n");
 }

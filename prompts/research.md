@@ -45,7 +45,7 @@ Look for:
 - over-broad scope
 - decision criteria that are not explicit
 
-If the scope is unclear, ask concise clarification questions before deep research.
+If the scope is unclear, use the `human_in_loop` tool to ask concise clarification questions before deep research. Do not ask user-facing clarification or approval questions in plain assistant text.
 
 ---
 

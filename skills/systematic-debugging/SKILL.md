@@ -9,6 +9,8 @@ Use this skill whenever the task is to investigate or fix a bug. The goal is to 
 
 If the user invoked a prompt or slash command with arguments, treat those arguments as the symptom, failing command, environment, or reproduction scope.
 
+Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
+
 ## Core Workflow
 
 1. **State the symptom**

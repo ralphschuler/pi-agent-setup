@@ -104,11 +104,13 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - TUI clarification controls for select, confirm, input, and editor prompts
 - `extensions/browser-bridge/` registers:
   - `/browser-bridge` command with setup details for connecting another machine's browser
+  - inactive until `/browser-bridge`, `browser_bridge` setup, or an agent browser action activates it
   - localhost-only binding by default; set `PI_BROWSER_BRIDGE_HOST=0.0.0.0` to opt in to LAN access
   - agent-facing `browser_bridge` tool for navigation, clicking, typing, page inspection, JavaScript evaluation, and screenshots
   - a Chrome/Edge companion extension under `extensions/browser-bridge/browser-extension/`
 - `extensions/web-terminal/` registers:
   - `/web-terminal` command with an authenticated browser/PWA URL
+  - inactive until `/web-terminal` or `web_terminal` setup activates it
   - localhost-only binding by default; set `PI_WEB_TERMINAL_HOST=0.0.0.0` to opt in to LAN access
   - agent-facing `web_terminal` setup/status tool
   - a Hyper-inspired xterm.js terminal UI that launches a child `pi -c` session through a pseudo-terminal

@@ -46,6 +46,7 @@ export default function browserBridge(pi: ExtensionAPI) {
   const pending = new Map<string, PendingRequest>();
 
   function statusText() {
+    if (!server) return "browser bridge: inactive";
     return client ? `browser bridge: connected (${client.id})` : `browser bridge: waiting on :${port}`;
   }
 
@@ -184,15 +185,7 @@ export default function browserBridge(pi: ExtensionAPI) {
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    try {
-      await startServer();
-      ctx.ui.setStatus("browser-bridge", statusText());
-    } catch (error) {
-      ctx.ui.notify(
-        `Browser bridge failed to listen on ${DEFAULT_HOST}:${port}: ${error instanceof Error ? error.message : String(error)}`,
-        "error",
-      );
-    }
+    ctx.ui.setStatus("browser-bridge", statusText());
   });
 
   pi.on("session_shutdown", async () => {
@@ -248,8 +241,25 @@ export default function browserBridge(pi: ExtensionAPI) {
       timeoutMs: Type.Optional(Type.Number({ description: "Command timeout in milliseconds" })),
     }),
     async execute(_toolCallId, params) {
+      if (params.action === "status") {
+        const urls = server ? localAddresses(port) : [];
+        return {
+          content: [
+            {
+              type: "text",
+              text: [
+                `Browser bridge server: ${server ? `${DEFAULT_HOST}:${port}` : "inactive"}`,
+                `Connected browser: ${client ? `yes (${client.id})` : "no"}`,
+                server ? `Setup page: ${urls.join(" or ")}` : "Run setup to activate the bridge server.",
+              ].join("\n"),
+            },
+          ],
+          details: { active: Boolean(server), connected: Boolean(client), port, host: DEFAULT_HOST, urls, extensionDir: EXTENSION_DIR },
+        };
+      }
+
       await startServer();
-      if (params.action === "status" || params.action === "setup") {
+      if (params.action === "setup") {
         const urls = localAddresses(port);
         return {
           content: [
@@ -264,7 +274,7 @@ export default function browserBridge(pi: ExtensionAPI) {
               ].join("\n"),
             },
           ],
-          details: { connected: Boolean(client), port, host: DEFAULT_HOST, urls, token: TOKEN, extensionDir: EXTENSION_DIR },
+          details: { active: true, connected: Boolean(client), port, host: DEFAULT_HOST, urls, token: TOKEN, extensionDir: EXTENSION_DIR },
         };
       }
 

@@ -22,6 +22,25 @@ test("web and browser servers default to localhost with opt-in LAN binding", () 
   assert.doesNotMatch(web, /cookie\?\.includes\(`pi_web_terminal_token=/);
 });
 
+test("web and browser servers stay inactive until activated", () => {
+  const web = readText("extensions/web-terminal/index.ts");
+  const browser = readText("extensions/browser-bridge/index.ts");
+
+  assert.match(web, /if \(!server\) return "web terminal: inactive"/);
+  assert.match(browser, /if \(!server\) return "browser bridge: inactive"/);
+  assert.doesNotMatch(web, /pi\.on\("session_start", async \(_event, ctx\) => \{\s*currentCwd = ctx\.cwd;\s*try \{\s*await startServer/s);
+  assert.doesNotMatch(browser, /pi\.on\("session_start", async \(_event, ctx\) => \{\s*try \{\s*await startServer/s);
+});
+
+test("synthwave theme is packaged", () => {
+  const theme = readJson("themes/synthwave.json");
+
+  assert.equal(theme.name, "synthwave");
+  assert.equal(theme.colors.accent, "pink");
+  assert.equal(theme.colors.borderAccent, "cyan");
+  assert.equal(theme.colors.bashMode, "green");
+});
+
 test("process tool implements advertised alerts and log watches", () => {
   const source = readText("extensions/processes/index.ts");
 

@@ -5,7 +5,7 @@ A pi extension that serves a Hyper-inspired browser terminal/PWA and connects ea
 ## Usage
 
 1. Install/reload this pi package.
-2. Run `/web-terminal` in pi, or ask the agent to call `web_terminal` with `action: "setup"`.
+2. Run `/web-terminal` in pi, or ask the agent to call `web_terminal` with `action: "setup"`. The server stays inactive until this step activates it.
 3. Open the authenticated URL shown by pi.
 4. Use the browser install button to add it as a PWA.
 

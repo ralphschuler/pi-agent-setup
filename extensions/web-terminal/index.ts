@@ -191,6 +191,7 @@ export default function webTerminal(pi: ExtensionAPI) {
   }
 
   function statusText() {
+    if (!server) return "web terminal: inactive";
     return clients.size > 0 ? `web terminal: ${clients.size} connected on :${port}` : `web terminal: waiting on :${port}`;
   }
 
@@ -510,15 +511,7 @@ export default function webTerminal(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     currentCwd = ctx.cwd;
-    try {
-      await startServer(ctx.cwd);
-      ctx.ui.setStatus("web-terminal", statusText());
-    } catch (error) {
-      ctx.ui.notify(
-        `Web terminal failed to listen on ${DEFAULT_HOST}:${port}: ${error instanceof Error ? error.message : String(error)}`,
-        "error",
-      );
-    }
+    ctx.ui.setStatus("web-terminal", statusText());
   });
 
   pi.on("agent_start", async () => {
@@ -622,6 +615,13 @@ export default function webTerminal(pi: ExtensionAPI) {
     promptGuidelines: ["Use web_terminal status/setup when the user asks for the browser/PWA terminal URL."],
     parameters: Type.Object({ action: Type.Union([Type.Literal("status"), Type.Literal("setup")]) }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      if (params.action === "status" && !server) {
+        return {
+          content: [{ type: "text", text: "Web terminal server: inactive\nRun setup to activate the web terminal server." }],
+          details: { active: false, host: DEFAULT_HOST, port, clients: clients.size, urls: [] },
+        };
+      }
+
       await startServer(ctx.cwd);
       if (params.action === "setup") rotateToken();
       const urls = setupUrls();
@@ -637,7 +637,7 @@ export default function webTerminal(pi: ExtensionAPI) {
             ].join("\n"),
           },
         ],
-        details: { host: DEFAULT_HOST, port, clients: clients.size, urls, token: currentToken },
+        details: { active: true, host: DEFAULT_HOST, port, clients: clients.size, urls, token: currentToken },
       };
     },
   });

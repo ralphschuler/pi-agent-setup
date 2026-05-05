@@ -99,7 +99,7 @@ export default function planCommand(pi: ExtensionAPI) {
       planningActive = false;
       ctx.ui.setStatus("plan", "writing PRD.md");
       pi.sendUserMessage(
-        `Convert this approved plan into a clear product requirements document at PRD.md. Do not implement the plan. Create or update PRD.md only, preserving decisions, requirements, non-goals, acceptance criteria, rollout/validation, and open questions.\n\n${approvedPlan}`,
+        `Convert this approved plan into a clear product requirements document at PRD.md. Do not implement the plan. Create or update PRD.md only, preserving decisions, requirements, non-goals, acceptance criteria, rollout/validation, and open questions. Structure the PRD into small feature phases; each phase must be independently and quickly testable with concrete validation commands or checks, acceptance criteria, and rollback/stop points where practical.\n\n${approvedPlan}`,
       );
       return;
     }
@@ -139,7 +139,7 @@ function planningInstructions() {
     "2. Reconnaissance: inspect relevant files, docs, tests, CI/config, runtime assumptions, and prior decisions before asking anything discoverable.",
     "3. Decision tree: identify branches and dependencies. For each unresolved branch, ask exactly one targeted question with human_in_loop and a recommended answer.",
     "4. Risk sweep: enumerate correctness, security, privacy, data loss, performance, migration, compatibility, UX, and operational risks; resolve each by evidence or question.",
-    "5. Plan synthesis: produce an implementation plan with phases, files, tests, validation commands, rollback, and acceptance criteria.",
+    "5. Plan synthesis: produce an implementation plan split into small feature phases. Each phase must be independently and quickly testable with concrete validation commands/checks, acceptance criteria, and rollback/stop points where practical.",
     "6. Review gate: only after coverage is complete, present the plan for approval using the exact READY FOR REVIEW structure.",
     "Coverage checklist before READY FOR REVIEW:",
     "- Goal and non-goals are explicit.",
@@ -147,7 +147,9 @@ function planningInstructions() {
     "- Affected files/modules/APIs/UI/config/tests are identified.",
     "- Alternatives and rejected approaches are noted when meaningful.",
     "- Security, error handling, edge cases, observability, and rollback are addressed.",
-    "- Validation commands and test cases are concrete.",
+    "- The plan is split into feature phases that can be implemented and validated independently.",
+    "- Each phase has quick validation commands/checks and test cases that are concrete.",
+    "- Broad, untestable phases are split into smaller slices unless a clear constraint prevents it.",
     "- Remaining assumptions are either confirmed by the user or clearly low-risk.",
     "When coverage is complete, output exactly this structure:",
     "READY FOR REVIEW",
@@ -157,11 +159,18 @@ function planningInstructions() {
     "Assumptions: ...",
     "Non-goals: ...",
     "Plan:",
-    "1. ...",
-    "Files/areas: ...",
-    "Validation: ...",
-    "Rollback/risks: ...",
-    "Acceptance criteria: ...",
+    "Phase 1: <small feature slice>",
+    "- Goal: ...",
+    "- Files/areas: ...",
+    "- Acceptance criteria: ...",
+    "- Quick validation: ...",
+    "- Rollback/stop point: ...",
+    "Phase 2: <next independently testable slice>",
+    "- Goal: ...",
+    "- Files/areas: ...",
+    "- Acceptance criteria: ...",
+    "- Quick validation: ...",
+    "- Rollback/stop point: ...",
     "Do not say READY FOR REVIEW until you are ready for the user to approve or refine the plan.",
   ].join("\n");
 }

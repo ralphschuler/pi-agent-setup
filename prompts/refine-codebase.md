@@ -55,6 +55,8 @@ If a candidate contradicts an existing ADR, include it only when friction is rea
 
 If a candidate needs new domain language, mention the proposed `CONTEXT.md` addition as a follow-up; do not edit files during this command.
 
+If a candidate becomes an implementation plan or PRD, split it into small feature phases that are independently and quickly testable. Each phase should include concrete validation commands/checks, acceptance criteria, and rollback/stop points where practical.
+
 ## Candidate output format
 
 Return a numbered list. For each candidate, use this exact structure:

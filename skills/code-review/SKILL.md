@@ -16,6 +16,7 @@ Use `human_in_loop` for every user-facing clarification or approval question. Do
 - Understand the requested behavior and the actual diff.
 - Look for correctness bugs, edge cases, data loss risks, and security issues.
 - Check whether tests cover the changed behavior.
+- For implementation plans or PRDs, check that work is split into independently and quickly testable feature phases.
 - Confirm docs, scripts, or examples were updated when behavior changed.
 - Avoid nitpicks unless they affect maintainability or consistency.
 

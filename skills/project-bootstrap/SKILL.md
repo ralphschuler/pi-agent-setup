@@ -17,8 +17,9 @@ Use `human_in_loop` for every user-facing clarification or approval question. Do
 2. Identify the project type and existing package/build tools.
 3. Create or update common repository hygiene files: README, .gitignore, scripts, docs, and CI as appropriate.
 4. Prefer small, composable scripts in `scripts/` over long README-only instructions.
-5. Add a validation command that can be run locally and in CI.
-6. Run validation before reporting completion.
+5. Split setup or standardization plans into small feature phases that can be validated independently.
+6. Add quick validation commands/checks for each phase, plus CI validation where appropriate.
+7. Run validation before reporting completion.
 
 ## Helper
 

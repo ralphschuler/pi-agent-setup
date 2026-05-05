@@ -13,6 +13,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `package_scout`  | Package scout  | Audit npm package metadata without install. |
 | `process`        | Processes      | Manage long-running commands.               |
 | `search`         | SearXNG search | Search the web through SearXNG.             |
+| `searxng_status` | SearXNG status | Check SearXNG health and setup steps.       |
 | `subagent`       | Subagents      | Run bounded specialist agents.              |
 | `todo`           | Todo           | Track persistent agent tasks.               |
 | `web_terminal`   | Web terminal   | Show web terminal status/setup URLs.        |
@@ -34,6 +35,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/review [scope]`   | Prompt-template project/code review workflow. |
 | `/ps`               | Process dashboard.                            |
 | `/research <topic>` | Prompt-template research workflow.            |
+| `/searxng`          | Show SearXNG status/setup help.               |
 | `/to-issue`         | Create GitHub issues from repo/conversation.  |
 | `/to-pr`            | Create a GitHub PR from repo/conversation.    |
 | `/web-terminal`     | Start/show authenticated web terminal setup.  |

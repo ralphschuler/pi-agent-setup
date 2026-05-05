@@ -154,7 +154,7 @@ export default function cronjobs(pi: ExtensionAPI) {
         const now = new Date().toISOString();
         const job: CronJob = {
           id: nextId++,
-          name: params.name.trim(),
+          name: safeSingleLine(params.name.trim()),
           task: params.task.trim(),
           schedule: params.schedule.trim(),
           kind: parsed.kind,
@@ -330,7 +330,7 @@ function matchesCronField(field: string, value: number, min: number, max: number
   });
 }
 
-function parseMarkdown(markdown: string): CronJob[] {
+export function parseMarkdown(markdown: string): CronJob[] {
   const blocks = markdown.split(/^## Job /m).slice(1);
   return blocks
     .map((block) => {
@@ -361,7 +361,7 @@ function parseMarkdown(markdown: string): CronJob[] {
         else if (line === "### Task") inTask = true;
         else if (inTask) task.push(line);
       }
-      job.task = task.join("\n").trim();
+      job.task = decodeStoredBlock(task.join("\n").trim());
       const parsed = parseSchedule(job.schedule);
       if (parsed) job.kind = parsed.kind;
       return job;
@@ -369,11 +369,11 @@ function parseMarkdown(markdown: string): CronJob[] {
     .filter((job) => Number.isInteger(job.id) && job.task);
 }
 
-function renderMarkdown(jobs: CronJob[]) {
+export function renderMarkdown(jobs: CronJob[]) {
   const lines = ["# Cronjobs", "", "<!-- Managed by the pi cronjob extension. Scheduled task bodies are sent back to pi when due. -->", ""];
   for (const job of jobs) {
     lines.push(`## Job ${job.id}`);
-    lines.push(`- name: ${job.name}`);
+    lines.push(`- name: ${safeSingleLine(job.name)}`);
     lines.push(`- schedule: ${job.schedule}`);
     lines.push(`- kind: ${job.kind}`);
     lines.push(`- enabled: ${job.enabled}`);
@@ -383,7 +383,7 @@ function renderMarkdown(jobs: CronJob[]) {
     lines.push(`- nextRun: ${job.nextRunAt || ""}`);
     lines.push("");
     lines.push("### Task");
-    lines.push(job.task);
+    lines.push(encodeStoredBlock(job.task));
     lines.push("");
   }
   return lines.join("\n");
@@ -391,6 +391,27 @@ function renderMarkdown(jobs: CronJob[]) {
 
 function formatWhen(iso: string) {
   return new Date(iso).toLocaleString();
+}
+
+function encodeStoredBlock(value: string) {
+  return ["```base64", Buffer.from(value, "utf8").toString("base64"), "```"].join("\n");
+}
+
+function decodeStoredBlock(value: string) {
+  const match = value.match(/^```base64\n([A-Za-z0-9+/=\s]*)\n```$/);
+  if (!match) return value;
+  try {
+    return Buffer.from(match[1].replace(/\s+/g, ""), "base64").toString("utf8").trim();
+  } catch {
+    return value;
+  }
+}
+
+function safeSingleLine(value: string) {
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .trim();
 }
 
 function oneLine(value: string) {

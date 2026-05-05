@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { truncateToWidth, visibleWidth } from "@mariozechner/pi-tui";
 import fs from "node:fs";

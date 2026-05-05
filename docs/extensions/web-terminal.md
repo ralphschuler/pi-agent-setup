@@ -6,7 +6,7 @@
 
 - `/web-terminal` command
 - Agent-facing `web_terminal` setup/status tool
-- Hyper-inspired xterm.js terminal UI
+- Hyper-inspired xterm.js terminal UI with local vendored xterm assets
 - PWA assets under `extensions/web-terminal/public/`
 
 ## Activation and security
@@ -18,6 +18,8 @@ It binds to localhost by default. LAN access is opt-in:
 ```bash
 PI_WEB_TERMINAL_HOST=0.0.0.0
 ```
+
+The PWA service worker does not app-shell fallback `/api/*` requests, so API/network failures surface as errors instead of cached HTML.
 
 ## More information
 

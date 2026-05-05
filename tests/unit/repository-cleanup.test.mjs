@@ -28,8 +28,9 @@ test("safety guard covers bash and process shell execution", () => {
   assert.match(source, /Blocked dangerous shell command/);
 });
 
-test("critical process and browser bridge extensions are typechecked", () => {
+test("critical process, browser bridge, and welcome extensions are typechecked", () => {
   assert.doesNotMatch(readText("extensions/processes/index.ts"), /@ts-nocheck/);
+  assert.doesNotMatch(readText("extensions/welcome-screen/index.ts"), /@ts-nocheck/);
 });
 
 test("browser bridge is typechecked", () => {
@@ -87,12 +88,35 @@ test("synthwave theme is packaged", () => {
   assert.equal(theme.colors.bashMode, "green");
 });
 
+test("web terminal avoids unauthenticated CDN runtime and excludes API service-worker fallback", () => {
+  const html = readText("extensions/web-terminal/public/index.html");
+  const sw = readText("extensions/web-terminal/public/sw.js");
+
+  assert.doesNotMatch(html, /cdn\.jsdelivr\.net/);
+  assert.match(html, /\/vendor\/xterm\/xterm\.js/);
+  assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
+});
+
+test("web terminal basic accessibility and chat failure handling", () => {
+  const html = readText("extensions/web-terminal/public/index.html");
+  const app = readText("extensions/web-terminal/public/app.js");
+
+  assert.doesNotMatch(html, /user-scalable=no/);
+  assert.match(html, /aria-label="Message pi or type slash command"/);
+  assert.match(html, /aria-label="Log level filter"/);
+  assert.match(html, /aria-label="Search tools"/);
+  assert.match(html, /aria-label="Terminal"/);
+  assert.match(app, /Failed to send prompt/);
+  assert.match(app, /input\.value = prompt/);
+});
+
 test("browser bridge documents broad host permissions", () => {
   const docs = readText("docs/extensions/browser-bridge.md");
   const popup = readText("extensions/browser-bridge/browser-extension/popup.html");
 
   assert.match(docs, /<all_urls>/);
   assert.match(popup, /&lt;all_urls&gt;/);
+  assert.match(popup, /id="token" type="password"/);
 });
 
 test("process tool implements advertised alerts and log watches", () => {
@@ -102,6 +126,7 @@ test("process tool implements advertised alerts and log watches", () => {
     assert.match(source, new RegExp(phrase), `missing ${phrase}`);
   }
   assert.match(source, /Invalid log watch regex/);
+  assert.match(source, /Unsafe log watch regex/);
   assert.match(source, /regex = new RegExp\(input\.pattern\)/);
   assert.match(source, /watch\.regex\.test\(text\)/);
   assert.doesNotMatch(source, /new RegExp\(watch\.pattern\)/);

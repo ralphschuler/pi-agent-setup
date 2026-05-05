@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import safetyGuard, { dangerousReason } from "../../extensions/safety-guard/index.ts";
+import { isSafeLogWatchPattern } from "../../extensions/processes/index.ts";
 
 test("safety guard detects destructive rm variants", () => {
   for (const command of ["rm -rf /", "rm -fr /", "rm -rf -- /", "rm -rf /*", "rm -Rf /dev/sda", "/bin/rm -rf /"]) {
@@ -10,6 +11,12 @@ test("safety guard detects destructive rm variants", () => {
   for (const command of ["rm -rf ./dist", "rm -f file.txt"]) {
     assert.equal(dangerousReason(command), undefined, command);
   }
+});
+
+test("process log watch rejects unsafe regex patterns", () => {
+  assert.equal(isSafeLogWatchPattern("ERROR|WARN"), true);
+  assert.equal(isSafeLogWatchPattern("(a+)+$"), false);
+  assert.equal(isSafeLogWatchPattern("a".repeat(201)), false);
 });
 
 test("safety guard blocks process start without UI", async () => {

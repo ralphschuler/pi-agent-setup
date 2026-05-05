@@ -6,6 +6,7 @@
 
 - Agent-facing `cronjob` tool
 - Persistent markdown store at `~/.pi/agent/cronjobs.md`
+- Base64-encoded task bodies to prevent Markdown structure injection
 - Footer/widget status for upcoming jobs
 
 ## Supported schedules

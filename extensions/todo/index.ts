@@ -175,7 +175,7 @@ export default function todo(pi: ExtensionAPI) {
         switch (params.action) {
           case "add": {
             if (!params.text?.trim()) throw new Error("action=add requires text");
-            const item = addTodo(params.text.trim());
+            const item = addTodo(sanitizeTodoText(params.text));
             message = `Added todo #${item.id}`;
             break;
           }
@@ -237,7 +237,7 @@ function sessionStorePath(sessionFile?: string) {
   return join(STORE_DIR, `${hash}.md`);
 }
 
-function parseMarkdown(markdown: string): TodoItem[] {
+export function parseMarkdown(markdown: string): TodoItem[] {
   const parsed: TodoItem[] = [];
   const taskPattern = /^- \[([ xX-])\] #?(\d+)\s+(.+)$/;
 
@@ -250,7 +250,7 @@ function parseMarkdown(markdown: string): TodoItem[] {
 
     parsed.push({
       id: Number(match[2]),
-      text: match[3].trim(),
+      text: sanitizeTodoText(match[3]),
       status,
     });
   }
@@ -258,7 +258,7 @@ function parseMarkdown(markdown: string): TodoItem[] {
   return parsed;
 }
 
-function renderMarkdown(items: TodoItem[]) {
+export function renderMarkdown(items: TodoItem[]) {
   const completed = items.filter((item) => item.status === "completed").length;
   const open = items.length - completed;
   const lines = [
@@ -269,8 +269,16 @@ function renderMarkdown(items: TodoItem[]) {
   ];
 
   for (const item of items) {
-    lines.push(`- [${markdownMarker[item.status]}] #${item.id} ${item.text}`);
+    lines.push(`- [${markdownMarker[item.status]}] #${item.id} ${sanitizeTodoText(item.text)}`);
   }
 
   return lines.join("\n") + "\n";
+}
+
+export function sanitizeTodoText(value: string | undefined) {
+  return (value || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .replace(/\s+/g, " ")
+    .trim();
 }

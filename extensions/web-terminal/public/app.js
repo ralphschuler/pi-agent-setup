@@ -216,13 +216,23 @@ function initChat() {
     const input = $("#chat-input");
     const prompt = input.value.trim();
     if (!prompt) return;
+    const send = $("#chat-send");
     input.value = "";
+    if (send) send.disabled = true;
     add("you", prompt);
-    await api("/chat/prompt", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ prompt }),
-    });
+    try {
+      await api("/chat/prompt", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ prompt }),
+      });
+    } catch (error) {
+      input.value = prompt;
+      add("error", `Failed to send prompt: ${error.message}`);
+      setStatus("chat send failed");
+    } finally {
+      if (send) send.disabled = false;
+    }
   };
   const es = new EventSource("/api/chat/events");
   let acc = "";

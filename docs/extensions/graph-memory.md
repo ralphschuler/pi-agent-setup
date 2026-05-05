@@ -7,6 +7,7 @@
 - Agent-facing `graph_memory` tool
 - Relevant-memory injection into the system prompt
 - Persistent markdown store at `~/.pi/agent/graph-memory.md`
+- Base64-encoded notes to prevent Markdown structure injection
 
 ## Use cases
 

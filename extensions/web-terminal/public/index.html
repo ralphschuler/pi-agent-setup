@@ -2,7 +2,7 @@
 <html lang="en">
   <head>
     <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
     <meta name="theme-color" content="#0b0b12" />
     <meta name="mobile-web-app-capable" content="yes" />
     <meta name="apple-mobile-web-app-capable" content="yes" />
@@ -11,7 +11,7 @@
     <title>Pi Web Terminal</title>
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" />
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/xterm@5.5.0/css/xterm.css" />
+    <link rel="stylesheet" href="/vendor/xterm/xterm.css" />
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
@@ -30,7 +30,8 @@
         <section class="screen" id="screen-chat">
           <div id="chat-log" class="feed"></div>
           <form id="chat-form" class="composer">
-            <textarea id="chat-input" placeholder="Message pi or type /command"></textarea><button>Send</button>
+            <textarea id="chat-input" aria-label="Message pi or type slash command" placeholder="Message pi or type /command"></textarea
+            ><button id="chat-send">Send</button>
           </form>
         </section>
         <section class="screen" id="screen-status"><div class="grid" id="status-grid"></div></section>
@@ -45,7 +46,7 @@
         </section>
         <section class="screen" id="screen-logs">
           <div class="toolbar">
-            <select id="log-level">
+            <select id="log-level" aria-label="Log level filter">
               <option value="">All</option>
               <option>info</option>
               <option>warning</option>
@@ -56,7 +57,7 @@
         </section>
         <section class="screen" id="screen-cron"><div class="list" id="cron-list"></div></section>
         <section class="screen" id="screen-skills">
-          <input class="search" data-target="skills-list" placeholder="Search tools…" />
+          <input class="search" data-target="skills-list" aria-label="Search tools" placeholder="Search tools…" />
           <div class="list" id="skills-list"></div>
         </section>
         <section class="screen" id="screen-crm"><div class="list" id="crm-list"></div></section>
@@ -65,16 +66,22 @@
         <section class="screen" id="screen-settings"><div class="grid" id="settings-grid"></div></section>
       </main>
       <nav class="tabs">
-        <button data-tab="terminal" class="active">⌨️<span>Terminal</span></button><button data-tab="chat">💬<span>Chat</span></button
-        ><button data-tab="status">📊<span>Status</span></button><button data-tab="tasks">📋<span>Tasks</span></button
-        ><button data-tab="files">📁<span>Files</span></button><button data-tab="logs">📜<span>Logs</span></button
-        ><button data-tab="cron">⏰<span>Cron</span></button><button data-tab="skills">🧠<span>Skills</span></button
-        ><button data-tab="crm">👥<span>CRM</span></button><button data-tab="calendar">📅<span>Calendar</span></button
-        ><button data-tab="extensions">🧩<span>Ext</span></button><button data-tab="settings">⚙️<span>Settings</span></button>
+        <button data-tab="terminal" aria-label="Terminal" class="active">⌨️<span>Terminal</span></button
+        ><button data-tab="chat" aria-label="Chat">💬<span>Chat</span></button
+        ><button data-tab="status" aria-label="Status">📊<span>Status</span></button
+        ><button data-tab="tasks" aria-label="Tasks">📋<span>Tasks</span></button
+        ><button data-tab="files" aria-label="Files">📁<span>Files</span></button
+        ><button data-tab="logs" aria-label="Logs">📜<span>Logs</span></button
+        ><button data-tab="cron" aria-label="Cron">⏰<span>Cron</span></button
+        ><button data-tab="skills" aria-label="Skills">🧠<span>Skills</span></button
+        ><button data-tab="crm" aria-label="CRM">👥<span>CRM</span></button
+        ><button data-tab="calendar" aria-label="Calendar">📅<span>Calendar</span></button
+        ><button data-tab="extensions" aria-label="Extensions">🧩<span>Ext</span></button
+        ><button data-tab="settings" aria-label="Settings">⚙️<span>Settings</span></button>
       </nav>
     </div>
-    <script src="https://cdn.jsdelivr.net/npm/xterm@5.5.0/lib/xterm.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@xterm/addon-fit@0.10.0/lib/addon-fit.js"></script>
+    <script src="/vendor/xterm/xterm.js"></script>
+    <script src="/vendor/xterm-addon-fit/addon-fit.js"></script>
     <script src="/app.js" type="module"></script>
   </body>
 </html>

@@ -300,6 +300,7 @@ function normalizeLogWatches(value: unknown): LogWatch[] {
     .filter((watch) => watch && typeof watch === "object" && typeof (watch as { pattern?: unknown }).pattern === "string")
     .map((watch) => {
       const input = watch as { pattern: string; stream?: "stdout" | "stderr" | "both"; repeat?: boolean };
+      if (!isSafeLogWatchPattern(input.pattern)) throw new Error(`Unsafe log watch regex "${input.pattern}"`);
       let regex: RegExp;
       try {
         regex = new RegExp(input.pattern);
@@ -309,6 +310,14 @@ function normalizeLogWatches(value: unknown): LogWatch[] {
       }
       return { pattern: input.pattern, regex, stream: input.stream || "both", repeat: Boolean(input.repeat), matched: false };
     });
+}
+
+export function isSafeLogWatchPattern(pattern: string) {
+  if (pattern.length > 200) return false;
+  if (/(\([^)]*[+*][^)]*\))[+*{]/.test(pattern)) return false;
+  if (/(\[[^\]]*[+*][^\]]*\])[+*{]/.test(pattern)) return false;
+  if (/(\.\*){2,}/.test(pattern)) return false;
+  return true;
 }
 
 function checkLogWatches(proc: ManagedProcess, stream: "stdout" | "stderr", lines: string[], ui?: any) {

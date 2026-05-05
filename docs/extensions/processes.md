@@ -8,7 +8,7 @@
 - `/ps` themed process dashboard
 - Custom tool result rendering
 - Completion alerts
-- Log watches
+- Log watches with unsafe-regex rejection
 
 ## Use for
 

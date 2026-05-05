@@ -286,7 +286,7 @@ export default function graphMemory(pi: ExtensionAPI) {
   }
 }
 
-function parseMarkdown(markdown: string): GraphStore {
+export function parseMarkdown(markdown: string): GraphStore {
   const nodes: MemoryNode[] = [];
   const edges: MemoryEdge[] = [];
   const lines = markdown.split(/\r?\n/);
@@ -322,25 +322,25 @@ function parseMarkdown(markdown: string): GraphStore {
       else if (inNotes) notes.push(line);
       index++;
     }
-    node.notes = notes.join("\n").trim();
+    node.notes = decodeStoredBlock(notes.join("\n").trim());
     nodes.push(node);
   }
 
   return { nodes, edges };
 }
 
-function renderMarkdown(store: GraphStore) {
+export function renderMarkdown(store: GraphStore) {
   const lines = ["# Graph Memory", "", "<!-- Managed by the pi graph-memory extension. This is a simple markdown knowledge graph. -->", ""];
 
   for (const node of store.nodes) {
-    lines.push(`## Node: ${node.title}`);
+    lines.push(`## Node: ${safeSingleLine(node.title)}`);
     lines.push(`- id: ${node.id}`);
     lines.push(`- type: ${node.type}`);
     lines.push(`- tags: ${node.tags.join(", ")}`);
     lines.push(`- updated: ${node.updatedAt}`);
     lines.push("");
     lines.push("### Notes");
-    lines.push(node.notes || "");
+    lines.push(encodeStoredBlock(node.notes || ""));
     lines.push("");
   }
 
@@ -349,6 +349,27 @@ function renderMarkdown(store: GraphStore) {
   for (const edge of store.edges) lines.push(`- \`${edge.from}\` -[\`${edge.relation}\`]-> \`${edge.to}\``);
   lines.push("");
   return lines.join("\n");
+}
+
+function encodeStoredBlock(value: string) {
+  return ["```base64", Buffer.from(value, "utf8").toString("base64"), "```"].join("\n");
+}
+
+function decodeStoredBlock(value: string) {
+  const match = value.match(/^```base64\n([A-Za-z0-9+/=\s]*)\n```$/);
+  if (!match) return value;
+  try {
+    return Buffer.from(match[1].replace(/\s+/g, ""), "base64").toString("utf8").trim();
+  } catch {
+    return value;
+  }
+}
+
+function safeSingleLine(value: string) {
+  return value
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/[\u0000-\u001F\u007F]/g, "")
+    .trim();
 }
 
 function slugify(value: string) {

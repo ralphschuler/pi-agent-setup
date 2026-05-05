@@ -11,7 +11,7 @@
 
 ## Purpose
 
-The agent uses todo items to track multi-step work, open user requests, and follow-up tasks for the current session. Todos are scoped by pi session file so unrelated sessions do not mix their task lists.
+The agent uses todo items to track multi-step work, open user requests, and follow-up tasks for the current session. Todos are scoped by pi session file so unrelated sessions do not mix their task lists. Todo text is normalized to one line before persistence so user/tool text cannot inject extra Markdown todo rows.
 
 ## Widget behavior
 

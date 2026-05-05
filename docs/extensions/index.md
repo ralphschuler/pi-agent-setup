@@ -21,6 +21,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | Command             | Purpose                                       |
 | ------------------- | --------------------------------------------- |
 | `/agent`            | Manage custom subagent definitions.           |
+| `/auto-compact`     | Toggle gist-focused compaction summaries.     |
 | `/browser-bridge`   | Start/show browser bridge setup.              |
 | `/caveman`          | Toggle terse English caveman language mode.   |
 | `/pet`              | Show or manage the Tamagotchi pet.            |

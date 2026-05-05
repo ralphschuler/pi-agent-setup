@@ -1,12 +1,30 @@
 # Prompts
 
-Prompt templates in `prompts/` become slash commands.
+Prompt templates in `prompts/` become slash commands. Workflow prompts should instruct the agent to use tools, skills, `human_in_loop`, and subagents directly instead of hiding the workflow behind extension command handlers.
 
 ## Included prompts
 
 ### `debug.md`
 
 A strategic evidence-first debugging prompt that guides reproduction, hypothesis ranking, localization, root-cause fix, regression coverage, validation, and reporting. Accepts a symptom, failing command, or bug report via `/debug <symptom / failing command / bug report>`.
+
+### `to-issue.md`
+
+A GitHub issue creation workflow. Accepts optional scope, title, or filter via `/to-issue [scope / title / filter]`.
+
+The workflow inspects repo/auth state, reviews conversation and relevant files, checks existing issues and labels, drafts issue bodies, uses `human_in_loop` for issue selection/approval, and creates confirmed issues with `gh issue create`.
+
+### `to-pr.md`
+
+A GitHub pull request workflow. Accepts optional PR title or scope via `/to-pr [PR title / scope]`.
+
+The workflow inspects repo state and diffs, records validation, uses `human_in_loop` before committing/creating a PR when approval is needed, pushes the branch, and creates a PR with `gh pr create`.
+
+### `pick-issue.md`
+
+A GitHub issue pickup workflow. Accepts optional priority/filter via `/pick-issue [priority / filter]`.
+
+The workflow inspects open issues with `gh issue list`/`gh issue view`, selects the highest-priority actionable issue, uses `human_in_loop` for ambiguous selection or dirty-tree handling, creates an issue branch, pushes it, and opens a draft/WIP PR linked to the issue.
 
 ### `review.md`
 
@@ -30,6 +48,9 @@ Expected output is a numbered list of deepening opportunities using the vocabula
 
 ```text
 /debug npm test is failing with a timeout
+/to-issue turn the last review findings into issues
+/to-pr create a PR for the current branch
+/pick-issue implement, test, push, wait for checks, merge
 /review review my current diff
 /research compare deployment options for this repo
 /refine-codebase extensions/web-terminal

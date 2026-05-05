@@ -4,7 +4,14 @@ import test from "node:test";
 import { readText } from "../helpers.mjs";
 import { listPromptTemplatePaths } from "../prompt-template-helpers.mjs";
 
-const enforcedPromptPaths = ["prompts/research.md", "prompts/review.md", "prompts/refine-codebase.md"];
+const enforcedPromptPaths = [
+  "prompts/research.md",
+  "prompts/review.md",
+  "prompts/refine-codebase.md",
+  "prompts/to-issue.md",
+  "prompts/to-pr.md",
+  "prompts/pick-issue.md",
+];
 const enforcedSkillPaths = [
   "skills/code-review/SKILL.md",
   "skills/pi-processes/SKILL.md",
@@ -23,13 +30,16 @@ test("human_in_loop tool guidance requires tool use for user-facing questions", 
 
 test("plan and GitHub handoff workflows require human_in_loop for clarification and approval", () => {
   const planSource = readText("extensions/plan/index.ts");
-  const githubHandoffSource = readText("extensions/github-handoff/index.ts");
+  const pickIssuePrompt = readText("prompts/pick-issue.md");
+  const toPrPrompt = readText("prompts/to-pr.md");
+  const toIssuePrompt = readText("prompts/to-issue.md");
 
   assert.ok(planSource.includes("Ask every user-facing clarification or approval question with the human_in_loop tool"));
   assert.ok(planSource.includes("ask exactly one targeted question with human_in_loop and a recommended answer"));
-  assert.ok(githubHandoffSource.includes("use human_in_loop select to ask the user to choose among 2-5 candidates"));
-  assert.ok(githubHandoffSource.includes("use human_in_loop to ask the user how to proceed"));
-  assert.ok(githubHandoffSource.includes("use human_in_loop to ask for approval before committing"));
+  assert.ok(pickIssuePrompt.includes("use `human_in_loop` select to ask the user to choose among 2-5 candidates"));
+  assert.ok(pickIssuePrompt.includes("use `human_in_loop` to ask the user how to proceed"));
+  assert.ok(toPrPrompt.includes("use `human_in_loop` to ask for approval before committing"));
+  assert.ok(toIssuePrompt.includes("Do not create issues before this confirmation"));
 });
 
 test("core prompt templates require human_in_loop for user-facing questions", () => {

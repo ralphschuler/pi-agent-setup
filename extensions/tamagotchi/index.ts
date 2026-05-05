@@ -182,8 +182,7 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
       `┌ ${art} ${state.name}  Lv.${state.level}  ${moodLabel(mood)}`,
       `├ hunger ${bar(pct, 12)} ${String(pct).padStart(3)}%`,
       `├ xp     ${bar(xpPct, 12)} ${state.xp}/${xpNeeded}`,
-      `├ bugs ${state.bugsFixed}  meals ${state.meals}  last: ${lastMeal}`,
-      `└ global pet • /pet`,
+      `└ bugs ${state.bugsFixed}  meals ${state.meals}  last: ${lastMeal}`,
     ];
     if (changedDuringBugTurn && !fedThisTurn) lines.push("🐛 sniffing a fresh bug fix… run tests/checks to make it extra tasty");
     return lines;

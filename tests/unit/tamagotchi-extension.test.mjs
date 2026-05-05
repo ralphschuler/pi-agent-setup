@@ -12,7 +12,7 @@ test("tamagotchi widget uses RPC-compatible string lines", () => {
   assert.match(source, /┌ \$\{art\} \$\{state\.name\}/);
   assert.match(source, /hunger \$\{bar\(pct, 12\)\}/);
   assert.match(source, /const lastMeal = singleLine\(state\.lastMeal, 44\)/);
-  assert.match(source, /global pet/);
+  assert.doesNotMatch(source, /global pet • \/pet/);
   assert.match(source, /pi\.on\("agent_start"/);
   assert.doesNotMatch(source, /setWidget\?\.\(WIDGET_KEY, \(_tui, theme\)/, "component factories are ignored in RPC mode");
 });

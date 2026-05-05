@@ -6,11 +6,12 @@ import fs from "node:fs";
 import http from "node:http";
 import os from "node:os";
 import path from "node:path";
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { fileURLToPath } from "node:url";
-import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
 import { isAuthed, isTrustedOrigin, requiresCsrfCheck } from "./auth.ts";
-import { json, readBody, safeHandleApi } from "./http.ts";
+import { broadcast, type SseClient } from "./events.ts";
+import { json, safeHandleApi } from "./http.ts";
+import { handleApi } from "./routes.ts";
+import { handleTerminalUpgrade, type WebSocketClient } from "./terminal-session.ts";
 
 const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.PI_WEB_TERMINAL_PORT || 17474);
@@ -18,73 +19,7 @@ const INITIAL_TOKEN = process.env.PI_WEB_TERMINAL_TOKEN || crypto.randomBytes(18
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const IS_CHILD = process.env.PI_WEB_TERMINAL_CHILD === "1";
 
-type WebSocketClient = {
-  id: string;
-  socket: import("node:net").Socket;
-  child?: ChildProcessWithoutNullStreams;
-  connectedAt: number;
-};
-
-type SseClient = http.ServerResponse;
-
-const SKIP_DIRS = new Set(["node_modules", ".git", ".todos", "dist", "build", ".next", ".nuxt", "__pycache__"]);
-
-function sse(req: http.IncomingMessage, res: http.ServerResponse, clients: Set<SseClient>, initial: unknown) {
-  res.writeHead(200, {
-    "content-type": "text/event-stream",
-    "cache-control": "no-cache",
-    connection: "keep-alive",
-    "x-accel-buffering": "no",
-  });
-  res.write(`data: ${JSON.stringify(initial)}\n\n`);
-  clients.add(res);
-  const keepalive = setInterval(() => {
-    if (!res.writable) {
-      clearInterval(keepalive);
-      clients.delete(res);
-      return;
-    }
-    try {
-      res.write(": ping\n\n");
-    } catch {
-      clearInterval(keepalive);
-      clients.delete(res);
-    }
-  }, 15000);
-  req.on("close", () => {
-    clearInterval(keepalive);
-    clients.delete(res);
-  });
-}
-
-function broadcast(clients: Set<SseClient>, data: unknown) {
-  const payload = `data: ${JSON.stringify(data)}\n\n`;
-  for (const res of clients) {
-    if (!res.writable) {
-      clients.delete(res);
-      continue;
-    }
-    try {
-      res.write(payload);
-    } catch {
-      clients.delete(res);
-    }
-  }
-}
-
-function safeResolve(cwd: string, requestedPath: string) {
-  const resolved = path.resolve(cwd, requestedPath || ".");
-  if (!resolved.startsWith(cwd + path.sep) && resolved !== cwd) return null;
-  try {
-    const real = fs.realpathSync(resolved);
-    if (!real.startsWith(cwd + path.sep) && real !== cwd) return null;
-    return real;
-  } catch {
-    return resolved;
-  }
-}
-
-function localAddresses(port: number, host = DEFAULT_HOST) {
+export function localAddresses(port: number, host = DEFAULT_HOST) {
   const addresses = [`http://localhost:${port}`];
   if (host === "0.0.0.0" || host === "::") {
     for (const entries of Object.values(os.networkInterfaces())) {
@@ -107,21 +42,30 @@ function contentType(file: string) {
   return "application/octet-stream";
 }
 
-function spawnPiTerminal(cwd: string, cols?: number, rows?: number) {
-  const command = process.env.PI_WEB_TERMINAL_COMMAND || "pi -c";
-  const env = {
-    ...process.env,
-    PI_WEB_TERMINAL_CHILD: "1",
-    TERM: process.env.PI_WEB_TERMINAL_TERM || "xterm-256color",
-    COLORTERM: process.env.COLORTERM || "truecolor",
-    COLUMNS: String(cols || 120),
-    LINES: String(rows || 34),
-  };
+function loginPage() {
+  return `<!doctype html><title>Pi Web Terminal</title><body style="background:#101014;color:#f5f5f7;font:16px system-ui;padding:2rem"><h1>Pi Web Terminal</h1><p>Open the authenticated setup URL from <code>/web-terminal</code>.</p><form action="/login"><input name="token" placeholder="Token" autofocus style="font:inherit;padding:.6rem;background:#181820;color:white;border:1px solid #444;border-radius:8px"><button style="font:inherit;margin-left:.5rem;padding:.6rem">Open</button></form></body>`;
+}
 
-  // `script` allocates a real pseudo-terminal without native node-pty dependencies.
-  // It is available on typical Linux/macOS systems. Override PI_WEB_TERMINAL_COMMAND
-  // to run a shell or a specific pi invocation.
-  return spawn("script", ["-qefc", command, "/dev/null"], { cwd, env });
+function serveStatic(url: URL, res: http.ServerResponse) {
+  const filePath = path.normalize(url.pathname === "/" ? "/index.html" : url.pathname);
+  if (filePath.includes("..")) {
+    res.writeHead(400);
+    res.end("bad path");
+    return;
+  }
+  const absolute = path.join(PUBLIC_DIR, filePath);
+  fs.readFile(absolute, (error, data) => {
+    if (error) {
+      res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
+      res.end("not found");
+      return;
+    }
+    res.writeHead(200, {
+      "content-type": contentType(absolute),
+      "cache-control": absolute.endsWith("sw.js") ? "no-cache" : "public, max-age=300",
+    });
+    res.end(data);
+  });
 }
 
 export default function webTerminal(pi: ExtensionAPI) {
@@ -157,169 +101,6 @@ export default function webTerminal(pi: ExtensionAPI) {
     return clients.size > 0 ? `web terminal: ${clients.size} connected on :${port}` : `web terminal: waiting on :${port}`;
   }
 
-  async function handleApi(req: http.IncomingMessage, res: http.ServerResponse, apiPath: string) {
-    const anyPi = pi as any;
-    const p = apiPath.replace(/\/+$/, "") || "/";
-    if (p === "/health") return json(res, 200, { ok: true, clients: clients.size, time: new Date().toISOString() });
-    if (p === "/status") {
-      const mem = process.memoryUsage();
-      const tools = typeof anyPi.getAllTools === "function" ? anyPi.getAllTools() : [];
-      return json(res, 200, {
-        agent: { status: "healthy", cwd: currentCwd },
-        system: {
-          nodeVersion: process.version,
-          platform: process.platform,
-          arch: process.arch,
-          uptimeSeconds: Math.round(process.uptime()),
-          memoryMB: Math.round(mem.rss / 1024 / 1024),
-          heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
-        },
-        terminal: { clients: clients.size, port },
-        tools: { count: tools.length, names: tools.map((t: any) => t.name).sort() },
-      });
-    }
-    if (p === "/settings")
-      return json(res, 200, {
-        host: DEFAULT_HOST,
-        port,
-        tokenSet: Boolean(currentToken),
-        command: process.env.PI_WEB_TERMINAL_COMMAND || "pi -c",
-        cwd: currentCwd,
-      });
-    if (p === "/chat/commands") return json(res, 200, { commands: typeof anyPi.getCommands === "function" ? anyPi.getCommands() : [] });
-    if (p === "/chat/events") return sse(req, res, eventClients, { type: "connected", time: new Date().toISOString() });
-    if (p === "/chat/prompt" && req.method === "POST") {
-      try {
-        const body = JSON.parse(await readBody(req));
-        if (!body.prompt || typeof body.prompt !== "string") return json(res, 400, { error: "Missing prompt" });
-        if (body.streamingBehavior) pi.sendUserMessage(body.prompt, { deliverAs: body.streamingBehavior });
-        else pi.sendUserMessage(body.prompt);
-        broadcast(eventClients, { type: "user_prompt", text: body.prompt, time: new Date().toISOString() });
-        log("info", "chat", `prompt submitted: ${body.prompt.slice(0, 80)}`);
-        return json(res, 200, { ok: true });
-      } catch (error) {
-        return json(res, 400, { error: error instanceof Error ? error.message : "Invalid JSON" });
-      }
-    }
-    if (p === "/files/list") {
-      const url = new URL(req.url || "/", "http://localhost");
-      const resolved = safeResolve(currentCwd, url.searchParams.get("path") || ".");
-      if (!resolved) return json(res, 400, { error: "Invalid path" });
-      try {
-        const items = fs
-          .readdirSync(resolved, { withFileTypes: true })
-          .filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name))
-          .map((e) => {
-            const full = path.join(resolved, e.name);
-            const stat = fs.statSync(full);
-            return {
-              name: e.name,
-              path: path.relative(currentCwd, full),
-              type: e.isDirectory() ? "directory" : "file",
-              size: e.isDirectory() ? 0 : stat.size,
-              modified: stat.mtime.toISOString(),
-            };
-          })
-          .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "directory" ? -1 : 1));
-        return json(res, 200, { path: path.relative(currentCwd, resolved) || ".", items });
-      } catch {
-        return json(res, 404, { error: "Directory not found" });
-      }
-    }
-    if (p === "/files/read") {
-      const url = new URL(req.url || "/", "http://localhost");
-      const resolved = safeResolve(currentCwd, url.searchParams.get("path") || ".");
-      if (!resolved) return json(res, 400, { error: "Invalid path" });
-      try {
-        const stat = fs.statSync(resolved);
-        if (stat.isDirectory()) return json(res, 400, { error: "Is a directory" });
-        if (stat.size > 512 * 1024) return json(res, 400, { error: "File too large" });
-        return json(res, 200, { path: path.relative(currentCwd, resolved), content: fs.readFileSync(resolved, "utf8"), size: stat.size });
-      } catch {
-        return json(res, 404, { error: "File not found" });
-      }
-    }
-    if (p === "/logs") return json(res, 200, { logs: logBuffer });
-    if (p === "/logs/events") return sse(req, res, logClients, { type: "connected", time: new Date().toISOString() });
-    if (p === "/skills") {
-      const tools = typeof anyPi.getAllTools === "function" ? anyPi.getAllTools() : [];
-      return json(res, 200, { skills: tools.map((t: any) => ({ name: t.name, description: t.description || "" })) });
-    }
-    if (p === "/extensions") {
-      const tools = typeof anyPi.getAllTools === "function" ? anyPi.getAllTools() : [];
-      const grouped: Record<string, string[]> = {};
-      for (const t of tools) {
-        const prefix = t.name?.includes("_") ? t.name.split("_")[0] : "core";
-        (grouped[prefix] ||= []).push(t.name);
-      }
-      return json(res, 200, {
-        extensions: Object.entries(grouped).map(([name, toolNames]) => ({ name, tools: toolNames, toolCount: toolNames.length })),
-      });
-    }
-    async function execJson(command: string, args: string[], fallbackKey: string) {
-      try {
-        const result = await anyPi.exec(command, args, { timeout: 10000 });
-        const out = (result.stdout || "").trim();
-        if (result.code === 0 && out) {
-          try {
-            return JSON.parse(out);
-          } catch {
-            return { raw: out };
-          }
-        }
-      } catch {}
-      return { [fallbackKey]: [] };
-    }
-    async function runCli(command: string, args: string[]) {
-      const result = await anyPi.exec(command, args, { timeout: 15000 });
-      return { ok: result.code === 0, output: (result.stdout || result.stderr || "").trim(), code: result.code };
-    }
-    if (p === "/tasks" && req.method === "GET") return json(res, 200, await execJson("td", ["list", "--json"], "issues"));
-    if (p === "/tasks" && req.method === "POST") {
-      const body = JSON.parse(await readBody(req));
-      const args = ["create", body.title || "Untitled"];
-      if (body.type) args.push("--type", body.type);
-      if (body.priority) args.push("--priority", body.priority);
-      if (body.labels) args.push("--label", Array.isArray(body.labels) ? body.labels.join(",") : body.labels);
-      return json(res, 200, await runCli("td", args));
-    }
-    if (p.startsWith("/tasks/") && req.method === "PATCH") {
-      const id = decodeURIComponent(p.split("/")[2] || "");
-      const body = JSON.parse(await readBody(req));
-      const action =
-        body.action === "start" ? "start" : body.action === "close" ? "close" : body.action === "reopen" ? "reopen" : undefined;
-      if (!action) return json(res, 400, { error: "Unknown action" });
-      return json(res, 200, await runCli("td", [action, id]));
-    }
-    if (p === "/cron" && req.method === "GET") return json(res, 200, await execJson("pi-cron", ["list", "--json"], "jobs"));
-    if (p.startsWith("/cron/") && req.method === "POST") {
-      const [, , name, action] = p.split("/");
-      if (action === "run") return json(res, 200, await runCli("pi-cron", ["run", decodeURIComponent(name)]));
-      if (action === "toggle") {
-        const body = JSON.parse(await readBody(req));
-        return json(res, 200, await runCli("pi-cron", [body.enabled ? "enable" : "disable", decodeURIComponent(name)]));
-      }
-    }
-    if (p === "/crm" && req.method === "GET") return json(res, 200, await execJson("pi-crm", ["contacts", "list", "--json"], "contacts"));
-    if (p === "/crm" && req.method === "POST") {
-      const body = JSON.parse(await readBody(req));
-      const args = ["contacts", "create", body.name || "Unknown"];
-      if (body.email) args.push("--email", body.email);
-      if (body.company) args.push("--company", body.company);
-      return json(res, 200, await runCli("pi-crm", args));
-    }
-    if (p === "/calendar" && req.method === "GET")
-      return json(res, 200, await execJson("pi-calendar", ["events", "list", "--json"], "events"));
-    if (p === "/calendar" && req.method === "POST") {
-      const body = JSON.parse(await readBody(req));
-      const args = ["events", "create", body.title || "Untitled"];
-      if (body.date) args.push("--date", body.date);
-      if (body.time) args.push("--time", body.time);
-      return json(res, 200, await runCli("pi-calendar", args));
-    }
-    return json(res, 404, { error: "Not found" });
-  }
-
   async function startServer(cwd: string) {
     currentCwd = cwd;
     if (server) return;
@@ -327,16 +108,23 @@ export default function webTerminal(pi: ExtensionAPI) {
       const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
       const authed = isAuthed(req, url, currentToken);
 
-      if (url.pathname === "/health") {
-        res.writeHead(200, { "content-type": "application/json" });
-        res.end(JSON.stringify({ ok: true, clients: clients.size, port }));
-        return;
-      }
+      if (url.pathname === "/health") return json(res, 200, { ok: true, clients: clients.size, port });
 
       if (url.pathname.startsWith("/api/")) {
         if (!authed) return json(res, 401, { error: "Unauthorized" });
         if (requiresCsrfCheck(req, url) && !isTrustedOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
-        void safeHandleApi(res, () => handleApi(req, res, url.pathname.slice("/api".length)));
+        void safeHandleApi(res, () =>
+          handleApi(req, res, url.pathname.slice("/api".length), {
+            pi,
+            cwd: currentCwd,
+            port,
+            clients,
+            eventClients,
+            logClients,
+            logBuffer,
+            log,
+          }),
+        );
         return;
       }
 
@@ -356,112 +144,15 @@ export default function webTerminal(pi: ExtensionAPI) {
 
       if (!authed) {
         res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-        res.end(
-          `<!doctype html><title>Pi Web Terminal</title><body style="background:#101014;color:#f5f5f7;font:16px system-ui;padding:2rem"><h1>Pi Web Terminal</h1><p>Open the authenticated setup URL from <code>/web-terminal</code>.</p><form action="/login"><input name="token" placeholder="Token" autofocus style="font:inherit;padding:.6rem;background:#181820;color:white;border:1px solid #444;border-radius:8px"><button style="font:inherit;margin-left:.5rem;padding:.6rem">Open</button></form></body>`,
-        );
+        res.end(loginPage());
         return;
       }
 
-      const filePath = path.normalize(url.pathname === "/" ? "/index.html" : url.pathname);
-      if (filePath.includes("..")) {
-        res.writeHead(400);
-        res.end("bad path");
-        return;
-      }
-      const absolute = path.join(PUBLIC_DIR, filePath);
-      fs.readFile(absolute, (error, data) => {
-        if (error) {
-          res.writeHead(404, { "content-type": "text/plain; charset=utf-8" });
-          res.end("not found");
-          return;
-        }
-        res.writeHead(200, {
-          "content-type": contentType(absolute),
-          "cache-control": absolute.endsWith("sw.js") ? "no-cache" : "public, max-age=300",
-        });
-        res.end(data);
-      });
+      serveStatic(url, res);
     });
 
-    server.on("upgrade", (req, socket) => {
-      const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-      const authed = isAuthed(req, url, currentToken);
-      if (url.pathname !== "/terminal" || !authed) {
-        socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
-        socket.destroy();
-        return;
-      }
-      if (!isTrustedOrigin(req)) {
-        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
-        socket.destroy();
-        return;
-      }
-      const key = req.headers["sec-websocket-key"];
-      if (!key || Array.isArray(key)) {
-        socket.destroy();
-        return;
-      }
-      socket.write(
-        [
-          "HTTP/1.1 101 Switching Protocols",
-          "Upgrade: websocket",
-          "Connection: Upgrade",
-          `Sec-WebSocket-Accept: ${wsAcceptKey(key)}`,
-          "\r\n",
-        ].join("\r\n"),
-      );
-
-      const cols = Number(url.searchParams.get("cols") || 120);
-      const rows = Number(url.searchParams.get("rows") || 34);
-      const client: WebSocketClient = { id: crypto.randomUUID().slice(0, 8), socket, connectedAt: Date.now() };
-      log("info", "terminal", `connected ${client.id}`);
-      client.child = spawnPiTerminal(cwd, cols, rows);
-      clients.set(client.id, client);
-      pi.appendEntry("web-terminal-connection", { id: client.id, connectedAt: client.connectedAt, cwd });
-
-      sendFrame(socket, { type: "status", text: `Connected to pi terminal ${client.id} in ${cwd}\r\n` });
-      client.child.on("error", (error) => {
-        const message = `Failed to start terminal: ${error.message}`;
-        log("error", "terminal", message);
-        sendFrame(socket, { type: "exit", code: null, signal: null, text: `\r\n[${message}]\r\n` });
-        clients.delete(client.id);
-        socket.destroy();
-      });
-      client.child.stdout.on("data", (chunk) => sendFrame(socket, { type: "output", data: chunk.toString("utf8") }));
-      client.child.stderr.on("data", (chunk) => sendFrame(socket, { type: "output", data: chunk.toString("utf8") }));
-      client.child.on("exit", (code, signal) => {
-        log(signal ? "warning" : "info", "terminal", `exited ${client.id}: ${signal || code}`);
-        sendFrame(socket, { type: "exit", code, signal, text: `\r\n[pi terminal exited: ${signal || code}]\r\n` });
-      });
-
-      let buffered = Buffer.alloc(0);
-      socket.on("data", (chunk: Buffer) => {
-        buffered = Buffer.concat([buffered, chunk]);
-        const parsed = parseFrames(buffered);
-        buffered = parsed.remaining;
-        if (parsed.error) log("warning", "terminal", parsed.error);
-        if (parsed.close) socket.destroy();
-        for (const message of parsed.messages) {
-          try {
-            const payload = JSON.parse(message);
-            if (payload.type === "input" && typeof payload.data === "string") client.child?.stdin.write(payload.data);
-            if (payload.type === "resize")
-              sendFrame(socket, {
-                type: "status",
-                text: `\r\n[resize ${payload.cols}x${payload.rows}; restart tab to apply terminal geometry]\r\n`,
-              });
-            if (payload.type === "kill") client.child?.kill("SIGTERM");
-          } catch {
-            // Ignore malformed client messages.
-          }
-        }
-      });
-      socket.on("close", () => {
-        log("info", "terminal", `disconnected ${client.id}`);
-        client.child?.kill("SIGTERM");
-        clients.delete(client.id);
-      });
-    });
+    // Terminal adapter keeps WebSocket auth/origin failures explicit, including HTTP/1.1 403 Forbidden.
+    server.on("upgrade", (req, socket) => handleTerminalUpgrade({ pi, req, socket, token: currentToken, cwd, clients, log }));
 
     await new Promise<void>((resolve, reject) => {
       const activeServer = server!;

@@ -21,6 +21,8 @@
     "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "format:check": "prettier --check \"**/*.{json,md,yml,yaml,js,mjs,ts,css,html}\"",
+    "docs:build": "mkdocs build --strict",
+    "docs:serve": "mkdocs serve",
     "test": "node --test tests/**/*.test.mjs",
     "test:unit": "node --test tests/unit/*.test.mjs",
     "test:integration": "node --test tests/integration/*.test.mjs",

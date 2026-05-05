@@ -72,6 +72,7 @@ npm run test:docker
 /research <topic>
 /refine-codebase [scope]
 /package-scout <package names or query>
+/searxng
 /ps
 /agent
 /to-issue

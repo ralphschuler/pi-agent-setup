@@ -1,7 +1,7 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 
-const DEFAULT_SEARXNG_URL = "http://localhost:8080";
+export const DEFAULT_SEARXNG_URL = "http://localhost:8080";
 const DEFAULT_MAX_RESULTS = 10;
 const MAX_RESULTS_LIMIT = 50;
 
@@ -38,6 +38,34 @@ type SearxngResponse = {
 };
 
 export default function searxngExtension(pi: ExtensionAPI) {
+  pi.registerCommand("searxng", {
+    description: "Show SearXNG backend status and setup help",
+    handler: async (_args, ctx) => {
+      ctx.ui.notify("Queued SearXNG status/setup check.", "info");
+      pi.sendUserMessage(buildSearxngStatusPrompt(), { deliverAs: "followUp" });
+    },
+  });
+
+  pi.registerTool({
+    name: "searxng_status",
+    label: "SearXNG Status",
+    description: "Check SearXNG backend health and show setup/remediation instructions.",
+    promptSnippet: "Check SearXNG backend health and setup instructions.",
+    promptGuidelines: [
+      "Use searxng_status when SearXNG search fails or setup status is requested.",
+      "Report the active backend URL and whether it came from SEARXNG_URL or the default.",
+      "If unreachable, show Docker and SEARXNG_URL remediation steps.",
+    ],
+    parameters: Type.Object({}),
+    async execute(_toolCallId, _params, signal) {
+      const health = await checkSearxngHealth(process.env.SEARXNG_URL, signal);
+      return {
+        content: [{ type: "text", text: formatSearxngStatus(health) }],
+        details: health,
+      };
+    },
+  });
+
   pi.registerTool({
     name: "search",
     label: "Search",
@@ -117,6 +145,85 @@ export default function searxngExtension(pi: ExtensionAPI) {
       };
     },
   });
+}
+
+export type SearxngHealth = {
+  baseUrl: string;
+  source: "SEARXNG_URL" | "default";
+  ok: boolean;
+  status?: number;
+  statusText?: string;
+  error?: string;
+  remediation: string[];
+};
+
+function buildSearxngStatusPrompt() {
+  return [
+    "Run the SearXNG status/setup workflow for this session.",
+    "",
+    "Goal:",
+    "Report the active SearXNG backend URL, detect whether it is reachable, and show remediation steps if needed.",
+    "",
+    "Required process:",
+    "1. Call searxng_status.",
+    "2. Report whether the backend URL comes from SEARXNG_URL or the default.",
+    "3. If unreachable, show Docker startup and SEARXNG_URL export instructions.",
+    "4. Use human_in_loop for every user-facing clarification or approval question.",
+  ].join("\n");
+}
+
+export async function checkSearxngHealth(envUrl = process.env.SEARXNG_URL, signal?: AbortSignal, fetchImpl: typeof fetch = fetch) {
+  const baseUrl = normalizeBaseUrl(envUrl || DEFAULT_SEARXNG_URL);
+  const source: SearxngHealth["source"] = envUrl?.trim() ? "SEARXNG_URL" : "default";
+  const remediation = searxngRemediation(baseUrl);
+
+  try {
+    const response = await fetchImpl(buildHealthUrl(baseUrl), {
+      signal,
+      headers: { accept: "application/json", "user-agent": "pi-searxng-status/1.0" },
+    });
+    return {
+      baseUrl,
+      source,
+      ok: response.ok,
+      status: response.status,
+      statusText: response.statusText,
+      error: response.ok ? undefined : `SearXNG returned ${response.status} ${response.statusText}`,
+      remediation: response.ok ? [] : remediation,
+    } satisfies SearxngHealth;
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error);
+    return { baseUrl, source, ok: false, error: message, remediation } satisfies SearxngHealth;
+  }
+}
+
+export function formatSearxngStatus(health: SearxngHealth) {
+  const lines = [
+    "# SearXNG Status",
+    "",
+    `- Backend URL: ${health.baseUrl}`,
+    `- Source: ${health.source}`,
+    `- Status: ${health.ok ? "reachable" : "unreachable"}`,
+  ];
+  if (health.status) lines.push(`- HTTP: ${health.status} ${health.statusText || ""}`.trim());
+  if (health.error) lines.push(`- Error: ${health.error}`);
+  if (!health.ok) lines.push("", "## Remediation", "", ...health.remediation.map((step) => `- ${step}`));
+  return lines.join("\n");
+}
+
+function searxngRemediation(baseUrl: string) {
+  return [
+    `Start a local SearXNG instance, for example: docker run --rm -p 8080:8080 searxng/searxng`,
+    `Or point pi at an existing instance: export SEARXNG_URL=${baseUrl === DEFAULT_SEARXNG_URL ? "https://your-searxng.example" : baseUrl}`,
+    "Then retry /searxng or the search tool.",
+  ];
+}
+
+function buildHealthUrl(baseUrl: string) {
+  const url = new URL(`${baseUrl}/search`);
+  url.searchParams.set("q", "pi searxng health check");
+  url.searchParams.set("format", "json");
+  return url;
 }
 
 function normalizeBaseUrl(value: string) {

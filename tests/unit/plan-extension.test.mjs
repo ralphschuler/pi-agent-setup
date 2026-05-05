@@ -15,6 +15,10 @@ test("plan workflow enforces deep drilldown planning before approval", () => {
     "Risk sweep",
     "Coverage checklist before READY FOR REVIEW",
     "Do not modify files",
+    "Apply the plan",
+    "Change the plan",
+    "Make PRD.md",
+    "Create or update PRD.md only",
   ]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }

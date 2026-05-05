@@ -14,7 +14,7 @@ The plan workflow enforces deep drilldown planning before implementation for non
 - Decision-tree and risk-sweep coverage
 - Reviewable plan output
 - Write blocking until plan approval
-- Review UI with apply, refine, or cancel choices
+- Review UI with apply, change, make `PRD.md`, or cancel choices
 
 ## Recommended use
 
@@ -28,3 +28,12 @@ Use `/plan` before changes that affect architecture, workflows, multiple files, 
 4. Ask targeted questions only when needed, always with a recommended answer.
 5. Sweep risks: correctness, security, data loss, performance, compatibility, UX, operations, and rollback.
 6. Produce `READY FOR REVIEW` only when coverage is complete.
+
+## Review choices
+
+At the review gate, choose one of:
+
+- **Apply the plan** — begin implementation.
+- **Change the plan** — provide feedback and continue planning.
+- **Make PRD.md** — convert the approved plan into `PRD.md` without implementation.
+- **Cancel planning** — stop the workflow.

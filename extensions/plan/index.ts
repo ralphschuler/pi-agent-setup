@@ -74,7 +74,7 @@ export default function planCommand(pi: ExtensionAPI) {
     if (!text.includes(PLAN_REVIEW_MARKER)) return;
 
     approvedPlan = text;
-    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Refine the plan", "Cancel planning"]);
+    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Change the plan", "Make PRD.md", "Cancel planning"]);
 
     if (choice === "Apply the plan") {
       planningActive = false;
@@ -85,13 +85,22 @@ export default function planCommand(pi: ExtensionAPI) {
       return;
     }
 
-    if (choice === "Refine the plan") {
-      const refinement = await ctx.ui.editor("What should be refined?", "");
+    if (choice === "Change the plan") {
+      const refinement = await ctx.ui.editor("What should be changed?", "");
       if (refinement?.trim()) {
         pi.sendUserMessage(
           `Refine the current plan with this feedback, ask more clarifying questions if coverage is no longer complete, then present an updated plan with ${PLAN_REVIEW_MARKER}.\n\nFeedback:\n${refinement.trim()}`,
         );
       }
+      return;
+    }
+
+    if (choice === "Make PRD.md") {
+      planningActive = false;
+      ctx.ui.setStatus("plan", "writing PRD.md");
+      pi.sendUserMessage(
+        `Convert this approved plan into a clear product requirements document at PRD.md. Do not implement the plan. Create or update PRD.md only, preserving decisions, requirements, non-goals, acceptance criteria, rollout/validation, and open questions.\n\n${approvedPlan}`,
+      );
       return;
     }
 

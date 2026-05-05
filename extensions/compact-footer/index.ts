@@ -23,7 +23,9 @@ export default function compactFooter(pi: ExtensionAPI) {
 
           const left = theme.fg("accent", "◆") + " " + theme.fg("text", model);
           const branchPart = branch ? theme.fg("muted", `git:${branch}`) : theme.fg("dim", "no-git");
-          const statusPart = statuses.length ? statuses.map((s) => colorStatus(theme, s)).join(theme.fg("dim", " · ")) : theme.fg("dim", "quiet");
+          const statusPart = statuses.length
+            ? statuses.map((s) => colorStatus(theme, s)).join(theme.fg("dim", " · "))
+            : theme.fg("dim", "quiet");
           const right = theme.fg("dim", usage);
 
           return [fitFooter(width, theme, [left, branchPart, statusPart], right)];
@@ -70,8 +72,20 @@ function compactStatus(name: string, value: string | undefined) {
   if (name === "processes") return value.replace(/^processes:\s*/, "proc ").replace(/ running$/, "r");
   if (name === "cronjobs") return value.replace(/^cron:\s*/, "cron ");
   if (name === "graph-memory") return value.replace(/^memory:\s*/, "mem ").replace(/ nodes.*/, "");
-  if (name === "browser-bridge") return value.includes("inactive") ? "bb off" : value.replace(/^browser bridge:\s*/, "bb ").replace(/connected \(([^)]+)\)/, "on $1").replace(/waiting on /, "wait ");
-  if (name === "web-terminal") return value.includes("inactive") ? "web off" : value.replace(/^web terminal:\s*/, "web ").replace(/ connected on .*/, " on").replace(/waiting on /, "wait ");
+  if (name === "browser-bridge")
+    return value.includes("inactive")
+      ? "bb off"
+      : value
+          .replace(/^browser bridge:\s*/, "bb ")
+          .replace(/connected \(([^)]+)\)/, "on $1")
+          .replace(/waiting on /, "wait ");
+  if (name === "web-terminal")
+    return value.includes("inactive")
+      ? "web off"
+      : value
+          .replace(/^web terminal:\s*/, "web ")
+          .replace(/ connected on .*/, " on")
+          .replace(/waiting on /, "wait ");
   if (name === "custom-agents") return value.replace(/^custom agents:\s*/, "agents ");
   return value.length <= 18 ? value : `${name}:on`;
 }
@@ -84,7 +98,10 @@ function colorStatus(theme: any, status: string) {
 }
 
 function compactModel(model: string) {
-  return model.replace(/^openai[-/]/, "").replace(/^anthropic[-/]/, "").replace(/^google[-/]/, "");
+  return model
+    .replace(/^openai[-/]/, "")
+    .replace(/^anthropic[-/]/, "")
+    .replace(/^google[-/]/, "");
 }
 
 function fmt(n: number) {

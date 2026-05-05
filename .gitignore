@@ -1,4 +1,5 @@
 node_modules/
+site/
 .pi/npm/
 .pi/git/
 .DS_Store

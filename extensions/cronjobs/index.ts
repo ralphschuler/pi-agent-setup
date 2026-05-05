@@ -3,6 +3,7 @@ import { Type } from "typebox";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 
 const STORE_PATH = join(homedir(), ".pi", "agent", "cronjobs.md");
 const CHECK_INTERVAL_MS = 30_000;
@@ -123,6 +124,7 @@ export default function cronjobs(pi: ExtensionAPI) {
       "Use human_in_loop before scheduling if timing, recurrence, or task wording is ambiguous.",
       "Keep scheduled task prompts specific and actionable because they will be sent back to the agent when due.",
     ],
+    renderResult: renderPrettyToolResult("cronjob"),
     parameters: Type.Object({
       action: Type.Union([
         Type.Literal("schedule"),

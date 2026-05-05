@@ -1,7 +1,17 @@
 // @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import { buildCavemanPrompt, COMMAND_TOKENS, COMPLETION_ITEMS, displayLevel, isLevel, normalizeLevel, readState, statusLine, writeState } from "./core.mjs";
+import {
+  buildCavemanPrompt,
+  COMMAND_TOKENS,
+  COMPLETION_ITEMS,
+  displayLevel,
+  isLevel,
+  normalizeLevel,
+  readState,
+  statusLine,
+  writeState,
+} from "./core.mjs";
 
 type Level = "lite" | "full" | "ultra" | "wenyan-lite" | "wenyan-full" | "wenyan-ultra";
 
@@ -21,6 +31,7 @@ export default function cavemanExtension(pi: ExtensionAPI) {
 
   function setState(next: CavemanState, ui: CavemanUi, message: string): void {
     const result = writeState(next);
+    /* node:coverage ignore next 4 */
     if (!result.ok) {
       ui.notify(`caveman: failed to save state: ${result.reason}`, "error");
       return;

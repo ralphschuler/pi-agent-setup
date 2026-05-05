@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 
 const OptionSchema = Type.Object({
   label: Type.String({ description: "Short option label shown to the user" }),
@@ -18,6 +19,7 @@ export default function humanInLoop(pi: ExtensionAPI) {
       "Prefer select for a small set of clear choices, confirm for yes/no approval, input for short text, and editor for longer structured answers.",
       "Ask concise questions and include enough context for the user to answer without rereading the conversation.",
     ],
+    renderResult: renderPrettyToolResult("human_in_loop"),
     parameters: Type.Object({
       mode: Type.Union([Type.Literal("select"), Type.Literal("confirm"), Type.Literal("input"), Type.Literal("editor")], {
         description: "The TUI control to use",

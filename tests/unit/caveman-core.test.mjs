@@ -22,7 +22,18 @@ import { tempDir } from "../helpers.mjs";
 
 test("caveman constants expose levels, commands, completions, and default state", () => {
   assert.deepEqual(VALID_LEVELS, ["lite", "full", "ultra", "wenyan-lite", "wenyan-full", "wenyan-ultra"]);
-  assert.deepEqual(COMMAND_TOKENS, ["lite", "full", "ultra", "wenyan-lite", "wenyan-full", "wenyan-ultra", "wenyan", "off", "on", "status"]);
+  assert.deepEqual(COMMAND_TOKENS, [
+    "lite",
+    "full",
+    "ultra",
+    "wenyan-lite",
+    "wenyan-full",
+    "wenyan-ultra",
+    "wenyan",
+    "off",
+    "on",
+    "status",
+  ]);
   assert.deepEqual(COMPLETION_ITEMS[0], { value: "lite", label: "lite" });
   assert.deepEqual(DEFAULT_STATE, { enabled: true, level: "full" });
 });

@@ -1,5 +1,6 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
@@ -90,6 +91,7 @@ export default function graphMemory(pi: ExtensionAPI) {
       "Use graph_memory search or show before assuming whether a durable fact is already known.",
       "Do not ask the user to operate graph_memory manually; use it proactively when durable knowledge should be remembered.",
     ],
+    renderResult: renderPrettyToolResult("graph_memory"),
     parameters: Type.Object({
       action: Type.Union([
         Type.Literal("add_node"),

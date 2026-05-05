@@ -1,21 +1,29 @@
 # Custom Pi Agent Setup
 
-This repository is a bootstrap pi package for your custom agent setup. It provides:
+A custom pi package for a personalized coding-agent environment. It bundles TypeScript extensions, reusable skills, prompt templates, themes, scripts, tests, and a MkDocs-powered wiki.
 
-- `extensions/` — TypeScript pi extensions
-- `skills/` — on-demand agent skills
-- `prompts/` — reusable prompt templates
-- `themes/` — theme examples
-- `scripts/` — install, uninstall, update, validation, and Docker test scripts
-- `tests/` — unit, integration, and e2e tests with a 100% line-coverage gate
+## Wiki documentation
 
-## Install
+The full repository wiki lives in `docs/` and is published to GitHub Pages from `main`.
 
-Install globally for all pi sessions:
+- Local docs source: [`docs/`](docs/)
+- Docs config: [`mkdocs.yml`](mkdocs.yml)
+- Deployment workflow: [`.github/workflows/docs.yml`](.github/workflows/docs.yml)
+
+To build locally:
 
 ```bash
-bash scripts/install.sh
-# or
+python -m pip install -r requirements-docs.txt
+mkdocs build --strict
+```
+
+GitHub Pages must be configured with **Settings → Pages → Source → GitHub Actions**.
+
+## Quick install
+
+```bash
+npm ci --legacy-peer-deps
+npm run check
 npm run install:pi
 ```
 
@@ -25,214 +33,63 @@ Install into the current project only:
 bash scripts/install.sh --local
 ```
 
-After installing, restart pi or run `/reload` in an existing session.
+After installing or changing extensions, restart pi or run `/reload`.
 
-## Update
+## Update and uninstall
 
 ```bash
-bash scripts/update.sh
-# or
 npm run update:pi
-```
-
-The update script pulls latest git changes when this folder is a git repo, runs validation, and asks pi to refresh this local package entry.
-
-## Uninstall
-
-```bash
-bash scripts/uninstall.sh
-# or
 npm run uninstall:pi
-```
-
-For a project-local install:
-
-```bash
-bash scripts/uninstall.sh --local
 ```
 
 ## Validate and test
 
 ```bash
-bash scripts/check.sh
-# or
 npm run check
-
-npm run typecheck     # strict TypeScript no-emit check for extensions
-npm run lint          # ESLint repository lint
-npm run format:check  # Prettier formatting check
-npm test              # unit + integration + e2e tests
-npm run test:unit     # unit tests
-npm run test:integration
-npm run test:e2e
-npm run test:coverage # enforces 100% line coverage for the Node test harness
-npm run test:ci       # check + tests + coverage gate
-npm run test:docker   # Docker build/smoke test
+npm test
+npm run test:ci
+npm run test:docker
 ```
 
-## Background processes
+## What is included
 
-This setup includes a custom `process` tool. The agent can start and manage long-running commands such as dev servers, test watchers, build watchers, local APIs, and log tails without blocking the conversation. Use `/ps` to inspect processes.
+- `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
+  - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
+- `skills/` — on-demand workflows for project bootstrap, code review, debugging, processes, and subagents.
+- `prompts/` — reusable prompt templates such as bootstrap and review.
+- `themes/` — custom TUI themes, including synthwave.
+- `scripts/` — install, update, uninstall, validation, and Docker test helpers.
+- `tests/` — unit, integration, and e2e tests.
+- `docs/` — the full wiki site.
 
-## Cronjobs
-
-The `cronjob` tool lets the agent schedule durable future work. Jobs are stored in markdown at `~/.pi/agent/cronjobs.md` and are sent back into pi as user messages when due. Supported schedules include ISO timestamps, `every <n> minutes|hours|days`, `daily HH:MM`, and simple 5-field cron expressions.
-
-## Subagents
-
-This setup includes a custom `subagent` tool. The agent can:
-
-- inspect available agents with `subagent({ action: "list" })`
-- dynamically create task-specific agents with `subagent({ action: "create", ... })`
-- run bounded specialist agents for reconnaissance, planning, implementation handoffs, research, and review
-- run independent task arrays in parallel with optional concurrency and output files
-
-The `subagent-orchestrator` extension injects guidance so the main agent uses subagents for specialist research, independent review, and context building while keeping one parent agent responsible for synthesis.
-
-## Included examples
-
-### Extensions
-
-- `extensions/welcome-screen/` shows a neofetch-style pi agent welcome card on startup/reload and via `/welcome`.
-- `extensions/caveman/` registers `/caveman` to toggle terse caveman language and choose `lite`, `full`, `ultra`, `wenyan-lite`, `wenyan` (friendly label for full wenyan), or `wenyan-ultra` intensity.
-- `extensions/compact-footer/` replaces the default TUI footer with a one-line synthwave-friendly layout: model, git branch, compact extension chips, and token/cost summary.
-- `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
-- `extensions/human-in-loop/` registers:
-  - agent-facing `human_in_loop` tool
-  - TUI clarification controls for select, confirm, input, and editor prompts
-- `extensions/browser-bridge/` registers:
-  - `/browser-bridge` command with setup details for connecting another machine's browser
-  - inactive until `/browser-bridge`, `browser_bridge` setup, or an agent browser action activates it
-  - localhost-only binding by default; set `PI_BROWSER_BRIDGE_HOST=0.0.0.0` to opt in to LAN access
-  - agent-facing `browser_bridge` tool for navigation, clicking, typing, page inspection, JavaScript evaluation, and screenshots
-  - a Chrome/Edge companion extension under `extensions/browser-bridge/browser-extension/`
-- `extensions/web-terminal/` registers:
-  - `/web-terminal` command with an authenticated browser/PWA URL
-  - inactive until `/web-terminal` or `web_terminal` setup activates it
-  - localhost-only binding by default; set `PI_WEB_TERMINAL_HOST=0.0.0.0` to opt in to LAN access
-  - agent-facing `web_terminal` setup/status tool
-  - a Hyper-inspired xterm.js terminal UI that launches a child `pi -c` session through a pseudo-terminal
-- `extensions/background-processes/` adds agent-facing guidance for long-running commands.
-- `extensions/processes/` registers the custom `process` tool plus a themed `/ps` process dashboard, custom tool result rendering, completion alerts, and log watches.
-- `extensions/cronjobs/` registers:
-  - agent-facing `cronjob` tool
-  - persistent markdown schedule storage at `~/.pi/agent/cronjobs.md`
-  - one-shot, interval, daily, and simple 5-field cron schedules
-- `extensions/custom-agents/` registers:
-  - `/agent` command with a themed catalog UI for listing, creating, showing, and deleting custom subagent markdown definitions
-  - shared custom-agent catalog helpers using standard custom-agent folders: `~/.pi/agent/agents`, `~/.agents`, nearest `.pi/agents`, and legacy nearest `.agents`
-- `extensions/subagent-orchestrator/` adds agent-facing guidance for dynamic subagent creation and delegation, and injects the current custom-agent catalog so agents can reuse or create specialists when missing.
-- `extensions/subagents/` registers the custom `subagent` tool plus built-in agents such as `scout`, `planner`, `worker`, `reviewer`, and `researcher`; it supports single-agent and parallel task-array runs with custom TUI rendering.
-- `extensions/plan/` registers:
-  - `/plan <task>` command
-  - clarification-first workflow that blocks writes until the plan is reviewed
-  - review UI with apply, refine, or cancel choices
-- `extensions/pretty-output/` registers:
-  - `/pretty-output on|off|preview` command
-  - assistant guidance for richer Markdown answers
-  - pretty Markdown renderers for common built-in tool results (`bash`, `read`, `grep`, `find`, and `ls`)
-- `extensions/graph-memory/` registers:
-  - agent-facing `graph_memory` tool
-  - automatic relevant-memory injection into the agent system prompt
-  - persistent markdown knowledge graph storage at `~/.pi/agent/graph-memory.md`
-- `extensions/todo/` registers:
-  - agent-facing `todo` tool
-  - automatic active-todo injection into the agent system prompt
-  - a TUI widget that appears when there are pending or in-progress tasks
-  - persistent markdown storage at `~/.pi/agent/todo.md`
-- `extensions/tamagotchi/` registers:
-  - an always-visible TUI pet widget below the editor plus a compact footer status
-  - automatic feeding when bug-fix turns make successful edits, with extra XP for verified fixes that run checks/tests
-  - `/pet`, `/pet name <name>`, and `/pet reset` commands
-  - persistent pet state at `~/.pi/agent/tamagotchi-pet.json`
-
-### Skills
-
-- `project-bootstrap` — workflow for standardizing project repositories.
-- `code-review` — structured review checklist and response format.
-- `systematic-debugging` — evidence-first bug diagnosis and root-cause workflow.
-- `pi-processes` — guidance for using the background `process` tool safely for dev servers, watchers, and log tails.
-- `pi-subagents` — guidance for orchestrating scout/planner/worker/reviewer subagents, parallel review, and handoff workflows.
-
-Use skills directly with commands such as:
+## Common pi commands
 
 ```text
-/skill:project-bootstrap improve this repository
-/skill:code-review review my current diff
+/welcome
+/plan <task>
+/research <topic>
+/ps
+/agent
+/pet
+/browser-bridge
+/web-terminal
 ```
-
-### Prompts
-
-Prompt templates in `prompts/` become slash commands when prompt commands are enabled, for example `/review` and `/bootstrap`.
 
 ## Repository layout
 
 ```text
 .
-├── extensions/
-│   ├── welcome-screen/
-│   │   └── index.ts
-│   ├── caveman/
-│   │   └── index.ts
-│   ├── background-processes/
-│   │   └── index.ts
-│   ├── browser-bridge/
-│   │   ├── README.md
-│   │   ├── browser-extension/
-│   │   └── index.ts
-│   ├── cronjobs/
-│   │   └── index.ts
-│   ├── custom-agents/
-│   │   ├── index.ts
-│   │   └── registry.ts
-│   ├── graph-memory/
-│   │   └── index.ts
-│   ├── human-in-loop/
-│   │   └── index.ts
-│   ├── plan/
-│   │   └── index.ts
-│   ├── processes/
-│   │   └── index.ts
-│   ├── safety-guard/
-│   │   └── index.ts
-│   ├── subagents/
-│   │   └── index.ts
-│   ├── subagent-orchestrator/
-│   │   └── index.ts
-│   ├── todo/
-│   │   └── index.ts
-│   ├── tamagotchi/
-│   │   └── index.ts
-│   └── web-terminal/
-│       ├── README.md
-│       ├── index.ts
-│       └── public/
-├── skills/
-│   ├── code-review/
-│   │   └── SKILL.md
-│   ├── pi-processes/
-│   │   └── SKILL.md
-│   ├── pi-subagents/
-│   │   └── SKILL.md
-│   ├── project-bootstrap/
-│   │   ├── SKILL.md
-│   │   └── scripts/tree-summary.sh
-│   └── systematic-debugging/
-│       ├── SKILL.md
-│       └── references/debugging-playbook.md
-├── prompts/
-├── themes/
-├── scripts/
+├── .github/workflows/  # CI and docs deployment
+├── docs/               # MkDocs wiki source
+├── extensions/         # TypeScript pi extensions
+├── prompts/            # Prompt templates
+├── scripts/            # Setup and validation scripts
+├── skills/             # Agent skills
+├── tests/              # Test harness
+├── themes/             # TUI themes
+├── mkdocs.yml
 ├── package.json
 └── README.md
 ```
 
-## Customizing
-
-1. Copy an example under `extensions/` or `skills/`.
-2. Rename it.
-3. For skills, ensure frontmatter `name` matches the directory name.
-4. Run `bash scripts/check.sh`.
-5. Run `/reload` in pi.
-
-Pi packages are declared in `package.json` under the `pi` key.
+See the wiki for full details.

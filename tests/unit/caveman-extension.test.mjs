@@ -64,6 +64,13 @@ test("caveman command handles aliases, status, off, and invalid args", async () 
   const command = commands.get("caveman");
   assert.ok(command);
 
+  events.get("session_start")({}, { ui });
+  assert.equal(statuses.at(-1).name, "caveman");
+  assert.match(statuses.at(-1).value, /^🪨 caveman /);
+
+  assert.deepEqual(command.getArgumentCompletions("wenyan-u"), [{ value: "wenyan-ultra", label: "wenyan-ultra" }]);
+  assert.equal(command.getArgumentCompletions("missing"), null);
+
   await command.handler("wenyan", { ui });
   assert.deepEqual(notifications.at(-1), { message: "caveman ON (wenyan)", level: "info" });
   assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman wenyan •" });
@@ -78,6 +85,10 @@ test("caveman command handles aliases, status, off, and invalid args", async () 
   assert.deepEqual(notifications.at(-1), { message: "caveman OFF", level: "info" });
   assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman off •" });
   assert.equal(events.get("before_agent_start")({ systemPrompt: "base" }), undefined);
+
+  await command.handler("on", { ui });
+  assert.deepEqual(notifications.at(-1), { message: "caveman ON (wenyan)", level: "info" });
+  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman wenyan •" });
 
   await command.handler("bad", { ui });
   assert.equal(notifications.at(-1).level, "warning");

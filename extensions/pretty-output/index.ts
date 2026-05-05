@@ -1,7 +1,15 @@
 // @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { createBashTool, createFindTool, createGrepTool, createLsTool, createReadTool, getMarkdownTheme } from "@mariozechner/pi-coding-agent";
-import { Markdown } from "@mariozechner/pi-tui";
+import {
+  createBashTool,
+  createEditTool,
+  createFindTool,
+  createGrepTool,
+  createLsTool,
+  createReadTool,
+  createWriteTool,
+} from "@mariozechner/pi-coding-agent";
+import { createPrettyMarkdown, formatPrettyToolMarkdown } from "../shared/pretty-render.ts";
 
 const PRETTY_MESSAGE_TYPE = "pretty-output";
 const RICH_OUTPUT_PROMPT = [
@@ -14,6 +22,8 @@ const RICH_OUTPUT_PROMPT = [
 const TOOL_FACTORIES = {
   bash: createBashTool,
   read: createReadTool,
+  edit: createEditTool,
+  write: createWriteTool,
   grep: createGrepTool,
   find: createFindTool,
   ls: createLsTool,
@@ -21,12 +31,15 @@ const TOOL_FACTORIES = {
 
 export default function prettyOutput(pi: ExtensionAPI) {
   let enabled = true;
+  const registerTool = pi.registerTool.bind(pi);
+
+  pi.registerTool = (definition) => registerTool(withPrettyRenderer(definition, () => enabled));
 
   for (const [name, factory] of Object.entries(TOOL_FACTORIES)) {
     registerPrettyTool(pi, name, factory, () => enabled);
   }
 
-  pi.registerMessageRenderer(PRETTY_MESSAGE_TYPE, (message) => createMarkdown(String(message.content || "")));
+  pi.registerMessageRenderer(PRETTY_MESSAGE_TYPE, (message) => createPrettyMarkdown(String(message.content || "")));
 
   pi.on("session_start", async (_event, ctx) => {
     ctx.ui.setStatus("pretty-output", enabled ? "pretty output: on" : undefined);
@@ -58,7 +71,7 @@ export default function prettyOutput(pi: ExtensionAPI) {
   });
 }
 
-function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: string) => any, isEnabled: () => boolean) {
+function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: string) => any, _isEnabled: () => boolean) {
   const base = factory(process.cwd());
   pi.registerTool({
     ...base,
@@ -67,77 +80,17 @@ function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: strin
       return tool.execute(toolCallId, params, signal, onUpdate, ctx);
     },
     renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, _theme: unknown, context: { args?: unknown }) {
-      const markdown = isEnabled()
-        ? formatToolMarkdown(name, result, options, context.args)
-        : fenced(textFromResult(result) || "<no output>", "text");
-      return createMarkdown(markdown);
+      return createPrettyMarkdown(formatPrettyToolMarkdown(name, result, options, context.args));
     },
   });
 }
 
-function createMarkdown(markdown: string) {
-  return new Markdown(markdown, 0, 0, getMarkdownTheme());
-}
-
-function formatToolMarkdown(toolName: string, result: unknown, options: { expanded?: boolean; isPartial?: boolean }, args: unknown) {
-  if (options.isPartial) return `**${toolName}**\n\n_Working…_`;
-  const text = textFromResult(result).trimEnd();
-  const isError = Boolean((result as { isError?: boolean } | undefined)?.isError);
-  const title = `${isError ? "❌" : "✅"} ${toolName}`;
-  const hint = options.expanded ? "" : "\n\n_Expand for full context when available._";
-
-  if (toolName === "bash") return `${titleLine(title, args)}\n\n${fenced(text || "<no output>", "text")}${hint}`;
-  if (toolName === "read") return `${titleLine(title, args)}\n\n${fenced(text || "<empty file>", languageFromArgs(args))}${hint}`;
-  return `${titleLine(title, args)}\n\n${fenced(text || "<no output>", "text")}${hint}`;
-}
-
-function titleLine(title: string, args: unknown) {
-  const summary = summarizeArgs(args);
-  return summary ? `**${title}**\n\n\`${summary}\`` : `**${title}**`;
-}
-
-function summarizeArgs(args: unknown) {
-  if (!args || typeof args !== "object") return "";
-  const value = args as Record<string, unknown>;
-  const primary = value.command || value.path || value.pattern || value.name || value.action;
-  return typeof primary === "string" ? singleLine(primary, 120) : "";
-}
-
-function languageFromArgs(args: unknown) {
-  if (!args || typeof args !== "object") return "text";
-  const path = (args as { path?: unknown }).path;
-  if (typeof path !== "string") return "text";
-  const ext = path.split(".").pop()?.toLowerCase();
-  return (
-    (
-      {
-        ts: "ts",
-        js: "js",
-        mjs: "js",
-        json: "json",
-        md: "md",
-        css: "css",
-        html: "html",
-        sh: "bash",
-        py: "py",
-        rs: "rust",
-        go: "go",
-      } as Record<string, string>
-    )[ext || ""] || "text"
-  );
-}
-
-function textFromResult(result: unknown) {
-  const content = (result as { content?: Array<{ type?: string; text?: string }> } | undefined)?.content;
-  return content?.find((block) => block.type === "text")?.text || "";
-}
-
-function fenced(text: string, language: string) {
-  const safe = text.replace(/```/g, "`\u200b``");
-  return `\`\`\`${language}\n${safe}\n\`\`\``;
-}
-
-function singleLine(text: string, max: number) {
-  const cleaned = text.replace(/[\r\n\t]+/g, " ").trim();
-  return cleaned.length <= max ? cleaned : `${cleaned.slice(0, Math.max(0, max - 1))}…`;
+function withPrettyRenderer(definition: any, _isEnabled: () => boolean) {
+  if (definition.renderResult) return definition;
+  return {
+    ...definition,
+    renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, _theme: unknown, context: { args?: unknown }) {
+      return createPrettyMarkdown(formatPrettyToolMarkdown(definition.name, result, options, context.args));
+    },
+  };
 }

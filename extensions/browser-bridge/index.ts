@@ -7,6 +7,7 @@ import crypto from "node:crypto";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
+import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 
 const DEFAULT_PORT = Number(process.env.PI_BROWSER_BRIDGE_PORT || 17373);
 const DEFAULT_HOST = process.env.PI_BROWSER_BRIDGE_HOST || "127.0.0.1";
@@ -216,6 +217,7 @@ export default function browserBridge(pi: ExtensionAPI) {
       "Use browser_bridge get_text before making assumptions about the current page.",
       "Use browser_bridge evaluate only for page-scoped JavaScript; do not request secrets or bypass website security controls.",
     ],
+    renderResult: renderPrettyToolResult("browser_bridge"),
     parameters: Type.Object({
       action: Type.Union(
         [

@@ -21,19 +21,8 @@ import {
 import { tempDir } from "../helpers.mjs";
 
 test("caveman constants expose levels, commands, completions, and default state", () => {
-  assert.deepEqual(VALID_LEVELS, ["lite", "full", "ultra", "wenyan-lite", "wenyan-full", "wenyan-ultra"]);
-  assert.deepEqual(COMMAND_TOKENS, [
-    "lite",
-    "full",
-    "ultra",
-    "wenyan-lite",
-    "wenyan-full",
-    "wenyan-ultra",
-    "wenyan",
-    "off",
-    "on",
-    "status",
-  ]);
+  assert.deepEqual(VALID_LEVELS, ["lite", "full", "ultra"]);
+  assert.deepEqual(COMMAND_TOKENS, ["lite", "full", "ultra", "off", "on", "status"]);
   assert.deepEqual(COMPLETION_ITEMS[0], { value: "lite", label: "lite" });
   assert.deepEqual(DEFAULT_STATE, { enabled: true, level: "full" });
 });
@@ -49,16 +38,16 @@ test("isLevel and normalizeState sanitize persisted input", () => {
   assert.equal(isLevel("lite"), true);
   assert.equal(isLevel("full"), true);
   assert.equal(isLevel("ultra"), true);
-  assert.equal(isLevel("wenyan"), true);
-  assert.equal(isLevel("wenyan-full"), true);
-  assert.equal(normalizeLevel("wenyan"), "wenyan-full");
-  assert.equal(displayLevel("wenyan-full"), "wenyan");
+  assert.equal(isLevel("wenyan"), false);
+  assert.equal(isLevel("wenyan-full"), false);
+  assert.equal(normalizeLevel("wenyan"), undefined);
+  assert.equal(displayLevel("wenyan-full"), "full");
   assert.equal(displayLevel("ultra"), "ultra");
   assert.equal(isLevel("bad"), false);
   assert.equal(isLevel(undefined), false);
 
   assert.deepEqual(normalizeState({ enabled: false, level: "lite" }), { enabled: false, level: "lite" });
-  assert.deepEqual(normalizeState({ enabled: true, level: "wenyan" }), { enabled: true, level: "wenyan-full" });
+  assert.deepEqual(normalizeState({ enabled: true, level: "wenyan" }), { enabled: true, level: "full" });
   assert.deepEqual(normalizeState({ enabled: true, level: "bad" }), { enabled: true, level: "full" });
   assert.deepEqual(normalizeState(null), { enabled: true, level: "full" });
 });
@@ -94,7 +83,7 @@ test("writeState persists pretty JSON and reports filesystem errors", () => {
 
 test("statusLine and buildCavemanPrompt cover every intensity", () => {
   assert.equal(statusLine({ enabled: true, level: "full" }), "🪨 caveman full •");
-  assert.equal(statusLine({ enabled: true, level: "wenyan-full" }), "🪨 caveman wenyan •");
+  assert.equal(statusLine({ enabled: true, level: "wenyan-full" }), "🪨 caveman full •");
   assert.equal(statusLine({ enabled: false, level: "full" }), "🪨 caveman off •");
 
   for (const level of VALID_LEVELS) {
@@ -105,5 +94,7 @@ test("statusLine and buildCavemanPrompt cover every intensity", () => {
     assert.match(prompt, /Do not drift verbose/);
     assert.doesNotMatch(prompt, /until user says "stop caveman"/);
     assert.match(prompt, new RegExp(`Intensity ${level}:`));
+    assert.match(prompt, /Use English only/);
+    assert.doesNotMatch(prompt, /文言|之\/乃\/為\/其|組件|重繪/);
   }
 });

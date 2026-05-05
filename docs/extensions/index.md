@@ -22,7 +22,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | ------------------- | -------------------------------------------- |
 | `/agent`            | Manage custom subagent definitions.          |
 | `/browser-bridge`   | Start/show browser bridge setup.             |
-| `/caveman`          | Toggle terse caveman/wenyan language modes.  |
+| `/caveman`          | Toggle terse English caveman language mode.  |
 | `/pet`              | Show or manage the Tamagotchi pet.           |
 | `/pick-issue`       | Pick an issue, branch, and create a WIP PR.  |
 | `/plan <task>`      | Clarification-first planning workflow.       |

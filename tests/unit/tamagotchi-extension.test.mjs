@@ -9,6 +9,10 @@ test("tamagotchi widget uses RPC-compatible string lines", () => {
   assert.doesNotMatch(source, /@mariozechner\/pi-tui/, "RPC clients cannot render TUI-only component imports");
   assert.match(source, /setWidget\?\.\(WIDGET_KEY, renderWidgetLines\(\), \{ placement: "belowEditor" \}\)/);
   assert.match(source, /setWidget\?: \(key: string, widget: string\[\] \| undefined/);
+  assert.match(source, /╭─ \$\{art\} \$\{state\.name\}/);
+  assert.match(source, /hunger \$\{bar\(pct, 12\)\}/);
+  assert.match(source, /global pet across sessions/);
+  assert.match(source, /pi\.on\("agent_start"/);
   assert.doesNotMatch(source, /setWidget\?\.\(WIDGET_KEY, \(_tui, theme\)/, "component factories are ignored in RPC mode");
 });
 

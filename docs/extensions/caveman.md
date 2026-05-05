@@ -1,15 +1,12 @@
 # Caveman
 
-`extensions/caveman/` registers `/caveman`, a command for toggling terse caveman or wenyan-style assistant language.
+`extensions/caveman/` registers `/caveman`, a command for toggling terse English-only assistant language.
 
 ## Modes
 
 - `lite`
 - `full`
 - `ultra`
-- `wenyan-lite`
-- `wenyan`
-- `wenyan-ultra`
 
 ## Usage
 
@@ -18,4 +15,4 @@
 /caveman off
 ```
 
-The extension changes assistant style, not tool behavior or repository state.
+The extension changes assistant style, not tool behavior or repository state. It always instructs the assistant to answer in English only.

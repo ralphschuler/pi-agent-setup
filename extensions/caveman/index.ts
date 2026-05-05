@@ -13,7 +13,7 @@ import {
   writeState,
 } from "./core.mjs";
 
-type Level = "lite" | "full" | "ultra" | "wenyan-lite" | "wenyan-full" | "wenyan-ultra";
+type Level = "lite" | "full" | "ultra";
 
 type CavemanState = {
   enabled: boolean;
@@ -57,7 +57,7 @@ export default function cavemanExtension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("caveman", {
-    description: "Toggle caveman language and choose intensity (lite/full/ultra/wenyan-lite/wenyan/wenyan-ultra/on/off/status)",
+    description: "Toggle terse English caveman language and choose intensity (lite/full/ultra/on/off/status)",
     getArgumentCompletions: (prefix) => {
       const filtered = COMPLETION_ITEMS.filter(({ value }) => value.startsWith(prefix));
       return filtered.length > 0 ? filtered : null;

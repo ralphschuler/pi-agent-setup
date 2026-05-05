@@ -10,7 +10,10 @@ test("todo start action maps to in_progress status and icon", () => {
   assert.match(source, /in_progress: "◐"/);
   assert.match(source, /const DISPLAY_LIMIT = 5/);
   assert.match(source, /completed items stay visible until space is needed/);
-  assert.match(source, /visible\.slice\(-DISPLAY_LIMIT\)/);
+  assert.match(source, /visible\.slice\(0, DISPLAY_LIMIT\)/);
+  assert.doesNotMatch(source, /visible\.slice\(-DISPLAY_LIMIT\)/);
+  assert.match(source, /function progressSummary\(\)/);
+  assert.match(source, /done, \$\{open\} open/);
   assert.match(source, /sessionStorePath\(ctx\?\.sessionManager\?\.getSessionFile\?\.\(\)\)/);
   assert.match(source, /\.pi", "agent", "todos"/);
   assert.doesNotMatch(source, /status as TodoStatus/);

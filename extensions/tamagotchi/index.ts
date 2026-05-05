@@ -96,6 +96,11 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
     }, 60_000);
   });
 
+  pi.on("agent_start", async (_event, ctx) => {
+    await loadStore();
+    updateUi(ctx);
+  });
+
   pi.on("session_shutdown", async () => {
     if (interval) clearInterval(interval);
     interval = undefined;
@@ -171,11 +176,14 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
     const pct = hungerPercent(state);
     const art = petArt(mood);
     const xpNeeded = xpForNextLevel(state.level);
+    const xpPct = Math.round((state.xp / xpNeeded) * 100);
     const lines = [
-      `${art} ${state.name} Lv.${state.level} ${moodLabel(mood)}  ${bar(pct, 10)} ${pct}% fed`,
-      `bugs eaten: ${state.bugsFixed}  xp: ${state.xp}/${xpNeeded}  last meal: ${state.lastMeal}`,
+      `╭─ ${art} ${state.name} ─ Lv.${state.level} ─ ${moodLabel(mood)} ─╮`,
+      `│ hunger ${bar(pct, 12)} ${String(pct).padStart(3)}% │ xp ${bar(xpPct, 8)} ${state.xp}/${xpNeeded}`,
+      `│ bugs ${String(state.bugsFixed).padStart(3)} │ meals ${String(state.meals).padStart(3)} │ last: ${state.lastMeal}`,
+      `╰─ global pet across sessions: ${STORE_PATH} ─╯`,
     ];
-    if (changedDuringBugTurn && !fedThisTurn) lines.push("sniffing a fresh bug fix… run tests/checks to make it extra tasty");
+    if (changedDuringBugTurn && !fedThisTurn) lines.push("🐛 sniffing a fresh bug fix… run tests/checks to make it extra tasty");
     return lines;
   }
 
@@ -188,6 +196,7 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
     return [
       `${petArt(currentMood(state))} ${state.name} level ${state.level} (${moodLabel(currentMood(state))})`,
       `Fed: ${hungerPercent(state)}%`,
+      `Global across sessions: yes`,
       `Bugs eaten: ${state.bugsFixed}`,
       `Meals: ${state.meals}`,
       `Last meal: ${state.lastMeal}`,

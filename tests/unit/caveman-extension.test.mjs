@@ -12,14 +12,15 @@ test("caveman extension registers command and prompt injection hook", () => {
   assert.match(source, /systemPrompt:\s*event\.systemPrompt \+ cachedInjection/);
 });
 
-test("caveman extension supports all requested command modes", () => {
+test("caveman extension supports English-only command modes", () => {
   const extensionSource = readText("extensions/caveman/index.ts");
   const coreSource = readText("extensions/caveman/core.mjs");
   const source = `${extensionSource}\n${coreSource}`;
 
-  for (const token of ["lite", "full", "ultra", "wenyan-lite", "wenyan", "wenyan-ultra", "on", "off", "status"]) {
+  for (const token of ["lite", "full", "ultra", "on", "off", "status"]) {
     assert.match(source, new RegExp(`\\b${token}\\b`), `missing command token ${token}`);
   }
+  assert.doesNotMatch(source, /文言|組件|重繪/);
 });
 
 test("caveman prompt keeps safety and technical precision", () => {
@@ -68,18 +69,19 @@ test("caveman command handles aliases, status, off, and invalid args", async () 
   assert.equal(statuses.at(-1).name, "caveman");
   assert.match(statuses.at(-1).value, /^🪨 caveman /);
 
-  assert.deepEqual(command.getArgumentCompletions("wenyan-u"), [{ value: "wenyan-ultra", label: "wenyan-ultra" }]);
+  assert.deepEqual(command.getArgumentCompletions("ul"), [{ value: "ultra", label: "ultra" }]);
   assert.equal(command.getArgumentCompletions("missing"), null);
 
-  await command.handler("wenyan", { ui });
-  assert.deepEqual(notifications.at(-1), { message: "caveman ON (wenyan)", level: "info" });
-  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman wenyan •" });
+  await command.handler("ultra", { ui });
+  assert.deepEqual(notifications.at(-1), { message: "caveman ON (ultra)", level: "info" });
+  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman ultra •" });
 
   const promptUpdate = events.get("before_agent_start")({ systemPrompt: "base" });
-  assert.match(promptUpdate.systemPrompt, /<caveman-mode active level="wenyan-full">/);
+  assert.match(promptUpdate.systemPrompt, /<caveman-mode active level="ultra">/);
+  assert.match(promptUpdate.systemPrompt, /Use English only/);
 
   await command.handler("status", { ui });
-  assert.deepEqual(notifications.at(-1), { message: "🪨 caveman wenyan •", level: "info" });
+  assert.deepEqual(notifications.at(-1), { message: "🪨 caveman ultra •", level: "info" });
 
   await command.handler("off", { ui });
   assert.deepEqual(notifications.at(-1), { message: "caveman OFF", level: "info" });
@@ -87,8 +89,8 @@ test("caveman command handles aliases, status, off, and invalid args", async () 
   assert.equal(events.get("before_agent_start")({ systemPrompt: "base" }), undefined);
 
   await command.handler("on", { ui });
-  assert.deepEqual(notifications.at(-1), { message: "caveman ON (wenyan)", level: "info" });
-  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman wenyan •" });
+  assert.deepEqual(notifications.at(-1), { message: "caveman ON (ultra)", level: "info" });
+  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman ultra •" });
 
   await command.handler("bad", { ui });
   assert.equal(notifications.at(-1).level, "warning");

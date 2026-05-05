@@ -69,11 +69,17 @@ export default function todo(pi: ExtensionAPI) {
       visible.splice(completedIndex, 1);
     }
 
-    return visible.length > DISPLAY_LIMIT ? visible.slice(-DISPLAY_LIMIT) : visible;
+    return visible.length > DISPLAY_LIMIT ? visible.slice(0, DISPLAY_LIMIT) : visible;
   }
 
   function openItems() {
     return items.filter((item) => item.status !== "completed");
+  }
+
+  function progressSummary() {
+    const completed = items.filter((item) => item.status === "completed").length;
+    const open = items.length - completed;
+    return `${completed}/${items.length} done, ${open} open`;
   }
 
   function renderLines() {
@@ -82,7 +88,7 @@ export default function todo(pi: ExtensionAPI) {
 
     const openCount = openItems().length;
     const hiddenCount = Math.max(0, items.length - visible.length);
-    const lines = ["Todo"];
+    const lines = [`Todo (${progressSummary()})`];
     for (const item of visible) {
       lines.push(`${statusIcon[item.status]} #${item.id} ${item.text}`);
     }
@@ -127,7 +133,7 @@ export default function todo(pi: ExtensionAPI) {
       visible.length === 0
         ? "No todos."
         : [
-            `Visible todo window (${visible.length}/${DISPLAY_LIMIT}; completed items stay visible until space is needed):`,
+            `Visible todo window (${visible.length}/${DISPLAY_LIMIT}; ${progressSummary()}; completed items stay visible until space is needed):`,
             ...visible.map((item) => `- ${statusIcon[item.status]} #${item.id} ${item.status}: ${item.text}`),
           ].join("\n"),
       active.length === 0
@@ -251,7 +257,14 @@ function parseMarkdown(markdown: string): TodoItem[] {
 }
 
 function renderMarkdown(items: TodoItem[]) {
-  const lines = ["# Todo", "", "<!-- Managed by the pi todo extension. Edit carefully; supported markers are [ ], [-], and [x]. -->", ""];
+  const completed = items.filter((item) => item.status === "completed").length;
+  const open = items.length - completed;
+  const lines = [
+    `# Todo (${completed}/${items.length} done, ${open} open)`,
+    "",
+    "<!-- Managed by the pi todo extension. Edit carefully; supported markers are [ ], [-], and [x]. -->",
+    "",
+  ];
 
   for (const item of items) {
     lines.push(`- [${markdownMarker[item.status]}] #${item.id} ${item.text}`);

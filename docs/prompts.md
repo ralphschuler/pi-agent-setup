@@ -12,7 +12,9 @@ A strategic evidence-first debugging prompt that guides reproduction, hypothesis
 
 A GitHub issue creation workflow. Accepts optional scope, title, or filter via `/to-issue [scope / title / filter]`.
 
-The workflow inspects repo/auth state, reviews conversation and relevant files, checks existing issues and labels, drafts issue bodies, uses `human_in_loop` for issue selection/approval, and creates confirmed issues with `gh issue create`.
+The workflow inspects repo/auth state, reviews conversation and relevant files, checks existing issues and labels with `gh label list --limit 100`, drafts issue bodies with a required section template, proposes labels for each drafted issue, uses `human_in_loop` for issue selection/approval and post-selection missing-label creation, and creates confirmed issues with `gh issue create --label`.
+
+Required issue body headings: Summary, Evidence/Context, Decisions, Tasks, Proposed Solution, Acceptance Criteria, Relevant Files/Commands, Validation, Risks/Rollback, and Source Conversation Context.
 
 ### `to-pr.md`
 

@@ -28,6 +28,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/pick-issue`       | Pick an issue, branch, and create a WIP PR.   |
 | `/plan <task>`      | Clarification-first planning workflow.        |
 | `/pretty-output`    | Toggle/preview pretty output rendering.       |
+| `/refine-codebase`  | Prompt-template architecture refinement.      |
 | `/review [scope]`   | Prompt-template project/code review workflow. |
 | `/ps`               | Process dashboard.                            |
 | `/research <topic>` | Prompt-template research workflow.            |

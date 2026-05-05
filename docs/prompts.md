@@ -16,9 +16,16 @@ A multiagent-style research prompt for source discovery, technical analysis, sec
 
 Expected output includes sourced findings, confidence levels, risk/tradeoff tables, GitHub-issue-ready tasks, and recommended implementation order.
 
+### `refine-codebase.md`
+
+An architecture refinement prompt based on deepening shallow modules into deeper modules. Accepts optional scope or paths via `/refine-codebase [scope / paths / domain area / focus]`.
+
+Expected output is a numbered list of deepening opportunities using the vocabulary Module, Interface, Implementation, Depth, Seam, Adapter, Leverage, and Locality. It asks which candidate to explore before proposing concrete interfaces.
+
 ## Usage examples
 
 ```text
 /review review my current diff
 /research compare deployment options for this repo
+/refine-codebase extensions/web-terminal
 ```

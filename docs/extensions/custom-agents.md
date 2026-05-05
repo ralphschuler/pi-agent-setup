@@ -6,7 +6,44 @@
 
 - `/agent` themed catalog UI
 - Listing, creating, showing, and deleting custom subagent markdown definitions
+- Reusable custom-agent templates installable into the project or user catalog
 - Shared registry helpers for the subagent orchestrator
+
+## Commands
+
+```text
+/agent
+/agent list
+/agent new
+/agent templates
+/agent install-template <name> [user|project]
+/agent show <name>
+/agent delete <name>
+```
+
+## Reusable templates
+
+Built-in templates are available for:
+
+- `security-reviewer` — security, privacy, auth, secrets, supply-chain, and operational risk review.
+- `docs-maintainer` — docs, READMEs, wiki pages, examples, and user-facing workflow guidance.
+- `release-manager` — changelog, validation gates, rollout, rollback, and post-release checks.
+- `browser-qa` — browser-facing behavior, UI flows, accessibility basics, and visual regressions.
+- `dependency-auditor` — package metadata, license, freshness, supply-chain risk, and install policy.
+
+Install a project template:
+
+```text
+/agent install-template security-reviewer project
+```
+
+Install a user template:
+
+```text
+/agent install-template docs-maintainer user
+```
+
+Each template defines role, scope, success criteria, escalation rules, and output contract.
 
 ## Search paths
 

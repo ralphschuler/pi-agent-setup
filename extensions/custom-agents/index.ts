@@ -9,6 +9,7 @@ import {
   writeCustomAgent,
   type CustomAgentInfo,
 } from "./registry";
+import { findTemplate, formatTemplateCatalog, templateNames } from "./templates";
 
 function helpText() {
   return [
@@ -17,10 +18,15 @@ function helpText() {
     "/agent                 Show this help and list custom agents",
     "/agent list            List custom user/project agents",
     "/agent new             Create a custom agent interactively",
+    "/agent templates       List reusable custom-agent templates",
+    "/agent install-template <name> [user|project]  Install a template as a custom agent",
     "/agent show <name>     Show agent details and file path",
     "/agent delete <name>   Delete a custom agent",
     "",
     "Agents use standard folders: ~/.pi/agent/agents, ~/.agents, nearest .pi/agents, and legacy nearest .agents.",
+    "",
+    "Reusable templates:",
+    formatTemplateCatalog(),
   ].join("\n");
 }
 
@@ -90,7 +96,7 @@ export default function customAgents(pi: ExtensionAPI) {
   pi.registerCommand("agent", {
     description: "[list|new|show <name>|delete <name>] — manage custom subagent definitions",
     getArgumentCompletions: (prefix: string) => {
-      const values = ["list", "new", "show", "delete"];
+      const values = ["list", "new", "show", "delete", "templates", "install-template", ...templateNames()];
       return values.filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value }));
     },
     handler: async (args, ctx) => {
@@ -106,6 +112,37 @@ export default function customAgents(pi: ExtensionAPI) {
       if (command === "list") {
         const agents = await readCustomAgents(ctx.cwd);
         await showAgentCatalog(ctx, agents);
+        return;
+      }
+
+      if (command === "templates") {
+        ctx.ui.notify(
+          `Reusable custom-agent templates:\n\n${formatTemplateCatalog()}\n\nInstall one with /agent install-template <name> [user|project]`,
+          "info",
+        );
+        return;
+      }
+
+      if (command === "install-template") {
+        const [templateName = "", scopeArg = "project"] = rest;
+        if (!templateName) {
+          ctx.ui.notify(
+            `Usage: /agent install-template <name> [user|project]\n\nAvailable templates:\n${formatTemplateCatalog()}`,
+            "error",
+          );
+          return;
+        }
+        const template = findTemplate(templateName);
+        if (!template) {
+          ctx.ui.notify(`Unknown template: ${templateName}\n\nAvailable templates:\n${formatTemplateCatalog()}`, "error");
+          return;
+        }
+        const scope: AgentScope = scopeArg === "user" ? "user" : "project";
+        const created = await writeCustomAgent(ctx.cwd, { ...template, scope });
+        ctx.ui.notify(
+          `Installed template ${template.templateName} as ${created.runtimeName}\n${created.path}\n\nRun /reload if it is not immediately visible to the custom subagent tool.`,
+          "success",
+        );
         return;
       }
 

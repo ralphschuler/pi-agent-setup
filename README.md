@@ -67,6 +67,7 @@ npm run test:docker
 ```text
 /welcome
 /plan <task>
+/review [scope]
 /research <topic>
 /refine-codebase [scope]
 /ps

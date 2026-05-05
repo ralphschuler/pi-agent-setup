@@ -1,17 +1,16 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
-import { readText } from "../helpers.mjs";
+import { assertDocsMentionSlashCommand, parsePromptTemplate } from "../prompt-template-helpers.mjs";
 
 test("refine-codebase prompt defines architecture deepening workflow", () => {
-  const prompt = readText("prompts/refine-codebase.md");
+  const { content, frontmatter } = parsePromptTemplate("prompts/refine-codebase.md");
 
-  assert.match(prompt, /^description: Find codebase architecture deepening opportunities$/m);
-  assert.match(prompt, /^argument-hint: "\[scope \/ paths \/ domain area \/ focus\]"$/m);
-  assert.match(prompt, /\$ARGUMENTS/);
+  assert.equal(frontmatter.description, "Find codebase architecture deepening opportunities");
+  assert.equal(frontmatter["argument-hint"], "[scope / paths / domain area / focus]");
 
   for (const term of ["Module", "Interface", "Implementation", "Depth", "Seam", "Adapter", "Leverage", "Locality"]) {
-    assert.match(prompt, new RegExp(`\\*\\*${term}\\*\\*`), `missing ${term}`);
+    assert.match(content, new RegExp(`\\*\\*${term}\\*\\*`), `missing ${term}`);
   }
 
   for (const phrase of [
@@ -25,12 +24,10 @@ test("refine-codebase prompt defines architecture deepening workflow", () => {
     "Proposed deeper module",
     "Seam/adapters",
   ]) {
-    assert.ok(prompt.includes(phrase), `missing ${phrase}`);
+    assert.ok(content.includes(phrase), `missing ${phrase}`);
   }
 });
 
 test("refine-codebase docs mention slash command", () => {
-  assert.match(readText("docs/prompts.md"), /\/refine-codebase/);
-  assert.match(readText("docs/extensions/index.md"), /\/refine-codebase/);
-  assert.match(readText("README.md"), /\/refine-codebase/);
+  assertDocsMentionSlashCommand("prompts/refine-codebase.md", ["docs/prompts.md", "docs/extensions/index.md", "README.md"]);
 });

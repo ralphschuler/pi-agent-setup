@@ -55,6 +55,7 @@ nav:
       - GitHub handoff: extensions/github-handoff.md
       - Graph memory: extensions/graph-memory.md
       - Human in loop: extensions/human-in-loop.md
+      - Package scout: extensions/package-scout.md
       - Plan workflow: extensions/plan.md
       - Pretty output: extensions/pretty-output.md
       - Processes: extensions/processes.md

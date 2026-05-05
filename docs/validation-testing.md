@@ -34,11 +34,14 @@ Install docs dependencies:
 python -m pip install -r requirements-docs.txt
 ```
 
-Build the wiki strictly:
+Build or serve the wiki through npm scripts:
 
 ```bash
-mkdocs build --strict
+npm run docs:build
+npm run docs:serve
 ```
+
+`npm run docs:build` runs `mkdocs build --strict`.
 
 ## CI workflows
 
@@ -53,5 +56,5 @@ Recommended minimum:
 npm run check
 npm run test:ci
 python -m pip install -r requirements-docs.txt
-mkdocs build --strict
+npm run docs:build
 ```

@@ -14,7 +14,18 @@ test("package exposes pi resources and test scripts", () => {
   assert.deepEqual(pkg.pi.prompts, ["./prompts"]);
   assert.deepEqual(pkg.pi.themes, ["./themes"]);
 
-  for (const script of ["check", "test", "test:unit", "test:integration", "test:e2e", "test:coverage", "test:ci", "test:docker"]) {
+  for (const script of [
+    "check",
+    "docs:build",
+    "docs:serve",
+    "test",
+    "test:unit",
+    "test:integration",
+    "test:e2e",
+    "test:coverage",
+    "test:ci",
+    "test:docker",
+  ]) {
     assert.equal(typeof pkg.scripts[script], "string", `missing npm script ${script}`);
   }
 });
@@ -51,5 +62,18 @@ test("README documents included extension entrypoints", () => {
 
   for (const name of names) {
     assert.match(readme, new RegExp(`extensions/${name}/`), `README missing ${name}`);
+  }
+});
+
+test("extension docs are reachable from MkDocs nav", () => {
+  const mkdocs = readText("mkdocs.yml");
+  const docsDir = path.join(repoRoot, "docs", "extensions");
+  const pages = fs
+    .readdirSync(docsDir)
+    .filter((name) => name.endsWith(".md") && name !== "index.md")
+    .sort();
+
+  for (const page of pages) {
+    assert.match(mkdocs, new RegExp(`extensions/${page.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}`), `mkdocs nav missing ${page}`);
   }
 });

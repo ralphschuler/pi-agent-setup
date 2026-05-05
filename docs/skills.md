@@ -39,3 +39,5 @@ skills/
 - Use `project-bootstrap` when changing repository standards or setup.
 - Use `pi-processes` when starting servers, watchers, or logs.
 - Use `pi-subagents` when independent research, planning, implementation, or review would help.
+- Ask all user-facing clarification and approval questions through `human_in_loop`; do not ask those questions only in assistant prose.
+- When a skill produces a plan, PRD, roadmap, or rollout sequence, split it into independently and quickly testable feature phases with concrete validation commands.

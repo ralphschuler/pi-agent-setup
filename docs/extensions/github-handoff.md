@@ -29,7 +29,7 @@ Each issue body should include:
 - Risks/rollback
 - Source conversation context
 
-The workflow inspects existing labels with `gh label list`, applies existing labels when appropriate, and uses `human_in_loop` before creating missing labels or issues.
+The workflow inspects existing labels with `gh label list --limit 100`, proposes labels for each drafted issue, separates existing labels from missing labels, applies confirmed labels with `gh issue create --label`, and uses `human_in_loop` before creating issues or missing labels. Missing labels are created only after issue selection is confirmed and only when needed by confirmed issues. It reports skipped duplicate/non-actionable items and skipped label decisions.
 
 ## `/to-pr`
 

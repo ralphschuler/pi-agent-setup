@@ -19,10 +19,59 @@ test("to-issue workflow requires human-in-loop selectable issue review before cr
     "Render a proposed issue list",
     "Do not create issues before this confirmation",
     "Human-in-loop selection confirmed or canceled",
-    "gh label list",
+    "gh label list --limit 100",
   ]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }
+});
+
+test("to-issue workflow defines detailed issue bodies and label handling", () => {
+  const source = readPrompt("to-issue");
+
+  for (const heading of [
+    "## Summary",
+    "## Evidence/Context",
+    "## Decisions",
+    "## Tasks",
+    "## Proposed Solution",
+    "## Acceptance Criteria",
+    "## Relevant Files/Commands",
+    "## Validation",
+    "## Risks/Rollback",
+    "## Source Conversation Context",
+  ]) {
+    assert.ok(source.includes(heading), `missing ${heading}`);
+  }
+
+  for (const phrase of [
+    "propose labels from the existing repo labels",
+    "existing labels to apply",
+    "missing labels that would need creation",
+    "labels skipped because they are unnecessary or ambiguous",
+    "Do not create issues before this confirmation; do not create labels before this confirmation either",
+    "After issue selection is confirmed, use `human_in_loop` before creating any missing label needed by a confirmed issue",
+    "gh label create",
+    "proposed labels for each drafted issue",
+    "gh issue create --title ... --body-file ... --label ...",
+    "skipped as duplicates/non-actionable",
+    "skipped label decisions",
+  ]) {
+    assert.ok(source.includes(phrase), `missing ${phrase}`);
+  }
+});
+
+test("to-issue workflow creates missing labels only after issue selection", () => {
+  const source = readPrompt("to-issue");
+  const selectionIndex = source.indexOf(
+    "Do not create issues before this confirmation; do not create labels before this confirmation either",
+  );
+  const labelCreationIndex = source.indexOf(
+    "After issue selection is confirmed, use `human_in_loop` before creating any missing label needed by a confirmed issue",
+  );
+
+  assert.notEqual(selectionIndex, -1, "missing pre-confirmation no-create guard");
+  assert.notEqual(labelCreationIndex, -1, "missing post-selection label creation guard");
+  assert.ok(labelCreationIndex > selectionIndex, "missing label creation must happen after issue selection");
 });
 
 test("to-pr workflow includes TUI-style progress and human confirmation", () => {

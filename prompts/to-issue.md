@@ -34,12 +34,43 @@ Show a compact TUI-style progress checklist in assistant output as each step com
 3. If needed, inspect relevant repo files before creating issues so each issue is grounded in evidence.
 4. Group related sub-points into one issue only when they must be solved together; otherwise split them.
 5. Inspect existing open issues with `gh issue list` / `gh issue view` to avoid duplicates.
-6. Inspect existing labels with `gh label list`; apply existing labels when appropriate and use `human_in_loop` before creating missing labels.
-7. For each issue, prepare a concise title and body with: Summary, Evidence/Context, Decisions, Tasks, Proposed Solution, Acceptance Criteria, Relevant Files/Commands, Validation, Risks/Rollback, and Source Conversation Context.
-8. Render a proposed issue list with numbers, titles, one-line summaries, labels, and create/skip recommendation.
-9. Use `human_in_loop` select/input/editor to let the user choose which proposed issues to create, confirm all, edit, or cancel. Do not create issues before this confirmation.
-10. Use `gh issue create` against the current repo only for confirmed issues. If `gh` is unavailable or unauthenticated, report exact setup steps and do not fake creation.
-11. After creation, report created issue URLs and any items intentionally skipped as duplicates/non-actionable.
+6. Inspect existing labels with `gh label list --limit 100` before drafting final issues.
+7. For each drafted issue, propose labels from the existing repo labels. Separately list:
+   - existing labels to apply
+   - missing labels that would need creation
+   - labels skipped because they are unnecessary or ambiguous
+8. For each issue, prepare a concise title and body using the exact issue body template below.
+9. Render a proposed issue list with numbers, titles, one-line summaries, proposed labels for each drafted issue, existing/missing label status, and create/skip recommendation.
+10. Use `human_in_loop` select/input/editor to let the user choose which proposed issues to create, confirm all, edit, or cancel. Do not create issues before this confirmation; do not create labels before this confirmation either.
+11. After issue selection is confirmed, use `human_in_loop` before creating any missing label needed by a confirmed issue. If approved, create it with `gh label create`; if declined, continue with existing labels only.
+12. Use `gh issue create --title ... --body-file ... --label ...` against the current repo only for confirmed issues. Apply confirmed existing labels and any user-approved newly created labels. If `gh` is unavailable or unauthenticated, report exact setup steps and do not fake creation.
+13. After creation, report created issue URLs and any items intentionally skipped as duplicates/non-actionable, including skipped label decisions.
+
+## Required issue body template
+
+Each drafted issue body must use these headings:
+
+```md
+## Summary
+
+## Evidence/Context
+
+## Decisions
+
+## Tasks
+
+## Proposed Solution
+
+## Acceptance Criteria
+
+## Relevant Files/Commands
+
+## Validation
+
+## Risks/Rollback
+
+## Source Conversation Context
+```
 
 ## TUI-style progress checklist
 

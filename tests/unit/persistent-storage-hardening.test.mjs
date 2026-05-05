@@ -1,9 +1,21 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import { decodeStoredBlock, encodeStoredBlock, normalizeSingleLine } from "../../extensions/shared/markdown-store-codec.ts";
 import { parseMarkdown as parseCron, renderMarkdown as renderCron } from "../../extensions/cronjobs/index.ts";
 import { parseMarkdown as parseGraph, renderMarkdown as renderGraph } from "../../extensions/graph-memory/index.ts";
 import { parseMarkdown as parseTodo, renderMarkdown as renderTodo, sanitizeTodoText } from "../../extensions/todo/index.ts";
+
+test("shared markdown store codec encodes blocks with legacy fallback", () => {
+  const value = "Do work\n## Job 999\n- name: injected\n### Task\nBad";
+  assert.equal(decodeStoredBlock(encodeStoredBlock(value)), value);
+  assert.equal(decodeStoredBlock(value), value);
+});
+
+test("shared markdown store codec normalizes single-line scalars", () => {
+  assert.equal(normalizeSingleLine(" Real\n\tName\u0000 "), "Real Name");
+  assert.equal(normalizeSingleLine("Real   name", { collapseWhitespace: true }), "Real name");
+});
 
 test("cronjob task bodies with markdown sentinels do not create extra jobs after render", () => {
   const markdown = renderCron([

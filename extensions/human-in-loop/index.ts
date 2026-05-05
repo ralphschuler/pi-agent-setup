@@ -15,9 +15,11 @@ export default function humanInLoop(pi: ExtensionAPI) {
       "Ask the user for clarification or approval with appropriate TUI controls when the agent cannot safely or confidently proceed.",
     promptSnippet: "Ask the human for clarification, approval, free-form input, or option selection via TUI controls.",
     promptGuidelines: [
+      "Use human_in_loop for every user-facing clarification or approval question; do not ask those questions in plain assistant text.",
       "Use human_in_loop when requirements are ambiguous, a decision affects user intent, approval is needed, or proceeding would require guessing.",
       "Prefer select for a small set of clear choices, confirm for yes/no approval, input for short text, and editor for longer structured answers.",
       "Ask concise questions and include enough context for the user to answer without rereading the conversation.",
+      "Include a recommended answer or concise options when that helps the user decide.",
     ],
     renderResult: renderPrettyToolResult("human_in_loop"),
     parameters: Type.Object({

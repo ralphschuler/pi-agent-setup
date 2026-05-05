@@ -9,6 +9,8 @@ When reviewing code, be direct and prioritize actionable findings.
 
 If the user invoked a prompt or slash command with arguments, treat those arguments as the review scope/focus and cite them in the summary.
 
+Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
+
 ## Checklist
 
 - Understand the requested behavior and the actual diff.

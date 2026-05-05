@@ -9,6 +9,8 @@ Use the custom `subagent` tool for bounded delegation while keeping the parent a
 
 If the user invoked a prompt or slash command with arguments, pass the relevant arguments into each subagent task so delegated work preserves the user's scope.
 
+Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
+
 ## Workflow
 
 1. Call `subagent` with `action: "list"` before non-trivial delegation.

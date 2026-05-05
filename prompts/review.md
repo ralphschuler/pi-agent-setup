@@ -19,6 +19,8 @@ Perform a deep technical audit of the project and produce actionable findings th
 
 The review must be practical, precise, and grounded in the actual codebase. Do not invent problems. Do not make assumptions without checking the repository.
 
+If review scope, approval, or user intent is unclear enough to block progress, use the `human_in_loop` tool for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
+
 ---
 
 # Review Team Roles

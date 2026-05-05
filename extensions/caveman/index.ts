@@ -1,9 +1,9 @@
 // @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import { buildCavemanPrompt, COMMAND_TOKENS, COMPLETION_ITEMS, isLevel, readState, statusLine, writeState } from "./core.mjs";
+import { buildCavemanPrompt, COMMAND_TOKENS, COMPLETION_ITEMS, displayLevel, isLevel, normalizeLevel, readState, statusLine, writeState } from "./core.mjs";
 
-type Level = "lite" | "full" | "ultra";
+type Level = "lite" | "full" | "ultra" | "wenyan-lite" | "wenyan-full" | "wenyan-ultra";
 
 type CavemanState = {
   enabled: boolean;
@@ -46,7 +46,7 @@ export default function cavemanExtension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("caveman", {
-    description: "Toggle caveman language and choose intensity (lite/full/ultra/on/off/status)",
+    description: "Toggle caveman language and choose intensity (lite/full/ultra/wenyan-lite/wenyan/wenyan-ultra/on/off/status)",
     getArgumentCompletions: (prefix) => {
       const filtered = COMPLETION_ITEMS.filter(({ value }) => value.startsWith(prefix));
       return filtered.length > 0 ? filtered : null;
@@ -65,12 +65,13 @@ export default function cavemanExtension(pi: ExtensionAPI) {
       }
 
       if (arg === "on") {
-        setState({ ...state, enabled: true }, ctx.ui, `caveman ON (${state.level})`);
+        setState({ ...state, enabled: true }, ctx.ui, `caveman ON (${displayLevel(state.level)})`);
         return;
       }
 
       if (isLevel(arg)) {
-        setState({ enabled: true, level: arg }, ctx.ui, `caveman ON (${arg})`);
+        const level = normalizeLevel(arg) as Level;
+        setState({ enabled: true, level }, ctx.ui, `caveman ON (${displayLevel(level)})`);
         return;
       }
 

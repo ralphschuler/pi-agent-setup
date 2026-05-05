@@ -1,6 +1,6 @@
 // @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
-import { createBashTool, createFindTool, createGrepTool, createLsTool, createReadTool } from "@mariozechner/pi-coding-agent";
+import { createBashTool, createFindTool, createGrepTool, createLsTool, createReadTool, getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Markdown } from "@mariozechner/pi-tui";
 
 const PRETTY_MESSAGE_TYPE = "pretty-output";
@@ -26,7 +26,7 @@ export default function prettyOutput(pi: ExtensionAPI) {
     registerPrettyTool(pi, name, factory, () => enabled);
   }
 
-  pi.registerMessageRenderer(PRETTY_MESSAGE_TYPE, (message, _options, theme) => new Markdown(String(message.content || ""), 0, 0, theme));
+  pi.registerMessageRenderer(PRETTY_MESSAGE_TYPE, (message) => createMarkdown(String(message.content || "")));
 
   pi.on("session_start", async (_event, ctx) => {
     ctx.ui.setStatus("pretty-output", enabled ? "pretty output: on" : undefined);
@@ -66,17 +66,21 @@ function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: strin
       const tool = factory(ctx.cwd || process.cwd());
       return tool.execute(toolCallId, params, signal, onUpdate, ctx);
     },
-    renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, theme: unknown, context: { args?: unknown }) {
+    renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, _theme: unknown, context: { args?: unknown }) {
       const markdown = isEnabled()
         ? formatToolMarkdown(name, result, options, context.args)
         : fenced(textFromResult(result) || "<no output>", "text");
-      return new Markdown(markdown, 0, 0, theme);
+      return createMarkdown(markdown);
     },
   });
 }
 
+function createMarkdown(markdown: string) {
+  return new Markdown(markdown, 0, 0, getMarkdownTheme());
+}
+
 function formatToolMarkdown(toolName: string, result: unknown, options: { expanded?: boolean; isPartial?: boolean }, args: unknown) {
-  if (options.isPartial) return `### ${toolName}\n\n_Working…_`;
+  if (options.isPartial) return `**${toolName}**\n\n_Working…_`;
   const text = textFromResult(result).trimEnd();
   const isError = Boolean((result as { isError?: boolean } | undefined)?.isError);
   const title = `${isError ? "❌" : "✅"} ${toolName}`;
@@ -89,7 +93,7 @@ function formatToolMarkdown(toolName: string, result: unknown, options: { expand
 
 function titleLine(title: string, args: unknown) {
   const summary = summarizeArgs(args);
-  return summary ? `### ${title}\n\n\`${summary}\`` : `### ${title}`;
+  return summary ? `**${title}**\n\n\`${summary}\`` : `**${title}**`;
 }
 
 function summarizeArgs(args: unknown) {

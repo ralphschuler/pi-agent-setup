@@ -97,7 +97,7 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - `/hello-setup` command
   - `hello_setup` tool
   - a small status indicator when loaded
-- `extensions/caveman/` registers `/caveman` to toggle caveman language and choose `lite`, `full`, or `ultra` intensity.
+- `extensions/caveman/` registers `/caveman` to toggle terse caveman language and choose `lite`, `full`, `ultra`, `wenyan-lite`, `wenyan` (friendly label for full wenyan), or `wenyan-ultra` intensity.
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool

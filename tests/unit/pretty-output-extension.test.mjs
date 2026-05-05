@@ -20,6 +20,21 @@ test("pretty-output wraps common built-in tools with markdown result rendering",
   }
   assert.match(source, /renderResult\(result/);
   assert.match(source, /formatToolMarkdown\(name, result, options, context\.args\)/);
-  assert.match(source, /new Markdown\(markdown/);
+  assert.match(source, /getMarkdownTheme\(\)/);
+  assert.match(source, /createMarkdown\(markdown\)/);
   assert.match(source, /fenced\(text/);
+});
+
+test("pretty-output avoids markdown headings in tool cards", () => {
+  const source = readText("extensions/pretty-output/index.ts");
+
+  assert.doesNotMatch(source, /`### /);
+  assert.match(source, /`\*\*\$\{title\}\*\*/);
+});
+
+test("pretty-output passes MarkdownTheme to pi-tui Markdown", () => {
+  const source = readText("extensions/pretty-output/index.ts");
+
+  assert.doesNotMatch(source, /new Markdown\([^)]*, 0, 0, theme\)/);
+  assert.match(source, /new Markdown\(markdown, 0, 0, getMarkdownTheme\(\)\)/);
 });

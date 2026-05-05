@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import cavemanExtension from "../../extensions/caveman/index.ts";
 import { readText } from "../helpers.mjs";
 
 test("caveman extension registers command and prompt injection hook", () => {
@@ -12,10 +13,12 @@ test("caveman extension registers command and prompt injection hook", () => {
 });
 
 test("caveman extension supports all requested command modes", () => {
-  const source = readText("extensions/caveman/index.ts");
+  const extensionSource = readText("extensions/caveman/index.ts");
+  const coreSource = readText("extensions/caveman/core.mjs");
+  const source = `${extensionSource}\n${coreSource}`;
 
-  for (const token of ["lite", "full", "ultra", "on", "off", "status"]) {
-    assert.match(source, new RegExp(`"${token}"`), `missing command token ${token}`);
+  for (const token of ["lite", "full", "ultra", "wenyan-lite", "wenyan", "wenyan-ultra", "on", "off", "status"]) {
+    assert.match(source, new RegExp(`\\b${token}\\b`), `missing command token ${token}`);
   }
 });
 
@@ -27,10 +30,58 @@ test("caveman prompt keeps safety and technical precision", () => {
     "Do not dumb down code",
     "irreversible action confirmation",
     "normal mode",
+    "Do not drift verbose",
+    "fewer output tokens",
     "Intensity",
   ]) {
     assert.match(source, new RegExp(phrase.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")), `missing prompt phrase: ${phrase}`);
   }
+});
+
+test("caveman command handles aliases, status, off, and invalid args", async () => {
+  const events = new Map();
+  const commands = new Map();
+  const notifications = [];
+  const statuses = [];
+  const pi = {
+    on(name, handler) {
+      events.set(name, handler);
+    },
+    registerCommand(name, command) {
+      commands.set(name, command);
+    },
+  };
+  const ui = {
+    notify(message, level) {
+      notifications.push({ message, level });
+    },
+    setStatus(name, value) {
+      statuses.push({ name, value });
+    },
+  };
+
+  cavemanExtension(pi);
+  const command = commands.get("caveman");
+  assert.ok(command);
+
+  await command.handler("wenyan", { ui });
+  assert.deepEqual(notifications.at(-1), { message: "caveman ON (wenyan)", level: "info" });
+  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman wenyan •" });
+
+  const promptUpdate = events.get("before_agent_start")({ systemPrompt: "base" });
+  assert.match(promptUpdate.systemPrompt, /<caveman-mode active level="wenyan-full">/);
+
+  await command.handler("status", { ui });
+  assert.deepEqual(notifications.at(-1), { message: "🪨 caveman wenyan •", level: "info" });
+
+  await command.handler("off", { ui });
+  assert.deepEqual(notifications.at(-1), { message: "caveman OFF", level: "info" });
+  assert.deepEqual(statuses.at(-1), { name: "caveman", value: "🪨 caveman off •" });
+  assert.equal(events.get("before_agent_start")({ systemPrompt: "base" }), undefined);
+
+  await command.handler("bad", { ui });
+  assert.equal(notifications.at(-1).level, "warning");
+  assert.match(notifications.at(-1).message, /unknown arg "bad"/);
 });
 
 test("caveman state persists outside repository under pi agent data", () => {

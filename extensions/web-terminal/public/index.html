@@ -15,71 +15,10 @@
     <link rel="stylesheet" href="/styles.css" />
   </head>
   <body>
-    <div id="app">
-      <header class="topbar">
-        <div><strong>π web</strong><small id="status">connecting…</small></div>
-        <div class="top-actions"><button id="install" hidden>Install</button><button id="refresh">Refresh</button></div>
-      </header>
-      <main>
-        <section class="screen active" id="screen-terminal">
-          <div class="terminal-card">
-            <div class="traffic"><span></span><span></span><span></span></div>
-            <div id="terminal"></div>
-          </div>
-        </section>
-        <section class="screen" id="screen-chat">
-          <div id="chat-log" class="feed"></div>
-          <form id="chat-form" class="composer">
-            <textarea id="chat-input" aria-label="Message pi or type slash command" placeholder="Message pi or type /command"></textarea
-            ><button id="chat-send">Send</button>
-          </form>
-        </section>
-        <section class="screen" id="screen-status"><div class="grid" id="status-grid"></div></section>
-        <section class="screen" id="screen-tasks">
-          <div class="toolbar"><button data-load="tasks">Reload</button></div>
-          <div class="list" id="tasks-list"></div>
-        </section>
-        <section class="screen" id="screen-files">
-          <div class="toolbar"><button id="file-up">Up</button><span id="file-path">.</span></div>
-          <div class="list" id="files-list"></div>
-          <pre id="file-content"></pre>
-        </section>
-        <section class="screen" id="screen-logs">
-          <div class="toolbar">
-            <select id="log-level" aria-label="Log level filter">
-              <option value="">All</option>
-              <option>info</option>
-              <option>warning</option>
-              <option>error</option>
-            </select>
-          </div>
-          <div class="feed" id="logs-list"></div>
-        </section>
-        <section class="screen" id="screen-cron"><div class="list" id="cron-list"></div></section>
-        <section class="screen" id="screen-skills">
-          <input class="search" data-target="skills-list" aria-label="Search tools" placeholder="Search tools…" />
-          <div class="list" id="skills-list"></div>
-        </section>
-        <section class="screen" id="screen-crm"><div class="list" id="crm-list"></div></section>
-        <section class="screen" id="screen-calendar"><div class="list" id="calendar-list"></div></section>
-        <section class="screen" id="screen-extensions"><div class="list" id="extensions-list"></div></section>
-        <section class="screen" id="screen-settings"><div class="grid" id="settings-grid"></div></section>
-      </main>
-      <nav class="tabs">
-        <button data-tab="terminal" aria-label="Terminal" class="active">⌨️<span>Terminal</span></button
-        ><button data-tab="chat" aria-label="Chat">💬<span>Chat</span></button
-        ><button data-tab="status" aria-label="Status">📊<span>Status</span></button
-        ><button data-tab="tasks" aria-label="Tasks">📋<span>Tasks</span></button
-        ><button data-tab="files" aria-label="Files">📁<span>Files</span></button
-        ><button data-tab="logs" aria-label="Logs">📜<span>Logs</span></button
-        ><button data-tab="cron" aria-label="Cron">⏰<span>Cron</span></button
-        ><button data-tab="skills" aria-label="Skills">🧠<span>Skills</span></button
-        ><button data-tab="crm" aria-label="CRM">👥<span>CRM</span></button
-        ><button data-tab="calendar" aria-label="Calendar">📅<span>Calendar</span></button
-        ><button data-tab="extensions" aria-label="Extensions">🧩<span>Ext</span></button
-        ><button data-tab="settings" aria-label="Settings">⚙️<span>Settings</span></button>
-      </nav>
-    </div>
+    <main id="app">
+      <div id="terminal" aria-label="Terminal"></div>
+      <div id="status" aria-live="polite">connecting…</div>
+    </main>
     <script src="/vendor/xterm/xterm.js"></script>
     <script src="/vendor/xterm-addon-fit/addon-fit.js"></script>
     <script src="/app.js" type="module"></script>

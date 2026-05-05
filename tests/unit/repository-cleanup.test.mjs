@@ -101,17 +101,18 @@ test("web terminal avoids unauthenticated CDN runtime and excludes API service-w
   assert.match(sw, /url\.pathname\.startsWith\("\/api\/"\)/);
 });
 
-test("web terminal basic accessibility and chat failure handling", () => {
+test("web terminal is terminal-only and accessible", () => {
   const html = readText("extensions/web-terminal/public/index.html");
   const app = readText("extensions/web-terminal/public/app.js");
 
   assert.doesNotMatch(html, /user-scalable=no/);
-  assert.match(html, /aria-label="Message pi or type slash command"/);
-  assert.match(html, /aria-label="Log level filter"/);
-  assert.match(html, /aria-label="Search tools"/);
+  assert.doesNotMatch(html, /<nav/);
+  assert.doesNotMatch(html, /data-tab=/);
+  assert.doesNotMatch(html, /id="chat-/);
   assert.match(html, /aria-label="Terminal"/);
-  assert.match(app, /Failed to send prompt/);
-  assert.match(app, /input\.value = prompt/);
+  assert.match(app, /new Terminal/);
+  assert.match(app, /term\.focus\(\)/);
+  assert.doesNotMatch(app, /chat\/prompt/);
 });
 
 test("browser bridge documents broad host permissions", () => {

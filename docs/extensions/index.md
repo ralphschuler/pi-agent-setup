@@ -4,17 +4,18 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 
 ## Agent-facing tools
 
-| Tool             | Extension      | Purpose                                    |
-| ---------------- | -------------- | ------------------------------------------ |
-| `browser_bridge` | Browser bridge | Control a connected Chrome/Edge browser.   |
-| `cronjob`        | Cronjobs       | Schedule future or recurring agent tasks.  |
-| `graph_memory`   | Graph memory   | Persist durable knowledge across sessions. |
-| `human_in_loop`  | Human in loop  | Ask for clarification/approval in the TUI. |
-| `process`        | Processes      | Manage long-running commands.              |
-| `search`         | SearXNG search | Search the web through SearXNG.            |
-| `subagent`       | Subagents      | Run bounded specialist agents.             |
-| `todo`           | Todo           | Track persistent agent tasks.              |
-| `web_terminal`   | Web terminal   | Show web terminal status/setup URLs.       |
+| Tool             | Extension      | Purpose                                     |
+| ---------------- | -------------- | ------------------------------------------- |
+| `browser_bridge` | Browser bridge | Control a connected Chrome/Edge browser.    |
+| `cronjob`        | Cronjobs       | Schedule future or recurring agent tasks.   |
+| `graph_memory`   | Graph memory   | Persist durable knowledge across sessions.  |
+| `human_in_loop`  | Human in loop  | Ask for clarification/approval in the TUI.  |
+| `package_scout`  | Package scout  | Audit npm package metadata without install. |
+| `process`        | Processes      | Manage long-running commands.               |
+| `search`         | SearXNG search | Search the web through SearXNG.             |
+| `subagent`       | Subagents      | Run bounded specialist agents.              |
+| `todo`           | Todo           | Track persistent agent tasks.               |
+| `web_terminal`   | Web terminal   | Show web terminal status/setup URLs.        |
 
 ## Common slash commands
 
@@ -23,6 +24,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/agent`            | Manage custom subagent definitions.           |
 | `/browser-bridge`   | Start/show browser bridge setup.              |
 | `/caveman`          | Toggle terse English caveman language mode.   |
+| `/package-scout`    | Audit npm package metadata without install.   |
 | `/pet`              | Show or manage the Tamagotchi pet.            |
 | `/pick-issue`       | Pick an issue, branch, and create a WIP PR.   |
 | `/plan <task>`      | Clarification-first planning workflow.        |

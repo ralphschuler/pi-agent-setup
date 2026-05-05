@@ -144,8 +144,8 @@ export default function todo(pi: ExtensionAPI) {
           case "pending":
           case "complete": {
             if (!Number.isInteger(params.id)) throw new Error(`action=${params.action} requires id`);
-            const status = params.action === "complete" ? "completed" : params.action;
-            const item = setStatus(params.id!, status as TodoStatus);
+            const status = params.action === "complete" ? "completed" : params.action === "start" ? "in_progress" : "pending";
+            const item = setStatus(params.id!, status);
             message = item ? `Updated todo #${params.id}` : `Todo #${params.id} not found`;
             break;
           }
@@ -201,11 +201,7 @@ function parseMarkdown(markdown: string): TodoItem[] {
     if (!match) continue;
 
     const marker = match[1];
-    const status: TodoStatus = marker === "x" || marker === "X"
-      ? "completed"
-      : marker === "-"
-        ? "in_progress"
-        : "pending";
+    const status: TodoStatus = marker === "x" || marker === "X" ? "completed" : marker === "-" ? "in_progress" : "pending";
 
     parsed.push({
       id: Number(match[2]),
@@ -218,12 +214,7 @@ function parseMarkdown(markdown: string): TodoItem[] {
 }
 
 function renderMarkdown(items: TodoItem[]) {
-  const lines = [
-    "# Todo",
-    "",
-    "<!-- Managed by the pi todo extension. Edit carefully; supported markers are [ ], [-], and [x]. -->",
-    "",
-  ];
+  const lines = ["# Todo", "", "<!-- Managed by the pi todo extension. Edit carefully; supported markers are [ ], [-], and [x]. -->", ""];
 
   for (const item of items) {
     lines.push(`- [${markdownMarker[item.status]}] #${item.id} ${item.text}`);

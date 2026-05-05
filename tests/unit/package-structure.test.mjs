@@ -42,8 +42,14 @@ test("skills have required frontmatter matching directory names", () => {
 
 test("README documents included extension entrypoints", () => {
   const readme = readText("README.md");
+  const extensionsDir = path.join(repoRoot, "extensions");
+  const names = fs
+    .readdirSync(extensionsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory() && entry.name !== "shared")
+    .map((entry) => entry.name)
+    .sort();
 
-  for (const name of ["caveman", "hello-tool", "processes", "subagents", "todo", "web-terminal"]) {
+  for (const name of names) {
     assert.match(readme, new RegExp(`extensions/${name}/`), `README missing ${name}`);
   }
 });

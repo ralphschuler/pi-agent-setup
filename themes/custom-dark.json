@@ -1,14 +1,68 @@
 {
+  "$schema": "https://raw.githubusercontent.com/badlogic/pi-mono/main/packages/coding-agent/src/modes/interactive/theme/theme-schema.json",
   "name": "custom-dark",
   "description": "Minimal custom dark theme bootstrap for pi.",
   "colors": {
     "primary": "#8ab4f8",
     "secondary": "#c58af9",
+    "background": "#202124",
+
+    "accent": "#8ab4f8",
+    "border": "#5f87ff",
+    "borderAccent": "#00d7ff",
+    "borderMuted": "#505050",
     "success": "#81c995",
-    "warning": "#fdd663",
     "error": "#f28b82",
-    "text": "#e8eaed",
+    "warning": "#fdd663",
     "muted": "#9aa0a6",
-    "background": "#202124"
+    "dim": "#666666",
+    "text": "#e8eaed",
+    "thinkingText": "#9aa0a6",
+
+    "selectedBg": "#3a3a4a",
+    "userMessageBg": "#343541",
+    "userMessageText": "#e8eaed",
+    "customMessageBg": "#2d2838",
+    "customMessageText": "#e8eaed",
+    "customMessageLabel": "#c58af9",
+    "toolPendingBg": "#282832",
+    "toolSuccessBg": "#283228",
+    "toolErrorBg": "#3c2828",
+    "toolTitle": "#e8eaed",
+    "toolOutput": "#9aa0a6",
+
+    "mdHeading": "#fdd663",
+    "mdLink": "#8ab4f8",
+    "mdLinkUrl": "#666666",
+    "mdCode": "#8ab4f8",
+    "mdCodeBlock": "#81c995",
+    "mdCodeBlockBorder": "#9aa0a6",
+    "mdQuote": "#9aa0a6",
+    "mdQuoteBorder": "#9aa0a6",
+    "mdHr": "#9aa0a6",
+    "mdListBullet": "#8ab4f8",
+
+    "toolDiffAdded": "#81c995",
+    "toolDiffRemoved": "#f28b82",
+    "toolDiffContext": "#9aa0a6",
+
+    "syntaxComment": "#6A9955",
+    "syntaxKeyword": "#8ab4f8",
+    "syntaxFunction": "#fdd663",
+    "syntaxVariable": "#9CDCFE",
+    "syntaxString": "#CE9178",
+    "syntaxNumber": "#B5CEA8",
+    "syntaxType": "#4EC9B0",
+    "syntaxOperator": "#D4D4D4",
+    "syntaxPunctuation": "#D4D4D4",
+
+    "thinkingOff": "#505050",
+    "thinkingMinimal": "#6e6e6e",
+    "thinkingLow": "#5f87af",
+    "thinkingMedium": "#81a2be",
+    "thinkingHigh": "#c58af9",
+    "thinkingXhigh": "#d183e8",
+
+    "bashMode": "#81c995"
   }
 }

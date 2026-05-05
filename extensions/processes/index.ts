@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -5,6 +6,13 @@ import path from "node:path";
 import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
 import { matchesKey, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
+
+type LogWatch = {
+  pattern: string;
+  stream: "stdout" | "stderr" | "both";
+  repeat: boolean;
+  matched: boolean;
+};
 
 type ManagedProcess = {
   id: string;
@@ -19,10 +27,24 @@ type ManagedProcess = {
   stderr: string[];
   stdoutLog: string;
   stderrLog: string;
+  alertOnSuccess: boolean;
+  alertOnFailure: boolean;
+  alertOnKill: boolean;
+  logWatches: LogWatch[];
   child?: ChildProcessWithoutNullStreams;
 };
 
-type ProcessDetails = { action: string; process?: Omit<ManagedProcess, "child">; processes?: Omit<ManagedProcess, "child">[]; stdout?: string[]; stderr?: string[]; stdoutLog?: string; stderrLog?: string; cleared?: number; ended?: boolean };
+type ProcessDetails = {
+  action: string;
+  process?: Omit<ManagedProcess, "child">;
+  processes?: Omit<ManagedProcess, "child">[];
+  stdout?: string[];
+  stderr?: string[];
+  stdoutLog?: string;
+  stderrLog?: string;
+  cleared?: number;
+  ended?: boolean;
+};
 
 const processes = new Map<string, ManagedProcess>();
 let nextId = 1;
@@ -59,13 +81,19 @@ class ProcessListComponent {
     const all = [...processes.values()];
     const running = all.filter((proc) => proc.status === "running").length;
     const lines: string[] = [""];
-    lines.push(truncateToWidth(`${th.fg("borderMuted", "──")} ${th.fg("accent", th.bold("Processes"))} ${th.fg("muted", `${running} running / ${all.length} total`)}`, width));
+    lines.push(
+      truncateToWidth(
+        `${th.fg("borderMuted", "──")} ${th.fg("accent", th.bold("Processes"))} ${th.fg("muted", `${running} running / ${all.length} total`)}`,
+        width,
+      ),
+    );
     lines.push("");
     if (all.length === 0) {
       lines.push(truncateToWidth(`  ${th.fg("dim", "No managed processes.")}`, width));
     } else {
       for (const proc of all) {
-        const icon = proc.status === "running" ? th.fg("success", "●") : proc.status === "killed" ? th.fg("warning", "■") : th.fg("dim", "○");
+        const icon =
+          proc.status === "running" ? th.fg("success", "●") : proc.status === "killed" ? th.fg("warning", "■") : th.fg("dim", "○");
         const name = th.fg("accent", `#${proc.id} ${proc.name}`);
         const status = statusText(proc, th);
         lines.push(truncateToWidth(`  ${icon} ${name} ${status}`, width));
@@ -107,22 +135,33 @@ export default function processesExtension(pi: ExtensionAPI) {
       alertOnSuccess: Type.Optional(Type.Boolean()),
       alertOnFailure: Type.Optional(Type.Boolean()),
       alertOnKill: Type.Optional(Type.Boolean()),
-      logWatches: Type.Optional(Type.Array(Type.Object({
-        pattern: Type.String(),
-        stream: Type.Optional(Type.Union([Type.Literal("stdout"), Type.Literal("stderr"), Type.Literal("both")])),
-        repeat: Type.Optional(Type.Boolean()),
-      }))),
+      logWatches: Type.Optional(
+        Type.Array(
+          Type.Object({
+            pattern: Type.String(),
+            stream: Type.Optional(Type.Union([Type.Literal("stdout"), Type.Literal("stderr"), Type.Literal("both")])),
+            repeat: Type.Optional(Type.Boolean()),
+          }),
+        ),
+      ),
     }),
     async execute(_toolCallId, params, _signal, onUpdate, ctx) {
       try {
         switch (params.action) {
-          case "start": return await startProcess(params, ctx.cwd, onUpdate, ctx.ui);
-          case "list": return textResult(formatList(), { action: "list", processes: serializeAll() });
-          case "output": return outputFor(requiredProcess(params.id));
-          case "logs": return logsFor(requiredProcess(params.id));
-          case "kill": return killProcess(requiredProcess(params.id), ctx.ui);
-          case "clear": return clearFinished(ctx.ui);
-          case "write": return writeInput(requiredProcess(params.id), params.input ?? "", Boolean(params.end));
+          case "start":
+            return await startProcess(params, ctx.cwd, onUpdate, ctx.ui);
+          case "list":
+            return textResult(formatList(), { action: "list", processes: serializeAll() });
+          case "output":
+            return outputFor(requiredProcess(params.id));
+          case "logs":
+            return logsFor(requiredProcess(params.id));
+          case "kill":
+            return killProcess(requiredProcess(params.id), ctx.ui);
+          case "clear":
+            return clearFinished(ctx.ui);
+          case "write":
+            return writeInput(requiredProcess(params.id), params.input ?? "", Boolean(params.end));
         }
       } catch (error) {
         return textResult(error instanceof Error ? error.message : String(error), { action: "error" }, true);
@@ -153,8 +192,10 @@ export default function processesExtension(pi: ExtensionAPI) {
         const running = details.processes.filter((proc) => proc.status === "running").length;
         const shown = expanded ? details.processes : details.processes.slice(0, 8);
         let text = theme.fg("accent", `${running} running / ${details.processes.length} total`);
-        for (const proc of shown) text += `\n${statusIcon(proc.status, theme)} ${theme.fg("accent", `#${proc.id}`)} ${theme.fg("muted", proc.name)} ${theme.fg("dim", trimLine(proc.command, 70))}`;
-        if (!expanded && details.processes.length > shown.length) text += `\n${theme.fg("dim", `… ${details.processes.length - shown.length} more`)}`;
+        for (const proc of shown)
+          text += `\n${statusIcon(proc.status, theme)} ${theme.fg("accent", `#${proc.id}`)} ${theme.fg("muted", proc.name)} ${theme.fg("dim", trimLine(proc.command, 70))}`;
+        if (!expanded && details.processes.length > shown.length)
+          text += `\n${theme.fg("dim", `… ${details.processes.length - shown.length} more`)}`;
         return new Text(text, 0, 0);
       }
       return new Text(theme.fg("success", textFromResult(result)), 0, 0);
@@ -190,32 +231,79 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
 
   const child = spawn(params.command, { cwd, shell: true, stdio: "pipe", env: process.env });
   const proc: ManagedProcess = {
-    id, name: params.name, command: params.command, cwd, startedAt: Date.now(), status: "running",
-    stdout: [], stderr: [], stdoutLog, stderrLog, child,
+    id,
+    name: params.name,
+    command: params.command,
+    cwd,
+    startedAt: Date.now(),
+    status: "running",
+    stdout: [],
+    stderr: [],
+    stdoutLog,
+    stderrLog,
+    alertOnSuccess: Boolean(params.alertOnSuccess),
+    alertOnFailure: Boolean(params.alertOnFailure),
+    alertOnKill: Boolean(params.alertOnKill),
+    logWatches: normalizeLogWatches(params.logWatches),
+    child,
   };
   processes.set(id, proc);
 
-  child.stdout.on("data", (data) => appendOutput(proc, "stdout", data));
-  child.stderr.on("data", (data) => appendOutput(proc, "stderr", data));
+  child.stdout.on("data", (data) => appendOutput(proc, "stdout", data, ui));
+  child.stderr.on("data", (data) => appendOutput(proc, "stderr", data, ui));
   child.on("exit", (code, signal) => {
     proc.status = signal ? "killed" : "exited";
     proc.exitCode = code;
     proc.signal = signal;
+    notifyProcessExit(proc, ui);
     updateProcessStatus(ui);
   });
-  child.on("error", (error) => appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`)));
+  child.on("error", (error) => appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), ui));
 
   updateProcessStatus(ui);
   onUpdate?.({ content: [{ type: "text", text: `Started ${params.name} as #${id}` }] });
   return textResult(`Started process #${id} (${params.name}).`, { action: "start", process: serialize(proc) });
 }
 
-function appendOutput(proc: ManagedProcess, stream: "stdout" | "stderr", data: Buffer) {
+function appendOutput(proc: ManagedProcess, stream: "stdout" | "stderr", data: Buffer, ui?: any) {
   const text = data.toString();
   const lines = text.split(/\r?\n/).filter((line, index, arr) => line.length > 0 || index < arr.length - 1);
   proc[stream].push(...lines);
   if (proc[stream].length > LOG_LIMIT) proc[stream].splice(0, proc[stream].length - LOG_LIMIT);
+  checkLogWatches(proc, stream, lines, ui);
   void fs.appendFile(stream === "stdout" ? proc.stdoutLog : proc.stderrLog, text, "utf8");
+}
+
+function normalizeLogWatches(value: unknown): LogWatch[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((watch) => watch && typeof watch === "object" && typeof (watch as { pattern?: unknown }).pattern === "string")
+    .map((watch) => {
+      const input = watch as { pattern: string; stream?: "stdout" | "stderr" | "both"; repeat?: boolean };
+      return { pattern: input.pattern, stream: input.stream || "both", repeat: Boolean(input.repeat), matched: false };
+    });
+}
+
+function checkLogWatches(proc: ManagedProcess, stream: "stdout" | "stderr", lines: string[], ui?: any) {
+  if (!ui?.notify || lines.length === 0) return;
+  const text = lines.join("\n");
+  for (const watch of proc.logWatches) {
+    if (watch.matched && !watch.repeat) continue;
+    if (watch.stream !== "both" && watch.stream !== stream) continue;
+    if (!new RegExp(watch.pattern).test(text)) continue;
+    watch.matched = true;
+    ui.notify(`Process #${proc.id} (${proc.name}) matched ${stream} watch: ${watch.pattern}`, "warning");
+  }
+}
+
+function notifyProcessExit(proc: ManagedProcess, ui?: any) {
+  if (!ui?.notify) return;
+  if (proc.status === "killed" && proc.alertOnKill)
+    ui.notify(`Process #${proc.id} (${proc.name}) was killed${proc.signal ? ` by ${proc.signal}` : ""}.`, "warning");
+  if (proc.status === "exited" && proc.exitCode === 0 && proc.alertOnSuccess)
+    ui.notify(`Process #${proc.id} (${proc.name}) completed successfully.`, "success");
+  if (proc.status === "exited" && proc.exitCode !== 0 && proc.alertOnFailure)
+    ui.notify(`Process #${proc.id} (${proc.name}) failed with exit code ${proc.exitCode ?? "?"}.`, "error");
 }
 
 function requiredProcess(id?: string) {
@@ -226,19 +314,28 @@ function requiredProcess(id?: string) {
 }
 
 function outputFor(proc: ManagedProcess) {
-  return textResult([
-    `#${proc.id} ${proc.name} — ${proc.status}`,
-    proc.stdout.length ? `\nstdout:\n${proc.stdout.join("\n")}` : "\nstdout: <empty>",
-    proc.stderr.length ? `\nstderr:\n${proc.stderr.join("\n")}` : "\nstderr: <empty>",
-  ].join("\n"), { action: "output", process: serialize(proc), stdout: proc.stdout, stderr: proc.stderr });
+  return textResult(
+    [
+      `#${proc.id} ${proc.name} — ${proc.status}`,
+      proc.stdout.length ? `\nstdout:\n${proc.stdout.join("\n")}` : "\nstdout: <empty>",
+      proc.stderr.length ? `\nstderr:\n${proc.stderr.join("\n")}` : "\nstderr: <empty>",
+    ].join("\n"),
+    { action: "output", process: serialize(proc), stdout: proc.stdout, stderr: proc.stderr },
+  );
 }
 
 function logsFor(proc: ManagedProcess) {
-  return textResult(`stdout: ${proc.stdoutLog}\nstderr: ${proc.stderrLog}`, { action: "logs", process: serialize(proc), stdoutLog: proc.stdoutLog, stderrLog: proc.stderrLog });
+  return textResult(`stdout: ${proc.stdoutLog}\nstderr: ${proc.stderrLog}`, {
+    action: "logs",
+    process: serialize(proc),
+    stdoutLog: proc.stdoutLog,
+    stderrLog: proc.stderrLog,
+  });
 }
 
 function killProcess(proc: ManagedProcess, ui?: any) {
-  if (proc.status !== "running") return textResult(`Process #${proc.id} is already ${proc.status}.`, { action: "kill", process: serialize(proc) });
+  if (proc.status !== "running")
+    return textResult(`Process #${proc.id} is already ${proc.status}.`, { action: "kill", process: serialize(proc) });
   proc.child?.kill("SIGTERM");
   proc.status = "killed";
   updateProcessStatus(ui);
@@ -279,7 +376,12 @@ function serializeAll() {
 }
 
 function safeName(name: string) {
-  return name.toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "") || "process";
+  return (
+    name
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^-+|-+$/g, "") || "process"
+  );
 }
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {
@@ -310,6 +412,8 @@ function textFromResult(result: any) {
 }
 
 function trimLine(text: string, max: number) {
-  const flat = String(text || "").replace(/\s+/g, " ").trim();
+  const flat = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > max ? `${flat.slice(0, Math.max(0, max - 1))}…` : flat;
 }

@@ -4,9 +4,9 @@
 
 Use a compact table during complex investigations:
 
-| Hypothesis | Evidence For | Evidence Against | Test/Falsifier | Status |
-|---|---|---|---|---|
-| ... | ... | ... | ... | open/falsified/confirmed |
+| Hypothesis | Evidence For | Evidence Against | Test/Falsifier | Status                   |
+| ---------- | ------------ | ---------------- | -------------- | ------------------------ |
+| ...        | ...          | ...              | ...            | open/falsified/confirmed |
 
 ## Reproduction Template
 
@@ -42,7 +42,8 @@ Relevant logs:
 Root cause: ...
 Fix: ...
 Validation:
+
 - ...
-Risks/follow-ups:
+  Risks/follow-ups:
 - ...
 ```

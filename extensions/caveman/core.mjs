@@ -68,13 +68,13 @@ export function buildCavemanPrompt(level) {
       "Drop articles and extra helper words when meaning stays clear.",
       "Prefer short fragments over long polished sentences.",
       "Use simple words, occasional caveman flavor, and direct structure.",
-      "Example style: \"Me check files. Bug in parser. Fix small.\"",
+      'Example style: "Me check files. Bug in parser. Fix small."',
     ].join("\n- "),
     ultra: [
       "Be extremely brief: fragments, arrows, abbreviations, one-line answers when enough.",
       "Drop most articles, pronouns, filler, and ceremony.",
       "Use arrows and compact cause/effect wording.",
-      "Example style: \"Bad ref → rerender. Use memo. Done.\"",
+      'Example style: "Bad ref → rerender. Use memo. Done."',
     ].join("\n- "),
   };
 

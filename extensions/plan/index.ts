@@ -3,7 +3,19 @@ import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
-const PLANNING_TOOLS = new Set(["read", "bash", "grep", "find", "ls", "ask_user_question", "questionnaire", "human_in_loop", "subagent", "todo", "graph_memory"]);
+const PLANNING_TOOLS = new Set([
+  "read",
+  "bash",
+  "grep",
+  "find",
+  "ls",
+  "ask_user_question",
+  "questionnaire",
+  "human_in_loop",
+  "subagent",
+  "todo",
+  "graph_memory",
+]);
 
 export default function planCommand(pi: ExtensionAPI) {
   let planningActive = false;
@@ -62,23 +74,23 @@ export default function planCommand(pi: ExtensionAPI) {
     if (!text.includes(PLAN_REVIEW_MARKER)) return;
 
     approvedPlan = text;
-    const choice = await ctx.ui.select("Plan ready - what next?", [
-      "Apply the plan",
-      "Refine the plan",
-      "Cancel planning",
-    ]);
+    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Refine the plan", "Cancel planning"]);
 
     if (choice === "Apply the plan") {
       planningActive = false;
       ctx.ui.setStatus("plan", "applying");
-      pi.sendUserMessage(`Apply this approved plan now. Follow it step by step, update todo/graph_memory when useful, and report progress.\n\n${approvedPlan}`);
+      pi.sendUserMessage(
+        `Apply this approved plan now. Follow it step by step, update todo/graph_memory when useful, and report progress.\n\n${approvedPlan}`,
+      );
       return;
     }
 
     if (choice === "Refine the plan") {
       const refinement = await ctx.ui.editor("What should be refined?", "");
       if (refinement?.trim()) {
-        pi.sendUserMessage(`Refine the current plan with this feedback, ask more clarifying questions if coverage is no longer complete, then present an updated plan with ${PLAN_REVIEW_MARKER}.\n\nFeedback:\n${refinement.trim()}`);
+        pi.sendUserMessage(
+          `Refine the current plan with this feedback, ask more clarifying questions if coverage is no longer complete, then present an updated plan with ${PLAN_REVIEW_MARKER}.\n\nFeedback:\n${refinement.trim()}`,
+        );
       }
       return;
     }

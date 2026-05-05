@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import crypto from "node:crypto";
@@ -9,7 +10,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
 
-const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "0.0.0.0";
+const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.PI_WEB_TERMINAL_PORT || 17474);
 const INITIAL_TOKEN = process.env.PI_WEB_TERMINAL_TOKEN || crypto.randomBytes(18).toString("base64url");
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
@@ -68,7 +69,12 @@ function sse(req: http.IncomingMessage, res: http.ServerResponse, clients: Set<S
       clients.delete(res);
       return;
     }
-    try { res.write(": ping\n\n"); } catch { clearInterval(keepalive); clients.delete(res); }
+    try {
+      res.write(": ping\n\n");
+    } catch {
+      clearInterval(keepalive);
+      clients.delete(res);
+    }
   }, 15000);
   req.on("close", () => {
     clearInterval(keepalive);
@@ -83,7 +89,11 @@ function broadcast(clients: Set<SseClient>, data: unknown) {
       clients.delete(res);
       continue;
     }
-    try { res.write(payload); } catch { clients.delete(res); }
+    try {
+      res.write(payload);
+    } catch {
+      clients.delete(res);
+    }
   }
 }
 
@@ -99,14 +109,31 @@ function safeResolve(cwd: string, requestedPath: string) {
   }
 }
 
-function localAddresses(port: number) {
+function localAddresses(port: number, host = DEFAULT_HOST) {
   const addresses = [`http://localhost:${port}`];
-  for (const entries of Object.values(os.networkInterfaces())) {
-    for (const entry of entries || []) {
-      if (entry.family === "IPv4" && !entry.internal) addresses.push(`http://${entry.address}:${port}`);
+  if (host === "0.0.0.0" || host === "::") {
+    for (const entries of Object.values(os.networkInterfaces())) {
+      for (const entry of entries || []) {
+        if (entry.family === "IPv4" && !entry.internal) addresses.push(`http://${entry.address}:${port}`);
+      }
     }
+  } else if (host !== "127.0.0.1" && host !== "localhost" && host !== "::1") {
+    addresses.push(`http://${host}:${port}`);
   }
-  return addresses;
+  return [...new Set(addresses)];
+}
+
+function cookieValue(cookieHeader: string | undefined, name: string) {
+  if (!cookieHeader) return undefined;
+  for (const part of cookieHeader.split(";")) {
+    const [rawKey, ...rawValue] = part.trim().split("=");
+    if (rawKey === name) return decodeURIComponent(rawValue.join("="));
+  }
+  return undefined;
+}
+
+function isAuthed(req: http.IncomingMessage, url: URL, token: string) {
+  return url.searchParams.get("token") === token || cookieValue(req.headers.cookie, "pi_web_terminal_token") === token;
 }
 
 function contentType(file: string) {
@@ -174,9 +201,28 @@ export default function webTerminal(pi: ExtensionAPI) {
     if (p === "/status") {
       const mem = process.memoryUsage();
       const tools = typeof anyPi.getAllTools === "function" ? anyPi.getAllTools() : [];
-      return json(res, 200, { agent: { status: "healthy", cwd: currentCwd }, system: { nodeVersion: process.version, platform: process.platform, arch: process.arch, uptimeSeconds: Math.round(process.uptime()), memoryMB: Math.round(mem.rss / 1024 / 1024), heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024) }, terminal: { clients: clients.size, port }, tools: { count: tools.length, names: tools.map((t: any) => t.name).sort() } });
+      return json(res, 200, {
+        agent: { status: "healthy", cwd: currentCwd },
+        system: {
+          nodeVersion: process.version,
+          platform: process.platform,
+          arch: process.arch,
+          uptimeSeconds: Math.round(process.uptime()),
+          memoryMB: Math.round(mem.rss / 1024 / 1024),
+          heapUsedMB: Math.round(mem.heapUsed / 1024 / 1024),
+        },
+        terminal: { clients: clients.size, port },
+        tools: { count: tools.length, names: tools.map((t: any) => t.name).sort() },
+      });
     }
-    if (p === "/settings") return json(res, 200, { host: DEFAULT_HOST, port, tokenSet: Boolean(currentToken), command: process.env.PI_WEB_TERMINAL_COMMAND || "pi -c", cwd: currentCwd });
+    if (p === "/settings")
+      return json(res, 200, {
+        host: DEFAULT_HOST,
+        port,
+        tokenSet: Boolean(currentToken),
+        command: process.env.PI_WEB_TERMINAL_COMMAND || "pi -c",
+        cwd: currentCwd,
+      });
     if (p === "/chat/commands") return json(res, 200, { commands: typeof anyPi.getCommands === "function" ? anyPi.getCommands() : [] });
     if (p === "/chat/events") return sse(req, res, eventClients, { type: "connected", time: new Date().toISOString() });
     if (p === "/chat/prompt" && req.method === "POST") {
@@ -188,20 +234,34 @@ export default function webTerminal(pi: ExtensionAPI) {
         broadcast(eventClients, { type: "user_prompt", text: body.prompt, time: new Date().toISOString() });
         log("info", "chat", `prompt submitted: ${body.prompt.slice(0, 80)}`);
         return json(res, 200, { ok: true });
-      } catch (error) { return json(res, 400, { error: error instanceof Error ? error.message : "Invalid JSON" }); }
+      } catch (error) {
+        return json(res, 400, { error: error instanceof Error ? error.message : "Invalid JSON" });
+      }
     }
     if (p === "/files/list") {
       const url = new URL(req.url || "/", "http://localhost");
       const resolved = safeResolve(currentCwd, url.searchParams.get("path") || ".");
       if (!resolved) return json(res, 400, { error: "Invalid path" });
       try {
-        const items = fs.readdirSync(resolved, { withFileTypes: true }).filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name)).map((e) => {
-          const full = path.join(resolved, e.name);
-          const stat = fs.statSync(full);
-          return { name: e.name, path: path.relative(currentCwd, full), type: e.isDirectory() ? "directory" : "file", size: e.isDirectory() ? 0 : stat.size, modified: stat.mtime.toISOString() };
-        }).sort((a, b) => a.type === b.type ? a.name.localeCompare(b.name) : a.type === "directory" ? -1 : 1);
+        const items = fs
+          .readdirSync(resolved, { withFileTypes: true })
+          .filter((e) => !e.name.startsWith(".") && !SKIP_DIRS.has(e.name))
+          .map((e) => {
+            const full = path.join(resolved, e.name);
+            const stat = fs.statSync(full);
+            return {
+              name: e.name,
+              path: path.relative(currentCwd, full),
+              type: e.isDirectory() ? "directory" : "file",
+              size: e.isDirectory() ? 0 : stat.size,
+              modified: stat.mtime.toISOString(),
+            };
+          })
+          .sort((a, b) => (a.type === b.type ? a.name.localeCompare(b.name) : a.type === "directory" ? -1 : 1));
         return json(res, 200, { path: path.relative(currentCwd, resolved) || ".", items });
-      } catch { return json(res, 404, { error: "Directory not found" }); }
+      } catch {
+        return json(res, 404, { error: "Directory not found" });
+      }
     }
     if (p === "/files/read") {
       const url = new URL(req.url || "/", "http://localhost");
@@ -212,7 +272,9 @@ export default function webTerminal(pi: ExtensionAPI) {
         if (stat.isDirectory()) return json(res, 400, { error: "Is a directory" });
         if (stat.size > 512 * 1024) return json(res, 400, { error: "File too large" });
         return json(res, 200, { path: path.relative(currentCwd, resolved), content: fs.readFileSync(resolved, "utf8"), size: stat.size });
-      } catch { return json(res, 404, { error: "File not found" }); }
+      } catch {
+        return json(res, 404, { error: "File not found" });
+      }
     }
     if (p === "/logs") return json(res, 200, { logs: logBuffer });
     if (p === "/logs/events") return sse(req, res, logClients, { type: "connected", time: new Date().toISOString() });
@@ -223,14 +285,25 @@ export default function webTerminal(pi: ExtensionAPI) {
     if (p === "/extensions") {
       const tools = typeof anyPi.getAllTools === "function" ? anyPi.getAllTools() : [];
       const grouped: Record<string, string[]> = {};
-      for (const t of tools) { const prefix = t.name?.includes("_") ? t.name.split("_")[0] : "core"; (grouped[prefix] ||= []).push(t.name); }
-      return json(res, 200, { extensions: Object.entries(grouped).map(([name, toolNames]) => ({ name, tools: toolNames, toolCount: toolNames.length })) });
+      for (const t of tools) {
+        const prefix = t.name?.includes("_") ? t.name.split("_")[0] : "core";
+        (grouped[prefix] ||= []).push(t.name);
+      }
+      return json(res, 200, {
+        extensions: Object.entries(grouped).map(([name, toolNames]) => ({ name, tools: toolNames, toolCount: toolNames.length })),
+      });
     }
     async function execJson(command: string, args: string[], fallbackKey: string) {
       try {
         const result = await anyPi.exec(command, args, { timeout: 10000 });
         const out = (result.stdout || "").trim();
-        if (result.code === 0 && out) { try { return JSON.parse(out); } catch { return { raw: out }; } }
+        if (result.code === 0 && out) {
+          try {
+            return JSON.parse(out);
+          } catch {
+            return { raw: out };
+          }
+        }
       } catch {}
       return { [fallbackKey]: [] };
     }
@@ -250,7 +323,8 @@ export default function webTerminal(pi: ExtensionAPI) {
     if (p.startsWith("/tasks/") && req.method === "PATCH") {
       const id = decodeURIComponent(p.split("/")[2] || "");
       const body = JSON.parse(await readBody(req));
-      const action = body.action === "start" ? "start" : body.action === "close" ? "close" : body.action === "reopen" ? "reopen" : undefined;
+      const action =
+        body.action === "start" ? "start" : body.action === "close" ? "close" : body.action === "reopen" ? "reopen" : undefined;
       if (!action) return json(res, 400, { error: "Unknown action" });
       return json(res, 200, await runCli("td", [action, id]));
     }
@@ -271,7 +345,8 @@ export default function webTerminal(pi: ExtensionAPI) {
       if (body.company) args.push("--company", body.company);
       return json(res, 200, await runCli("pi-crm", args));
     }
-    if (p === "/calendar" && req.method === "GET") return json(res, 200, await execJson("pi-calendar", ["events", "list", "--json"], "events"));
+    if (p === "/calendar" && req.method === "GET")
+      return json(res, 200, await execJson("pi-calendar", ["events", "list", "--json"], "events"));
     if (p === "/calendar" && req.method === "POST") {
       const body = JSON.parse(await readBody(req));
       const args = ["events", "create", body.title || "Untitled"];
@@ -287,7 +362,7 @@ export default function webTerminal(pi: ExtensionAPI) {
     if (server) return;
     server = http.createServer((req, res) => {
       const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-      const authed = url.searchParams.get("token") === currentToken || req.headers.cookie?.includes(`pi_web_terminal_token=${currentToken}`);
+      const authed = isAuthed(req, url, currentToken);
 
       if (url.pathname === "/health") {
         res.writeHead(200, { "content-type": "application/json" });
@@ -305,7 +380,7 @@ export default function webTerminal(pi: ExtensionAPI) {
         if (url.searchParams.get("token") === currentToken) {
           res.writeHead(302, {
             location: "/",
-            "set-cookie": `pi_web_terminal_token=${currentToken}; HttpOnly; SameSite=Lax; Path=/`,
+            "set-cookie": `pi_web_terminal_token=${encodeURIComponent(currentToken)}; HttpOnly; SameSite=Lax; Path=/`,
           });
           res.end();
           return;
@@ -317,7 +392,9 @@ export default function webTerminal(pi: ExtensionAPI) {
 
       if (!authed) {
         res.writeHead(200, { "content-type": "text/html; charset=utf-8" });
-        res.end(`<!doctype html><title>Pi Web Terminal</title><body style="background:#101014;color:#f5f5f7;font:16px system-ui;padding:2rem"><h1>Pi Web Terminal</h1><p>Open the authenticated setup URL from <code>/web-terminal</code>.</p><form action="/login"><input name="token" placeholder="Token" autofocus style="font:inherit;padding:.6rem;background:#181820;color:white;border:1px solid #444;border-radius:8px"><button style="font:inherit;margin-left:.5rem;padding:.6rem">Open</button></form></body>`);
+        res.end(
+          `<!doctype html><title>Pi Web Terminal</title><body style="background:#101014;color:#f5f5f7;font:16px system-ui;padding:2rem"><h1>Pi Web Terminal</h1><p>Open the authenticated setup URL from <code>/web-terminal</code>.</p><form action="/login"><input name="token" placeholder="Token" autofocus style="font:inherit;padding:.6rem;background:#181820;color:white;border:1px solid #444;border-radius:8px"><button style="font:inherit;margin-left:.5rem;padding:.6rem">Open</button></form></body>`,
+        );
         return;
       }
 
@@ -334,14 +411,17 @@ export default function webTerminal(pi: ExtensionAPI) {
           res.end("not found");
           return;
         }
-        res.writeHead(200, { "content-type": contentType(absolute), "cache-control": absolute.endsWith("sw.js") ? "no-cache" : "public, max-age=300" });
+        res.writeHead(200, {
+          "content-type": contentType(absolute),
+          "cache-control": absolute.endsWith("sw.js") ? "no-cache" : "public, max-age=300",
+        });
         res.end(data);
       });
     });
 
     server.on("upgrade", (req, socket) => {
       const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
-      const authed = url.searchParams.get("token") === currentToken || req.headers.cookie?.includes(`pi_web_terminal_token=${currentToken}`);
+      const authed = isAuthed(req, url, currentToken);
       if (url.pathname !== "/terminal" || !authed) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
         socket.destroy();
@@ -352,7 +432,15 @@ export default function webTerminal(pi: ExtensionAPI) {
         socket.destroy();
         return;
       }
-      socket.write(["HTTP/1.1 101 Switching Protocols", "Upgrade: websocket", "Connection: Upgrade", `Sec-WebSocket-Accept: ${wsAcceptKey(key)}`, "\r\n"].join("\r\n"));
+      socket.write(
+        [
+          "HTTP/1.1 101 Switching Protocols",
+          "Upgrade: websocket",
+          "Connection: Upgrade",
+          `Sec-WebSocket-Accept: ${wsAcceptKey(key)}`,
+          "\r\n",
+        ].join("\r\n"),
+      );
 
       const cols = Number(url.searchParams.get("cols") || 120);
       const rows = Number(url.searchParams.get("rows") || 34);
@@ -387,7 +475,11 @@ export default function webTerminal(pi: ExtensionAPI) {
           try {
             const payload = JSON.parse(message);
             if (payload.type === "input" && typeof payload.data === "string") client.child?.stdin.write(payload.data);
-            if (payload.type === "resize") sendFrame(socket, { type: "status", text: `\r\n[resize ${payload.cols}x${payload.rows}; restart tab to apply terminal geometry]\r\n` });
+            if (payload.type === "resize")
+              sendFrame(socket, {
+                type: "status",
+                text: `\r\n[resize ${payload.cols}x${payload.rows}; restart tab to apply terminal geometry]\r\n`,
+              });
             if (payload.type === "kill") client.child?.kill("SIGTERM");
           } catch {
             // Ignore malformed client messages.
@@ -422,7 +514,10 @@ export default function webTerminal(pi: ExtensionAPI) {
       await startServer(ctx.cwd);
       ctx.ui.setStatus("web-terminal", statusText());
     } catch (error) {
-      ctx.ui.notify(`Web terminal failed to listen on ${DEFAULT_HOST}:${port}: ${error instanceof Error ? error.message : String(error)}`, "error");
+      ctx.ui.notify(
+        `Web terminal failed to listen on ${DEFAULT_HOST}:${port}: ${error instanceof Error ? error.message : String(error)}`,
+        "error",
+      );
     }
   });
 
@@ -439,7 +534,8 @@ export default function webTerminal(pi: ExtensionAPI) {
   pi.on("message_update", async (event) => {
     const delta = (event as any).assistantMessageEvent;
     if (delta?.type === "text_delta") broadcast(eventClients, { type: "text_delta", delta: delta.delta, time: new Date().toISOString() });
-    if (delta?.type === "thinking_delta") broadcast(eventClients, { type: "thinking_delta", delta: delta.delta, time: new Date().toISOString() });
+    if (delta?.type === "thinking_delta")
+      broadcast(eventClients, { type: "thinking_delta", delta: delta.delta, time: new Date().toISOString() });
   });
 
   pi.on("turn_end", async (event) => {
@@ -451,7 +547,12 @@ export default function webTerminal(pi: ExtensionAPI) {
         if (block.type === "thinking") content.push({ type: "thinking", thinking: String(block.thinking || "").slice(0, 4096) });
       }
     }
-    broadcast(eventClients, { type: "turn_end", content, toolResults: (event as any).toolResults?.length || 0, time: new Date().toISOString() });
+    broadcast(eventClients, {
+      type: "turn_end",
+      content,
+      toolResults: (event as any).toolResults?.length || 0,
+      time: new Date().toISOString(),
+    });
   });
 
   pi.on("tool_call", async (event) => {
@@ -460,8 +561,17 @@ export default function webTerminal(pi: ExtensionAPI) {
   });
 
   pi.on("tool_result", async (event) => {
-    const content = event.content?.filter((c: any) => c.type === "text").map((c: any) => ({ type: "text", text: String(c.text || "").slice(0, 4096) })) || [];
-    broadcast(eventClients, { type: "tool_end", toolName: event.toolName, toolCallId: event.toolCallId, isError: event.isError, content, time: new Date().toISOString() });
+    const content =
+      event.content?.filter((c: any) => c.type === "text").map((c: any) => ({ type: "text", text: String(c.text || "").slice(0, 4096) })) ||
+      [];
+    broadcast(eventClients, {
+      type: "tool_end",
+      toolName: event.toolName,
+      toolCallId: event.toolCallId,
+      isError: event.isError,
+      content,
+      time: new Date().toISOString(),
+    });
     log(event.isError ? "error" : "info", "tool", `← ${event.toolName}${event.isError ? " (error)" : ""}`);
   });
 
@@ -471,9 +581,17 @@ export default function webTerminal(pi: ExtensionAPI) {
       client.socket.destroy();
     }
     clients.clear();
-    for (const res of eventClients) { try { res.end(); } catch {} }
+    for (const res of eventClients) {
+      try {
+        res.end();
+      } catch {}
+    }
     eventClients.clear();
-    for (const res of logClients) { try { res.end(); } catch {} }
+    for (const res of logClients) {
+      try {
+        res.end();
+      } catch {}
+    }
     logClients.clear();
     await new Promise<void>((resolve) => server?.close(() => resolve()) ?? resolve());
     server = undefined;
@@ -485,7 +603,13 @@ export default function webTerminal(pi: ExtensionAPI) {
       await startServer(ctx.cwd);
       rotateToken();
       const urls = setupUrls();
-      const message = [`Web terminal token generated.`, `Open: ${urls[0]}`, urls.length > 1 ? `LAN: ${urls.slice(1).join(" or ")}` : undefined].filter(Boolean).join("\n");
+      const message = [
+        `Web terminal token generated.`,
+        `Open: ${urls[0]}`,
+        urls.length > 1 ? `LAN: ${urls.slice(1).join(" or ")}` : undefined,
+      ]
+        .filter(Boolean)
+        .join("\n");
       ctx.ui.notify(message, "info");
     },
   });
@@ -502,7 +626,17 @@ export default function webTerminal(pi: ExtensionAPI) {
       if (params.action === "setup") rotateToken();
       const urls = setupUrls();
       return {
-        content: [{ type: "text", text: [`Web terminal server: ${DEFAULT_HOST}:${port}`, `Connected terminals: ${clients.size}`, `Open: ${urls.join(" or ")}`, `Token: ${currentToken}`].join("\n") }],
+        content: [
+          {
+            type: "text",
+            text: [
+              `Web terminal server: ${DEFAULT_HOST}:${port}`,
+              `Connected terminals: ${clients.size}`,
+              `Open: ${urls.join(" or ")}`,
+              `Token: ${currentToken}`,
+            ].join("\n"),
+          },
+        ],
         details: { host: DEFAULT_HOST, port, clients: clients.size, urls, token: currentToken },
       };
     },

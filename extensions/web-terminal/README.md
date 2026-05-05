@@ -32,7 +32,7 @@ pi -c
 
 ## Configuration
 
-- `PI_WEB_TERMINAL_HOST` — bind host, default `0.0.0.0`
+- `PI_WEB_TERMINAL_HOST` — bind host, default `127.0.0.1`. Set `0.0.0.0` only when you intentionally want LAN/remote access.
 - `PI_WEB_TERMINAL_PORT` — bind port, default `17474`
 - `PI_WEB_TERMINAL_TOKEN` — optional initial access token; `/web-terminal` and `web_terminal` setup generate a fresh token and URL each time
 - `PI_WEB_TERMINAL_COMMAND` — child command, default `pi -c`
@@ -44,4 +44,4 @@ Optional mobile integrations call external CLIs when present: `td`, `pi-cron`, `
 
 ## Security
 
-The web terminal is equivalent to local terminal access as your user. Keep the token secret and expose the port only on trusted networks, localhost, SSH tunnels, or VPNs.
+The web terminal is equivalent to local terminal access as your user. It binds to localhost by default so browser/RPC access stays on the local machine. Keep the token secret. Expose the port with `PI_WEB_TERMINAL_HOST=0.0.0.0` only on trusted networks, SSH tunnels, or VPNs.

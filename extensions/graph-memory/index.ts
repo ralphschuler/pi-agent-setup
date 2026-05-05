@@ -72,7 +72,9 @@ export default function graphMemory(pi: ExtensionAPI) {
       "Do not ask the user to manage graph memory manually; treat it as your own memory system.",
       "Only store durable information, not short-lived implementation details unless they define project state or decisions.",
       memoryContext,
-    ].filter(Boolean).join("\n");
+    ]
+      .filter(Boolean)
+      .join("\n");
 
     return { systemPrompt: `${event.systemPrompt}\n\n<graph_memory>\n${instructions}\n</graph_memory>` };
   });
@@ -80,7 +82,8 @@ export default function graphMemory(pi: ExtensionAPI) {
   pi.registerTool({
     name: "graph_memory",
     label: "Graph Memory",
-    description: "Agent-only persistent knowledge graph for remembering facts, concepts, decisions, projects, people, resources, tasks, and their relationships across sessions.",
+    description:
+      "Agent-only persistent knowledge graph for remembering facts, concepts, decisions, projects, people, resources, tasks, and their relationships across sessions.",
     promptSnippet: "Agent memory: store and query durable graph-style knowledge across sessions.",
     promptGuidelines: [
       "Use graph_memory as your own memory system to persist important user preferences, decisions, project facts, entities, and relationships that should survive future sessions.",
@@ -202,17 +205,28 @@ export default function graphMemory(pi: ExtensionAPI) {
 
   function formatList() {
     if (store.nodes.length === 0) return `Graph memory is empty.\n\nStore: ${STORE_PATH}`;
-    const nodes = store.nodes.map((node) => `- ${node.id} (${node.type}) — ${node.title}${node.tags.length ? ` [${node.tags.join(", ")}]` : ""}`);
+    const nodes = store.nodes.map(
+      (node) => `- ${node.id} (${node.type}) — ${node.title}${node.tags.length ? ` [${node.tags.join(", ")}]` : ""}`,
+    );
     const edges = store.edges.map((edge) => `- ${edge.from} -[${edge.relation}]-> ${edge.to}`);
-    return [`Graph Memory`, ``, `Nodes:`, ...nodes, ``, `Links:`, ...(edges.length ? edges : ["- none"]), ``, `Store: ${STORE_PATH}`].join("\n");
+    return [`Graph Memory`, ``, `Nodes:`, ...nodes, ``, `Links:`, ...(edges.length ? edges : ["- none"]), ``, `Store: ${STORE_PATH}`].join(
+      "\n",
+    );
   }
 
   function formatSearch(query: string) {
     const q = query.toLowerCase().trim();
     if (!q) return "Search query is required.";
-    const matches = store.nodes.filter((node) => [node.id, node.title, node.type, node.notes, node.tags.join(" ")].join(" ").toLowerCase().includes(q));
+    const matches = store.nodes.filter((node) =>
+      [node.id, node.title, node.type, node.notes, node.tags.join(" ")].join(" ").toLowerCase().includes(q),
+    );
     if (matches.length === 0) return `No graph memory matches for '${query}'.\n\nStore: ${STORE_PATH}`;
-    return [`Matches for '${query}':`, ...matches.map((node) => `- ${node.id} (${node.type}) — ${node.title}\n  ${oneLine(node.notes)}`), ``, `Store: ${STORE_PATH}`].join("\n");
+    return [
+      `Matches for '${query}':`,
+      ...matches.map((node) => `- ${node.id} (${node.type}) — ${node.title}\n  ${oneLine(node.notes)}`),
+      ``,
+      `Store: ${STORE_PATH}`,
+    ].join("\n");
   }
 
   function buildMemoryContext(prompt: string) {
@@ -295,7 +309,12 @@ function parseMarkdown(markdown: string): GraphStore {
       const line = lines[index];
       if (line.startsWith("- id: ")) node.id = line.slice(6).trim();
       else if (line.startsWith("- type: ") && isNodeType(line.slice(8).trim())) node.type = line.slice(8).trim() as NodeType;
-      else if (line.startsWith("- tags: ")) node.tags = line.slice(8).split(",").map((tag) => tag.trim()).filter(Boolean);
+      else if (line.startsWith("- tags: "))
+        node.tags = line
+          .slice(8)
+          .split(",")
+          .map((tag) => tag.trim())
+          .filter(Boolean);
       else if (line.startsWith("- updated: ")) node.updatedAt = line.slice(11).trim();
       else if (line === "### Notes") inNotes = true;
       else if (inNotes) notes.push(line);
@@ -309,12 +328,7 @@ function parseMarkdown(markdown: string): GraphStore {
 }
 
 function renderMarkdown(store: GraphStore) {
-  const lines = [
-    "# Graph Memory",
-    "",
-    "<!-- Managed by the pi graph-memory extension. This is a simple markdown knowledge graph. -->",
-    "",
-  ];
+  const lines = ["# Graph Memory", "", "<!-- Managed by the pi graph-memory extension. This is a simple markdown knowledge graph. -->", ""];
 
   for (const node of store.nodes) {
     lines.push(`## Node: ${node.title}`);
@@ -336,7 +350,14 @@ function renderMarkdown(store: GraphStore) {
 }
 
 function slugify(value: string) {
-  return value.toLowerCase().trim().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 80) || "memory";
+  return (
+    value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, "-")
+      .replace(/^-+|-+$/g, "")
+      .slice(0, 80) || "memory"
+  );
 }
 
 function unique(values: string[]) {

@@ -55,9 +55,10 @@ export default function cronjobs(pi: ExtensionAPI) {
       .filter((job) => job.enabled && job.nextRunAt)
       .sort((a, b) => Date.parse(a.nextRunAt!) - Date.parse(b.nextRunAt!))
       .slice(0, 5);
-    ctx.ui.setWidget("cronjobs", dueSoon.length > 0
-      ? ["Cronjobs", ...dueSoon.map((job) => `#${job.id} ${job.name} → ${formatWhen(job.nextRunAt!)}`)]
-      : []);
+    ctx.ui.setWidget(
+      "cronjobs",
+      dueSoon.length > 0 ? ["Cronjobs", ...dueSoon.map((job) => `#${job.id} ${job.name} → ${formatWhen(job.nextRunAt!)}`)] : [],
+    );
   }
 
   function startTimer() {
@@ -82,9 +83,9 @@ export default function cronjobs(pi: ExtensionAPI) {
       job.updatedAt = now.toISOString();
       changed = true;
 
-      pi.sendUserMessage([
-        { type: "text", text: `Run scheduled cronjob #${job.id}: ${job.name}\n\n${job.task}` },
-      ], { deliverAs: "followUp" });
+      pi.sendUserMessage([{ type: "text", text: `Run scheduled cronjob #${job.id}: ${job.name}\n\n${job.task}` }], {
+        deliverAs: "followUp",
+      });
     }
 
     if (changed) {
@@ -133,7 +134,9 @@ export default function cronjobs(pi: ExtensionAPI) {
       ]),
       name: Type.Optional(Type.String({ description: "Short job name for action=schedule" })),
       task: Type.Optional(Type.String({ description: "Prompt/task to send to the agent when the job runs" })),
-      schedule: Type.Optional(Type.String({ description: "Schedule expression: ISO date, every <n> minutes|hours|days, daily HH:MM, or 5-field cron" })),
+      schedule: Type.Optional(
+        Type.String({ description: "Schedule expression: ISO date, every <n> minutes|hours|days, daily HH:MM, or 5-field cron" }),
+      ),
       id: Type.Optional(Type.Number({ description: "Job id for cancel/enable/disable" })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
@@ -162,7 +165,10 @@ export default function cronjobs(pi: ExtensionAPI) {
         sortJobs();
         await saveStore();
         updateUi(ctx);
-        return textResult(`Scheduled cronjob #${job.id}: ${job.name}\nNext run: ${job.nextRunAt ?? "never"}\n\n${formatJobs()}`, { jobs, storePath: STORE_PATH });
+        return textResult(`Scheduled cronjob #${job.id}: ${job.name}\nNext run: ${job.nextRunAt ?? "never"}\n\n${formatJobs()}`, {
+          jobs,
+          storePath: STORE_PATH,
+        });
       }
 
       if (params.action === "cancel") {
@@ -171,7 +177,10 @@ export default function cronjobs(pi: ExtensionAPI) {
         jobs = jobs.filter((job) => job.id !== params.id);
         await saveStore();
         updateUi(ctx);
-        return textResult(before === jobs.length ? `Cronjob #${params.id} not found.` : `Cancelled cronjob #${params.id}.\n\n${formatJobs()}`, { jobs, storePath: STORE_PATH });
+        return textResult(
+          before === jobs.length ? `Cronjob #${params.id} not found.` : `Cancelled cronjob #${params.id}.\n\n${formatJobs()}`,
+          { jobs, storePath: STORE_PATH },
+        );
       }
 
       if (params.action === "enable" || params.action === "disable") {
@@ -183,7 +192,10 @@ export default function cronjobs(pi: ExtensionAPI) {
         job.nextRunAt = job.enabled ? computeNextRun(job, new Date())?.toISOString() : undefined;
         await saveStore();
         updateUi(ctx);
-        return textResult(`${params.action === "enable" ? "Enabled" : "Disabled"} cronjob #${job.id}.\n\n${formatJobs()}`, { jobs, storePath: STORE_PATH });
+        return textResult(`${params.action === "enable" ? "Enabled" : "Disabled"} cronjob #${job.id}.\n\n${formatJobs()}`, {
+          jobs,
+          storePath: STORE_PATH,
+        });
       }
 
       if (params.action === "run_due") {
@@ -213,7 +225,9 @@ export default function cronjobs(pi: ExtensionAPI) {
     if (jobs.length === 0) return `No cronjobs scheduled.\n\nStore: ${STORE_PATH}`;
     return [
       "Cronjobs:",
-      ...jobs.map((job) => `- #${job.id} ${job.enabled ? "enabled" : "disabled"} ${job.name} — ${job.schedule} — next: ${job.nextRunAt || "none"}`),
+      ...jobs.map(
+        (job) => `- #${job.id} ${job.enabled ? "enabled" : "disabled"} ${job.name} — ${job.schedule} — next: ${job.nextRunAt || "none"}`,
+      ),
       "",
       `Store: ${STORE_PATH}`,
     ].join("\n");
@@ -224,7 +238,9 @@ export default function cronjobs(pi: ExtensionAPI) {
     if (active.length === 0) return "No active cronjobs.";
     return [
       "Active cronjobs:",
-      ...active.slice(0, 10).map((job) => `- #${job.id} ${job.name}: ${job.schedule}; next=${job.nextRunAt || "unknown"}; task=${oneLine(job.task)}`),
+      ...active
+        .slice(0, 10)
+        .map((job) => `- #${job.id} ${job.name}: ${job.schedule}; next=${job.nextRunAt || "unknown"}; task=${oneLine(job.task)}`),
     ].join("\n");
   }
 }
@@ -289,7 +305,8 @@ function nextCronRun(expression: string, from: Date) {
       matchesCronField(fields[2], candidate.getDate(), 1, 31) &&
       matchesCronField(fields[3], candidate.getMonth() + 1, 1, 12) &&
       matchesCronField(fields[4], candidate.getDay(), 0, 6)
-    ) return candidate;
+    )
+      return candidate;
   }
   return undefined;
 }
@@ -313,48 +330,45 @@ function matchesCronField(field: string, value: number, min: number, max: number
 
 function parseMarkdown(markdown: string): CronJob[] {
   const blocks = markdown.split(/^## Job /m).slice(1);
-  return blocks.map((block) => {
-    const lines = block.split(/\r?\n/);
-    const header = lines.shift() || "0";
-    const id = Number(header.trim());
-    const job: CronJob = {
-      id,
-      name: "Untitled",
-      task: "",
-      schedule: "every 1 day",
-      kind: "every",
-      enabled: true,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-    const task: string[] = [];
-    let inTask = false;
-    for (const line of lines) {
-      if (line.startsWith("- name: ")) job.name = line.slice(8).trim();
-      else if (line.startsWith("- schedule: ")) job.schedule = line.slice(12).trim();
-      else if (line.startsWith("- kind: ")) job.kind = line.slice(8).trim() as ScheduleKind;
-      else if (line.startsWith("- enabled: ")) job.enabled = line.slice(11).trim() === "true";
-      else if (line.startsWith("- created: ")) job.createdAt = line.slice(11).trim();
-      else if (line.startsWith("- updated: ")) job.updatedAt = line.slice(11).trim();
-      else if (line.startsWith("- lastRun: ")) job.lastRunAt = emptyToUndefined(line.slice(11).trim());
-      else if (line.startsWith("- nextRun: ")) job.nextRunAt = emptyToUndefined(line.slice(11).trim());
-      else if (line === "### Task") inTask = true;
-      else if (inTask) task.push(line);
-    }
-    job.task = task.join("\n").trim();
-    const parsed = parseSchedule(job.schedule);
-    if (parsed) job.kind = parsed.kind;
-    return job;
-  }).filter((job) => Number.isInteger(job.id) && job.task);
+  return blocks
+    .map((block) => {
+      const lines = block.split(/\r?\n/);
+      const header = lines.shift() || "0";
+      const id = Number(header.trim());
+      const job: CronJob = {
+        id,
+        name: "Untitled",
+        task: "",
+        schedule: "every 1 day",
+        kind: "every",
+        enabled: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
+      const task: string[] = [];
+      let inTask = false;
+      for (const line of lines) {
+        if (line.startsWith("- name: ")) job.name = line.slice(8).trim();
+        else if (line.startsWith("- schedule: ")) job.schedule = line.slice(12).trim();
+        else if (line.startsWith("- kind: ")) job.kind = line.slice(8).trim() as ScheduleKind;
+        else if (line.startsWith("- enabled: ")) job.enabled = line.slice(11).trim() === "true";
+        else if (line.startsWith("- created: ")) job.createdAt = line.slice(11).trim();
+        else if (line.startsWith("- updated: ")) job.updatedAt = line.slice(11).trim();
+        else if (line.startsWith("- lastRun: ")) job.lastRunAt = emptyToUndefined(line.slice(11).trim());
+        else if (line.startsWith("- nextRun: ")) job.nextRunAt = emptyToUndefined(line.slice(11).trim());
+        else if (line === "### Task") inTask = true;
+        else if (inTask) task.push(line);
+      }
+      job.task = task.join("\n").trim();
+      const parsed = parseSchedule(job.schedule);
+      if (parsed) job.kind = parsed.kind;
+      return job;
+    })
+    .filter((job) => Number.isInteger(job.id) && job.task);
 }
 
 function renderMarkdown(jobs: CronJob[]) {
-  const lines = [
-    "# Cronjobs",
-    "",
-    "<!-- Managed by the pi cronjob extension. Scheduled task bodies are sent back to pi when due. -->",
-    "",
-  ];
+  const lines = ["# Cronjobs", "", "<!-- Managed by the pi cronjob extension. Scheduled task bodies are sent back to pi when due. -->", ""];
   for (const job of jobs) {
     lines.push(`## Job ${job.id}`);
     lines.push(`- name: ${job.name}`);

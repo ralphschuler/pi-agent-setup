@@ -53,6 +53,11 @@ if command -v node >/dev/null 2>&1; then
   done < <(find extensions tests -type f \( -name '*.ts' -o -name '*.js' -o -name '*.mjs' \) | sort)
 fi
 
+if command -v npm >/dev/null 2>&1 && [[ -d node_modules ]]; then
+  npm run typecheck
+  npm run lint
+fi
+
 if [[ "$fail" -ne 0 ]]; then
   exit 1
 fi

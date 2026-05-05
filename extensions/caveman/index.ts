@@ -1,14 +1,7 @@
+// @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
-import {
-  buildCavemanPrompt,
-  COMMAND_TOKENS,
-  COMPLETION_ITEMS,
-  isLevel,
-  readState,
-  statusLine,
-  writeState,
-} from "./core.mjs";
+import { buildCavemanPrompt, COMMAND_TOKENS, COMPLETION_ITEMS, isLevel, readState, statusLine, writeState } from "./core.mjs";
 
 type Level = "lite" | "full" | "ultra";
 

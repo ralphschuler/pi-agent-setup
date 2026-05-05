@@ -98,64 +98,78 @@ async function runCommand(action, args) {
 
   if (action === "click") {
     if (!args.selector) throw new Error("click requires selector");
-    return executeInTab((selector) => {
-      const el = document.querySelector(selector);
-      if (!el) throw new Error(`No element matches ${selector}`);
-      el.scrollIntoView({ block: "center", inline: "center" });
-      el.click();
-      return { clicked: selector, text: (el.innerText || el.value || el.getAttribute("aria-label") || "").slice(0, 500) };
-    }, [args.selector]);
+    return executeInTab(
+      (selector) => {
+        const el = document.querySelector(selector);
+        if (!el) throw new Error(`No element matches ${selector}`);
+        el.scrollIntoView({ block: "center", inline: "center" });
+        el.click();
+        return { clicked: selector, text: (el.innerText || el.value || el.getAttribute("aria-label") || "").slice(0, 500) };
+      },
+      [args.selector],
+    );
   }
 
   if (action === "type") {
     if (!args.selector) throw new Error("type requires selector");
-    return executeInTab((selector, text) => {
-      const el = document.querySelector(selector);
-      if (!el) throw new Error(`No element matches ${selector}`);
-      el.scrollIntoView({ block: "center", inline: "center" });
-      el.focus();
-      if ("value" in el) {
-        el.value = text;
-        el.dispatchEvent(new Event("input", { bubbles: true }));
-        el.dispatchEvent(new Event("change", { bubbles: true }));
-      } else {
-        el.textContent = text;
-        el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text }));
-      }
-      return { typed: selector, length: String(text).length };
-    }, [args.selector, args.text || ""]);
+    return executeInTab(
+      (selector, text) => {
+        const el = document.querySelector(selector);
+        if (!el) throw new Error(`No element matches ${selector}`);
+        el.scrollIntoView({ block: "center", inline: "center" });
+        el.focus();
+        if ("value" in el) {
+          el.value = text;
+          el.dispatchEvent(new Event("input", { bubbles: true }));
+          el.dispatchEvent(new Event("change", { bubbles: true }));
+        } else {
+          el.textContent = text;
+          el.dispatchEvent(new InputEvent("input", { bubbles: true, data: text }));
+        }
+        return { typed: selector, length: String(text).length };
+      },
+      [args.selector, args.text || ""],
+    );
   }
 
   if (action === "get_text") {
-    return executeInTab((selector) => {
-      const root = selector ? document.querySelector(selector) : document.body;
-      if (!root) throw new Error(`No element matches ${selector}`);
-      return (root.innerText || root.textContent || "").trim();
-    }, [args.selector || ""]);
+    return executeInTab(
+      (selector) => {
+        const root = selector ? document.querySelector(selector) : document.body;
+        if (!root) throw new Error(`No element matches ${selector}`);
+        return (root.innerText || root.textContent || "").trim();
+      },
+      [args.selector || ""],
+    );
   }
 
   if (action === "get_html") {
-    return executeInTab((selector) => {
-      const root = selector ? document.querySelector(selector) : document.documentElement;
-      if (!root) throw new Error(`No element matches ${selector}`);
-      return root.outerHTML || root.innerHTML || "";
-    }, [args.selector || ""]);
+    return executeInTab(
+      (selector) => {
+        const root = selector ? document.querySelector(selector) : document.documentElement;
+        if (!root) throw new Error(`No element matches ${selector}`);
+        return root.outerHTML || root.innerHTML || "";
+      },
+      [args.selector || ""],
+    );
   }
 
   if (action === "evaluate") {
     if (!args.script) throw new Error("evaluate requires script");
-    return executeInTab((script) => {
-      // Expression-oriented evaluation. Wrap statements in an IIFE if needed.
-      // Example: (() => { return document.title })()
-      // eslint-disable-next-line no-eval
-      const value = eval(script);
-      if (value === undefined) return null;
-      try {
-        return JSON.parse(JSON.stringify(value));
-      } catch {
-        return String(value);
-      }
-    }, [args.script]);
+    return executeInTab(
+      (script) => {
+        // Expression-oriented evaluation. Wrap statements in an IIFE if needed.
+        // Example: (() => { return document.title })()
+        const value = eval(script);
+        if (value === undefined) return null;
+        try {
+          return JSON.parse(JSON.stringify(value));
+        } catch {
+          return String(value);
+        }
+      },
+      [args.script],
+    );
   }
 
   if (action === "screenshot") {
@@ -170,14 +184,18 @@ chrome.runtime.onInstalled.addListener(connect);
 chrome.runtime.onStartup.addListener(connect);
 chrome.storage.onChanged.addListener((changes) => {
   if (changes.serverUrl || changes.token || changes.autoConnect) {
-    try { ws?.close(); } catch {}
+    try {
+      ws?.close();
+    } catch {}
     ws = undefined;
     connect();
   }
 });
 chrome.runtime.onMessage.addListener((message, _sender, sendResponse) => {
   if (message?.type === "connect") {
-    connect().then(() => sendResponse({ ok: true, state })).catch((error) => sendResponse({ ok: false, error: String(error) }));
+    connect()
+      .then(() => sendResponse({ ok: true, state }))
+      .catch((error) => sendResponse({ ok: false, error: String(error) }));
     return true;
   }
   if (message?.type === "state") {

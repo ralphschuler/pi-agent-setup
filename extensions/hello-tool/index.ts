@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 

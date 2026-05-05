@@ -47,11 +47,7 @@ export function makeFakePi() {
   const logPath = path.join(dir, "pi.log");
   const executable = path.join(dir, "pi");
 
-  fs.writeFileSync(
-    executable,
-    `#!/usr/bin/env bash\nset -euo pipefail\nprintf '%s\\n' "$*" >> ${JSON.stringify(logPath)}\n`,
-    "utf8",
-  );
+  fs.writeFileSync(executable, `#!/usr/bin/env bash\nset -euo pipefail\nprintf '%s\\n' "$*" >> ${JSON.stringify(logPath)}\n`, "utf8");
   fs.chmodSync(executable, 0o755);
 
   return {

@@ -7,10 +7,7 @@ function card(title, body = "", meta = "") {
   return `<div class="item"><h3>${esc(title)}</h3>${meta ? `<div class="muted">${esc(meta)}</div>` : ""}<div>${body}</div></div>`;
 }
 function esc(s) {
-  return String(s ?? "").replace(
-    /[&<>"]/g,
-    (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c],
-  );
+  return String(s ?? "").replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" })[c]);
 }
 async function api(path, opts) {
   const r = await fetch(`/api${path}`, opts);
@@ -88,12 +85,9 @@ function connect() {
       return;
     }
     if (p.type === "output") term.write(p.data);
-    if (p.type === "status")
-      term.write(`\x1b[38;2;138;124;255m${p.text}\x1b[0m`);
+    if (p.type === "status") term.write(`\x1b[38;2;138;124;255m${p.text}\x1b[0m`);
     if (p.type === "exit") {
-      term.write(
-        `\x1b[38;2;255;209;102m${p.text || "\r\n[terminal exited]\r\n"}\x1b[0m`,
-      );
+      term.write(`\x1b[38;2;255;209;102m${p.text || "\r\n[terminal exited]\r\n"}\x1b[0m`);
       setStatus("terminal exited");
     }
   });
@@ -105,32 +99,22 @@ function connect() {
   socket.addEventListener("error", () => setStatus("terminal error"));
 }
 term.onData((data) => {
-  if (socket?.readyState === WebSocket.OPEN)
-    socket.send(JSON.stringify({ type: "input", data }));
+  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "input", data }));
 });
 window.addEventListener("resize", () => {
   fitAddon.fit();
-  if (socket?.readyState === WebSocket.OPEN)
-    socket.send(
-      JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }),
-    );
+  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
 });
 
 async function loadStatus() {
   const d = await api("/status");
   $("#status-grid").innerHTML = [
-    card(
-      "Agent",
-      `${d.agent.status}<br><span class=muted>${esc(d.agent.cwd)}</span>`,
-    ),
+    card("Agent", `${d.agent.status}<br><span class=muted>${esc(d.agent.cwd)}</span>`),
     card(
       "System",
       `Node ${d.system.nodeVersion}<br>${d.system.platform}/${d.system.arch}<br>RSS ${d.system.memoryMB} MB<br>Uptime ${d.system.uptimeSeconds}s`,
     ),
-    card(
-      "Tools",
-      `${d.tools.count} tools<br><span class=muted>${esc(d.tools.names?.slice(0, 20).join(", "))}</span>`,
-    ),
+    card("Tools", `${d.tools.count} tools<br><span class=muted>${esc(d.tools.names?.slice(0, 20).join(", "))}</span>`),
     card("Terminal", `${d.terminal.clients} connected on :${d.terminal.port}`),
   ].join("");
 }
@@ -147,12 +131,7 @@ async function loadGeneric(path, id, key) {
     $(id).innerHTML =
       Array.isArray(arr) && arr.length
         ? arr
-            .map((x) =>
-              card(
-                x.title || x.name || x.id || JSON.stringify(x).slice(0, 60),
-                `<pre>${esc(JSON.stringify(x, null, 2))}</pre>`,
-              ),
-            )
+            .map((x) => card(x.title || x.name || x.id || JSON.stringify(x).slice(0, 60), `<pre>${esc(JSON.stringify(x, null, 2))}</pre>`))
             .join("")
         : card("Empty", `No ${key} found`);
   } catch (e) {
@@ -161,21 +140,13 @@ async function loadGeneric(path, id, key) {
 }
 async function loadSkills() {
   const d = await api("/skills");
-  $("#skills-list").innerHTML =
-    d.skills.map((s) => card(s.name, esc(s.description))).join("") ||
-    card("No tools");
+  $("#skills-list").innerHTML = d.skills.map((s) => card(s.name, esc(s.description))).join("") || card("No tools");
 }
 async function loadExtensions() {
   const d = await api("/extensions");
   $("#extensions-list").innerHTML =
-    d.extensions
-      .map((e) =>
-        card(
-          e.name,
-          `${e.toolCount} tools<br><span class=muted>${esc(e.tools.join(", "))}</span>`,
-        ),
-      )
-      .join("") || card("No extensions");
+    d.extensions.map((e) => card(e.name, `${e.toolCount} tools<br><span class=muted>${esc(e.tools.join(", "))}</span>`)).join("") ||
+    card("No extensions");
 }
 async function loadFiles(path = currentPath) {
   currentPath = path || ".";
@@ -194,9 +165,7 @@ async function loadFiles(path = currentPath) {
         (b.onclick = async () => {
           if (b.dataset.type === "directory") loadFiles(b.dataset.path);
           else {
-            const f = await api(
-              `/files/read?path=${encodeURIComponent(b.dataset.path)}`,
-            );
+            const f = await api(`/files/read?path=${encodeURIComponent(b.dataset.path)}`);
             $("#file-content").textContent = f.content;
           }
         }),
@@ -295,22 +264,13 @@ $$(".tabs button").forEach(
   (btn) =>
     (btn.onclick = () => {
       const tab = btn.dataset.tab;
-      $$(".tabs button").forEach((b) =>
-        b.classList.toggle("active", b === btn),
-      );
-      $$(".screen").forEach((s) =>
-        s.classList.toggle("active", s.id === `screen-${tab}`),
-      );
+      $$(".tabs button").forEach((b) => b.classList.toggle("active", b === btn));
+      $$(".screen").forEach((s) => s.classList.toggle("active", s.id === `screen-${tab}`));
       loaders[tab]?.();
     }),
 );
 $("#refresh").onclick = () => loaders[$(".tabs button.active").dataset.tab]?.();
-$("#file-up").onclick = () =>
-  loadFiles(
-    currentPath === "."
-      ? "."
-      : currentPath.split("/").slice(0, -1).join("/") || ".",
-  );
+$("#file-up").onclick = () => loadFiles(currentPath === "." ? "." : currentPath.split("/").slice(0, -1).join("/") || ".");
 $("#log-level").onchange = renderLogs;
 $$(".search").forEach(
   (i) =>
@@ -318,12 +278,7 @@ $$(".search").forEach(
       const q = i.value.toLowerCase();
       document
         .querySelectorAll(`#${i.dataset.target} .item`)
-        .forEach(
-          (x) =>
-            (x.style.display = x.textContent.toLowerCase().includes(q)
-              ? ""
-              : "none"),
-        );
+        .forEach((x) => (x.style.display = x.textContent.toLowerCase().includes(q) ? "" : "none"));
     }),
 );
 let deferredInstallPrompt;
@@ -337,8 +292,7 @@ $("#install").onclick = async () => {
   deferredInstallPrompt = undefined;
   $("#install").hidden = true;
 };
-if ("serviceWorker" in navigator)
-  navigator.serviceWorker.register("/sw.js").catch(() => {});
+if ("serviceWorker" in navigator) navigator.serviceWorker.register("/sw.js").catch(() => {});
 connect();
 initChat();
 initLogs();

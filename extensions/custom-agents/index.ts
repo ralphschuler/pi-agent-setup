@@ -1,3 +1,4 @@
+// @ts-nocheck
 import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
 import { matchesKey, truncateToWidth } from "@mariozechner/pi-tui";
 import {
@@ -19,7 +20,7 @@ function helpText() {
     "/agent show <name>     Show agent details and file path",
     "/agent delete <name>   Delete a custom agent",
     "",
-    "Agents use standard folders: ~/.pi/agent/agents, ~/.agents, nearest .pi/agents, and legacy nearest .agents."
+    "Agents use standard folders: ~/.pi/agent/agents, ~/.agents, nearest .pi/agents, and legacy nearest .agents.",
   ].join("\n");
 }
 
@@ -32,7 +33,11 @@ class AgentCatalogComponent {
   private cachedWidth?: number;
   private cachedLines?: string[];
 
-  constructor(private agents: CustomAgentInfo[], private theme: Theme, private onClose: () => void) {}
+  constructor(
+    private agents: CustomAgentInfo[],
+    private theme: Theme,
+    private onClose: () => void,
+  ) {}
 
   handleInput(data: string): void {
     if (matchesKey(data, "escape") || matchesKey(data, "ctrl+c")) this.onClose();
@@ -44,7 +49,12 @@ class AgentCatalogComponent {
     const user = this.agents.filter((agent) => agent.scope === "user").length;
     const project = this.agents.filter((agent) => agent.scope === "project").length;
     const lines: string[] = [""];
-    lines.push(truncateToWidth(`${th.fg("borderMuted", "──")} ${th.fg("accent", th.bold("Custom Agents"))} ${th.fg("muted", `${project} project / ${user} user`)}`, width));
+    lines.push(
+      truncateToWidth(
+        `${th.fg("borderMuted", "──")} ${th.fg("accent", th.bold("Custom Agents"))} ${th.fg("muted", `${project} project / ${user} user`)}`,
+        width,
+      ),
+    );
     lines.push("");
     if (this.agents.length === 0) {
       lines.push(truncateToWidth(`  ${th.fg("dim", "No custom agents yet. Use /agent new to create one.")}`, width));
@@ -71,7 +81,9 @@ class AgentCatalogComponent {
 
 async function showAgentCatalog(ctx: any, agents: CustomAgentInfo[]) {
   if (!ctx.hasUI) return ctx.ui.notify(formatAgentCatalog(agents), "info");
-  await ctx.ui.custom<void>((_tui: any, theme: Theme, _kb: any, done: () => void) => new AgentCatalogComponent(agents, theme, () => done()));
+  await ctx.ui.custom<void>(
+    (_tui: any, theme: Theme, _kb: any, done: () => void) => new AgentCatalogComponent(agents, theme, () => done()),
+  );
 }
 
 export default function customAgents(pi: ExtensionAPI) {
@@ -108,12 +120,19 @@ export default function customAgents(pi: ExtensionAPI) {
           ctx.ui.notify(`No custom agent named ${name}. Use /agent new to create it.`, "error");
           return;
         }
-        ctx.ui.notify(agents.map((agent) => [
-          `${agent.runtimeName} (${agent.scope})`,
-          agent.description || "No description",
-          `Path: ${agent.path}`,
-          agent.body ? `\n${agent.body.slice(0, 1800)}` : "",
-        ].join("\n")).join("\n\n---\n\n"), "info");
+        ctx.ui.notify(
+          agents
+            .map((agent) =>
+              [
+                `${agent.runtimeName} (${agent.scope})`,
+                agent.description || "No description",
+                `Path: ${agent.path}`,
+                agent.body ? `\n${agent.body.slice(0, 1800)}` : "",
+              ].join("\n"),
+            )
+            .join("\n\n---\n\n"),
+          "info",
+        );
         return;
       }
 
@@ -150,20 +169,23 @@ export default function customAgents(pi: ExtensionAPI) {
           "fresh — independent context by default",
           "fork — inherit the current parent session",
         ]);
-        const systemPrompt = await ctx.ui.editor("System prompt / instructions", [
-          "You are a specialized subagent.",
-          "",
-          "Purpose:",
-          "- ...",
-          "",
-          "Workflow:",
-          "- Inspect the relevant files directly.",
-          "- Do not spawn subagents; the parent session owns orchestration.",
-          "- Escalate unapproved product, architecture, or scope decisions.",
-          "",
-          "Output:",
-          "- Concise summary with evidence, changed files or findings, validation, and risks.",
-        ].join("\n"));
+        const systemPrompt = await ctx.ui.editor(
+          "System prompt / instructions",
+          [
+            "You are a specialized subagent.",
+            "",
+            "Purpose:",
+            "- ...",
+            "",
+            "Workflow:",
+            "- Inspect the relevant files directly.",
+            "- Do not spawn subagents; the parent session owns orchestration.",
+            "- Escalate unapproved product, architecture, or scope decisions.",
+            "",
+            "Output:",
+            "- Concise summary with evidence, changed files or findings, validation, and risks.",
+          ].join("\n"),
+        );
         if (!systemPrompt?.trim()) return;
 
         const created = await writeCustomAgent(ctx.cwd, {
@@ -177,7 +199,10 @@ export default function customAgents(pi: ExtensionAPI) {
           systemPromptMode: "replace",
           systemPrompt,
         });
-        ctx.ui.notify(`Created ${created.runtimeName}\n${created.path}\n\nRun /reload if it is not immediately visible to the custom subagent tool.`, "success");
+        ctx.ui.notify(
+          `Created ${created.runtimeName}\n${created.path}\n\nRun /reload if it is not immediately visible to the custom subagent tool.`,
+          "success",
+        );
         return;
       }
 

@@ -3,15 +3,8 @@
   "name": "Pi Browser Bridge",
   "version": "0.1.0",
   "description": "Companion extension that lets a pi agent control this browser through an authenticated WebSocket bridge.",
-  "permissions": [
-    "activeTab",
-    "scripting",
-    "tabs",
-    "storage"
-  ],
-  "host_permissions": [
-    "<all_urls>"
-  ],
+  "permissions": ["activeTab", "scripting", "tabs", "storage"],
+  "host_permissions": ["<all_urls>"],
   "background": {
     "service_worker": "background.js"
   },

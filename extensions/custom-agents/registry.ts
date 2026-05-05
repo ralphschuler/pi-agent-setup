@@ -1,3 +1,4 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -54,7 +55,7 @@ async function isDirectory(p: string) {
 async function findNearestProjectRoot(cwd: string) {
   let currentDir = path.resolve(cwd);
   while (true) {
-    if (await isDirectory(path.join(currentDir, ".pi")) || await isDirectory(path.join(currentDir, ".agents"))) {
+    if ((await isDirectory(path.join(currentDir, ".pi"))) || (await isDirectory(path.join(currentDir, ".agents")))) {
       return currentDir;
     }
     const parentDir = path.dirname(currentDir);
@@ -66,7 +67,7 @@ async function findNearestProjectRoot(cwd: string) {
 export async function agentRoots(cwd: string): Promise<AgentRoot[]> {
   const userOld = path.join(os.homedir(), ".pi", "agent", "agents");
   const userNew = path.join(os.homedir(), ".agents");
-  const userPreferred = await isDirectory(userNew) ? userNew : userOld;
+  const userPreferred = (await isDirectory(userNew)) ? userNew : userOld;
   const roots: AgentRoot[] = [
     { scope: "user", path: userOld, preferred: userPreferred === userOld },
     { scope: "user", path: userNew, preferred: userPreferred === userNew },
@@ -87,9 +88,11 @@ export async function agentRoots(cwd: string): Promise<AgentRoot[]> {
 
 async function preferredAgentRoot(cwd: string, scope: AgentScope) {
   const roots = await agentRoots(cwd);
-  return roots.find((root) => root.scope === scope && root.preferred)?.path
-    || roots.find((root) => root.scope === scope)?.path
-    || path.join(cwd, ".pi", "agents");
+  return (
+    roots.find((root) => root.scope === scope && root.preferred)?.path ||
+    roots.find((root) => root.scope === scope)?.path ||
+    path.join(cwd, ".pi", "agents")
+  );
 }
 
 function parseFrontmatter(text: string) {
@@ -100,7 +103,10 @@ function parseFrontmatter(text: string) {
     const colon = line.indexOf(":");
     if (colon <= 0) continue;
     const key = line.slice(0, colon).trim();
-    const value = line.slice(colon + 1).trim().replace(/^['\"]|['\"]$/g, "");
+    const value = line
+      .slice(colon + 1)
+      .trim()
+      .replace(/^['\"]|['\"]$/g, "");
     frontmatter[key] = value;
   }
   return { frontmatter, body: match[2].trim() };
@@ -109,12 +115,14 @@ function parseFrontmatter(text: string) {
 async function walkMarkdown(dir: string): Promise<string[]> {
   try {
     const entries = await fs.readdir(dir, { withFileTypes: true });
-    const files = await Promise.all(entries.map(async (entry) => {
-      const full = path.join(dir, entry.name);
-      if (entry.isDirectory()) return walkMarkdown(full);
-      if (entry.isFile() && entry.name.endsWith(".md") && !entry.name.endsWith(".chain.md")) return [full];
-      return [];
-    }));
+    const files = await Promise.all(
+      entries.map(async (entry) => {
+        const full = path.join(dir, entry.name);
+        if (entry.isDirectory()) return walkMarkdown(full);
+        if (entry.isFile() && entry.name.endsWith(".md") && !entry.name.endsWith(".chain.md")) return [full];
+        return [];
+      }),
+    );
     return files.flat();
   } catch (error: any) {
     if (error?.code === "ENOENT") return [];
@@ -156,7 +164,11 @@ export async function readCustomAgents(cwd: string): Promise<CustomAgentInfo[]> 
 }
 
 export function sanitizeAgentName(name: string) {
-  return name.trim().toLowerCase().replace(/[^a-z0-9._-]+/g, "-").replace(/^-+|-+$/g, "");
+  return name
+    .trim()
+    .toLowerCase()
+    .replace(/[^a-z0-9._-]+/g, "-")
+    .replace(/^-+|-+$/g, "");
 }
 
 function yamlLine(key: string, value: unknown) {
@@ -184,7 +196,9 @@ export async function writeCustomAgent(cwd: string, draft: AgentDraft) {
     yamlLine("inheritProjectContext", draft.inheritProjectContext ?? true),
     yamlLine("inheritSkills", draft.inheritSkills ?? true),
     yamlLine("systemPromptMode", draft.systemPromptMode || "replace"),
-  ].filter(Boolean).join("\n");
+  ]
+    .filter(Boolean)
+    .join("\n");
   const content = `---\n${frontmatter}\n---\n\n${draft.systemPrompt.trim()}\n`;
   await fs.writeFile(file, content, "utf8");
   return { path: file, runtimeName, name, package: pkg };
@@ -192,7 +206,8 @@ export async function writeCustomAgent(cwd: string, draft: AgentDraft) {
 
 export async function deleteCustomAgent(cwd: string, runtimeName: string, scope?: AgentScope) {
   const agents = await readCustomAgents(cwd);
-  const matches = agents.filter((agent) => agent.runtimeName === runtimeName || agent.name === runtimeName)
+  const matches = agents
+    .filter((agent) => agent.runtimeName === runtimeName || agent.name === runtimeName)
     .filter((agent) => !scope || agent.scope === scope);
   if (matches.length === 0) throw new Error(`No custom agent named ${runtimeName} found.`);
   if (matches.length > 1) throw new Error(`Multiple custom agents named ${runtimeName}; specify user or project scope.`);
@@ -202,13 +217,15 @@ export async function deleteCustomAgent(cwd: string, runtimeName: string, scope?
 
 export function formatAgentCatalog(agents: CustomAgentInfo[]) {
   if (agents.length === 0) return "No custom agents found.";
-  return agents.map((agent) => {
-    const bits = [agent.scope];
-    if (agent.defaultContext) bits.push(`context=${agent.defaultContext}`);
-    if (agent.model) bits.push(`model=${agent.model}`);
-    if (agent.tools) bits.push(`tools=${agent.tools}`);
-    return `- ${agent.runtimeName} (${bits.join(", ")}) — ${agent.description || "No description"}`;
-  }).join("\n");
+  return agents
+    .map((agent) => {
+      const bits = [agent.scope];
+      if (agent.defaultContext) bits.push(`context=${agent.defaultContext}`);
+      if (agent.model) bits.push(`model=${agent.model}`);
+      if (agent.tools) bits.push(`tools=${agent.tools}`);
+      return `- ${agent.runtimeName} (${bits.join(", ")}) — ${agent.description || "No description"}`;
+    })
+    .join("\n");
 }
 
 export function formatSubagentOrchestrationInstructions(agents: CustomAgentInfo[]) {

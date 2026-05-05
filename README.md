@@ -58,6 +58,9 @@ bash scripts/check.sh
 # or
 npm run check
 
+npm run typecheck     # strict TypeScript no-emit check for extensions
+npm run lint          # ESLint repository lint
+npm run format:check  # Prettier formatting check
 npm test              # unit + integration + e2e tests
 npm run test:unit     # unit tests
 npm run test:integration
@@ -101,14 +104,16 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - TUI clarification controls for select, confirm, input, and editor prompts
 - `extensions/browser-bridge/` registers:
   - `/browser-bridge` command with setup details for connecting another machine's browser
+  - localhost-only binding by default; set `PI_BROWSER_BRIDGE_HOST=0.0.0.0` to opt in to LAN access
   - agent-facing `browser_bridge` tool for navigation, clicking, typing, page inspection, JavaScript evaluation, and screenshots
   - a Chrome/Edge companion extension under `extensions/browser-bridge/browser-extension/`
 - `extensions/web-terminal/` registers:
   - `/web-terminal` command with an authenticated browser/PWA URL
+  - localhost-only binding by default; set `PI_WEB_TERMINAL_HOST=0.0.0.0` to opt in to LAN access
   - agent-facing `web_terminal` setup/status tool
   - a Hyper-inspired xterm.js terminal UI that launches a child `pi -c` session through a pseudo-terminal
 - `extensions/background-processes/` adds agent-facing guidance for long-running commands.
-- `extensions/processes/` registers the custom `process` tool plus a themed `/ps` process dashboard and custom tool result rendering.
+- `extensions/processes/` registers the custom `process` tool plus a themed `/ps` process dashboard, custom tool result rendering, completion alerts, and log watches.
 - `extensions/cronjobs/` registers:
   - agent-facing `cronjob` tool
   - persistent markdown schedule storage at `~/.pi/agent/cronjobs.md`
@@ -122,6 +127,10 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - `/plan <task>` command
   - clarification-first workflow that blocks writes until the plan is reviewed
   - review UI with apply, refine, or cancel choices
+- `extensions/pretty-output/` registers:
+  - `/pretty-output on|off|preview` command
+  - assistant guidance for richer Markdown answers
+  - pretty Markdown renderers for common built-in tool results (`bash`, `read`, `grep`, `find`, and `ls`)
 - `extensions/graph-memory/` registers:
   - agent-facing `graph_memory` tool
   - automatic relevant-memory injection into the agent system prompt
@@ -131,6 +140,11 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
   - automatic active-todo injection into the agent system prompt
   - a TUI widget that appears when there are pending or in-progress tasks
   - persistent markdown storage at `~/.pi/agent/todo.md`
+- `extensions/tamagotchi/` registers:
+  - an always-visible TUI pet widget below the editor plus a compact footer status
+  - automatic feeding when bug-fix turns make successful edits, with extra XP for verified fixes that run checks/tests
+  - `/pet`, `/pet name <name>`, and `/pet reset` commands
+  - persistent pet state at `~/.pi/agent/tamagotchi-pet.json`
 
 ### Skills
 
@@ -186,6 +200,8 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 │   ├── subagent-orchestrator/
 │   │   └── index.ts
 │   ├── todo/
+│   │   └── index.ts
+│   ├── tamagotchi/
 │   │   └── index.ts
 │   └── web-terminal/
 │       ├── README.md

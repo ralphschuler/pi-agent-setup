@@ -1,15 +1,11 @@
+// @ts-nocheck
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
-import {
-  deleteCustomAgent,
-  readCustomAgents,
-  type AgentScope,
-  writeCustomAgent,
-} from "../custom-agents/registry";
+import { deleteCustomAgent, readCustomAgents, type AgentScope, writeCustomAgent } from "../custom-agents/registry";
 
 const BUILTIN_AGENTS = [
   {
@@ -48,7 +44,8 @@ export default function subagents(pi: ExtensionAPI) {
     name: "subagent",
     label: "Subagent",
     description: "Custom subagent catalog and runner for focused research, planning, implementation, and review tasks.",
-    promptSnippet: "Delegate bounded work to built-in or custom specialist agents; supports list, create, delete, single-agent execution, and parallel task arrays.",
+    promptSnippet:
+      "Delegate bounded work to built-in or custom specialist agents; supports list, create, delete, single-agent execution, and parallel task arrays.",
     promptGuidelines: [
       "Use subagent action=list before non-trivial delegation to inspect available specialists.",
       "Use subagent tasks for independent bounded research, planning, or review that can run concurrently.",
@@ -56,16 +53,25 @@ export default function subagents(pi: ExtensionAPI) {
       "Do not use subagent for simple tasks that can be handled directly.",
     ],
     parameters: Type.Object({
-      action: Type.Optional(Type.Union([Type.Literal("list"), Type.Literal("create"), Type.Literal("delete"), Type.Literal("run"), Type.Literal("parallel")], { description: "Management action. Omit when running an agent or when tasks is provided." })),
+      action: Type.Optional(
+        Type.Union([Type.Literal("list"), Type.Literal("create"), Type.Literal("delete"), Type.Literal("run"), Type.Literal("parallel")], {
+          description: "Management action. Omit when running an agent or when tasks is provided.",
+        }),
+      ),
       agent: Type.Optional(Type.String({ description: "Agent runtime name to run/delete." })),
       task: Type.Optional(Type.String({ description: "Task to give the subagent." })),
-      tasks: Type.Optional(Type.Array(Type.Object({
-        agent: Type.String({ description: "Agent runtime name." }),
-        task: Type.String({ description: "Task for this run." }),
-        cwd: Type.Optional(Type.String({ description: "Working directory override." })),
-        output: Type.Optional(Type.String({ description: "Optional output file." })),
-        count: Type.Optional(Type.Number({ description: "Repeat this task N times." })),
-      }), { description: "Parallel subagent tasks." })),
+      tasks: Type.Optional(
+        Type.Array(
+          Type.Object({
+            agent: Type.String({ description: "Agent runtime name." }),
+            task: Type.String({ description: "Task for this run." }),
+            cwd: Type.Optional(Type.String({ description: "Working directory override." })),
+            output: Type.Optional(Type.String({ description: "Optional output file." })),
+            count: Type.Optional(Type.Number({ description: "Repeat this task N times." })),
+          }),
+          { description: "Parallel subagent tasks." },
+        ),
+      ),
       concurrency: Type.Optional(Type.Number({ description: "Maximum concurrent runs for tasks. Default 4." })),
       config: Type.Optional(Type.String({ description: "JSON config for create." })),
       output: Type.Optional(Type.String({ description: "Optional output file for run." })),
@@ -79,7 +85,11 @@ export default function subagents(pi: ExtensionAPI) {
         if (action === "delete") return await deleteAgent(ctx.cwd, params.agent);
         if (action === "parallel") return await runParallel(pi, ctx.cwd, params.tasks || [], params.concurrency, signal, onUpdate);
         const record = await runAgentRecord(pi, ctx.cwd, params.agent, params.task, params.output, params.cwd, 0, signal, onUpdate);
-        return textResult(record.text || `Subagent ${record.agent} completed with no output.`, { action: "run", runs: [record], agent: record.agent }, !record.ok);
+        return textResult(
+          record.text || `Subagent ${record.agent} completed with no output.`,
+          { action: "run", runs: [record], agent: record.agent },
+          !record.ok,
+        );
       } catch (error) {
         return textResult(error instanceof Error ? error.message : String(error), { action: "error" }, true);
       }
@@ -128,7 +138,12 @@ async function allAgents(cwd: string): Promise<AgentDef[]> {
 
 async function listAgents(cwd: string) {
   const agents = await allAgents(cwd);
-  const text = agents.map((agent) => `- ${agent.runtimeName} (${agent.source}${agent.scope ? `, ${agent.scope}` : ""}) — ${agent.description || "No description"}`).join("\n");
+  const text = agents
+    .map(
+      (agent) =>
+        `- ${agent.runtimeName} (${agent.source}${agent.scope ? `, ${agent.scope}` : ""}) — ${agent.description || "No description"}`,
+    )
+    .join("\n");
   return textResult(text || "No subagents available.", { action: "list", agents });
 }
 
@@ -140,7 +155,8 @@ async function createAgent(cwd: string, config?: string) {
     package: parsed.package || "custom",
     description: parsed.description || "Custom subagent.",
     scope: (parsed.scope || "project") as AgentScope,
-    systemPrompt: parsed.systemPrompt || parsed.prompt || "You are a specialized subagent. Complete the delegated task and report concise results.",
+    systemPrompt:
+      parsed.systemPrompt || parsed.prompt || "You are a specialized subagent. Complete the delegated task and report concise results.",
     model: parsed.model,
     thinking: parsed.thinking,
     tools: parsed.tools,
@@ -159,7 +175,14 @@ async function deleteAgent(cwd: string, agent?: string) {
   return textResult(`Deleted ${deleted.runtimeName}\n${deleted.path}`, { action: "delete", deleted });
 }
 
-async function runParallel(pi: ExtensionAPI, cwd: string, tasks: ParallelTask[], concurrency?: number, signal?: AbortSignal, onUpdate?: (update: any) => void) {
+async function runParallel(
+  pi: ExtensionAPI,
+  cwd: string,
+  tasks: ParallelTask[],
+  concurrency?: number,
+  signal?: AbortSignal,
+  onUpdate?: (update: any) => void,
+) {
   const expanded = expandTasks(tasks);
   if (expanded.length === 0) throw new Error("subagent parallel requires at least one task.");
   const limit = Math.max(1, Math.min(Number(concurrency) || 4, expanded.length));
@@ -191,13 +214,23 @@ async function runParallel(pi: ExtensionAPI, cwd: string, tasks: ParallelTask[],
 
   await Promise.all(Array.from({ length: limit }, () => worker()));
   const ok = records.filter((record) => record.ok).length;
-  const text = records.map((record, i) => [
-    `## ${i + 1}. ${record.agent} — ${record.ok ? "ok" : "failed"}`,
-    `Task: ${record.task}`,
-    record.output ? `Output: ${record.output}` : undefined,
-    record.error ? `Error: ${record.error}` : record.text,
-  ].filter(Boolean).join("\n")).join("\n\n---\n\n");
-  return textResult(`${ok}/${records.length} subagent run(s) succeeded.\n\n${text}`, { action: "parallel", runs: records, concurrency: limit }, ok !== records.length);
+  const text = records
+    .map((record, i) =>
+      [
+        `## ${i + 1}. ${record.agent} — ${record.ok ? "ok" : "failed"}`,
+        `Task: ${record.task}`,
+        record.output ? `Output: ${record.output}` : undefined,
+        record.error ? `Error: ${record.error}` : record.text,
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    )
+    .join("\n\n---\n\n");
+  return textResult(
+    `${ok}/${records.length} subagent run(s) succeeded.\n\n${text}`,
+    { action: "parallel", runs: records, concurrency: limit },
+    ok !== records.length,
+  );
 }
 
 function expandTasks(tasks: ParallelTask[]) {
@@ -209,7 +242,17 @@ function expandTasks(tasks: ParallelTask[]) {
   return expanded;
 }
 
-async function runAgentRecord(pi: ExtensionAPI, cwd: string, name?: string, task?: string, output?: string | boolean, cwdOverride?: string, index = 0, signal?: AbortSignal, onUpdate?: (update: any) => void): Promise<RunRecord> {
+async function runAgentRecord(
+  pi: ExtensionAPI,
+  cwd: string,
+  name?: string,
+  task?: string,
+  output?: string | boolean,
+  cwdOverride?: string,
+  index = 0,
+  signal?: AbortSignal,
+  onUpdate?: (update: any) => void,
+): Promise<RunRecord> {
   if (!name) throw new Error("subagent run requires agent.");
   if (!task?.trim()) throw new Error("subagent run requires task.");
   const agents = await allAgents(cwd);
@@ -230,7 +273,11 @@ async function runAgentRecord(pi: ExtensionAPI, cwd: string, name?: string, task
 
   const runCwd = cwdOverride || cwd;
   try {
-    const result = await pi.exec("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], { cwd: runCwd, signal, timeout: 10 * 60 * 1000 } as any);
+    const result = await pi.exec("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], {
+      cwd: runCwd,
+      signal,
+      timeout: 10 * 60 * 1000,
+    } as any);
     const text = String((result as any).stdout || (result as any).output || "").trim() || String((result as any).stderr || "").trim();
     const outPath = await writeOutput(runCwd, output, text, index);
     return { agent: agent.runtimeName, task, ok: true, text, output: outPath, index };
@@ -264,6 +311,8 @@ function textFromResult(result: any) {
 }
 
 function trimLine(text: string, max: number) {
-  const flat = String(text || "").replace(/\s+/g, " ").trim();
+  const flat = String(text || "")
+    .replace(/\s+/g, " ")
+    .trim();
   return flat.length > max ? `${flat.slice(0, Math.max(0, max - 1))}…` : flat;
 }

@@ -9,8 +9,5 @@ test("run helper returns failures when check is disabled", () => {
 });
 
 test("run helper throws detailed assertion errors by default", () => {
-  assert.throws(
-    () => run("node", ["--eval", "console.log('out'); console.error('err'); process.exit(3)"]),
-    /Command failed: node --eval/,
-  );
+  assert.throws(() => run("node", ["--eval", "console.log('out'); console.error('err'); process.exit(3)"]), /Command failed: node --eval/);
 });

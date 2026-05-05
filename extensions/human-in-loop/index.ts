@@ -10,7 +10,8 @@ export default function humanInLoop(pi: ExtensionAPI) {
   pi.registerTool({
     name: "human_in_loop",
     label: "Human In Loop",
-    description: "Ask the user for clarification or approval with appropriate TUI controls when the agent cannot safely or confidently proceed.",
+    description:
+      "Ask the user for clarification or approval with appropriate TUI controls when the agent cannot safely or confidently proceed.",
     promptSnippet: "Ask the human for clarification, approval, free-form input, or option selection via TUI controls.",
     promptGuidelines: [
       "Use human_in_loop when requirements are ambiguous, a decision affects user intent, approval is needed, or proceeding would require guessing.",
@@ -18,12 +19,9 @@ export default function humanInLoop(pi: ExtensionAPI) {
       "Ask concise questions and include enough context for the user to answer without rereading the conversation.",
     ],
     parameters: Type.Object({
-      mode: Type.Union([
-        Type.Literal("select"),
-        Type.Literal("confirm"),
-        Type.Literal("input"),
-        Type.Literal("editor"),
-      ], { description: "The TUI control to use" }),
+      mode: Type.Union([Type.Literal("select"), Type.Literal("confirm"), Type.Literal("input"), Type.Literal("editor")], {
+        description: "The TUI control to use",
+      }),
       title: Type.String({ description: "Question or prompt shown to the user" }),
       context: Type.Optional(Type.String({ description: "Additional context displayed above or inside the prompt" })),
       options: Type.Optional(Type.Array(OptionSchema, { description: "Required for mode=select; 2-6 concise choices" })),
@@ -38,9 +36,7 @@ export default function humanInLoop(pi: ExtensionAPI) {
         };
       }
 
-      const prompt = params.context?.trim()
-        ? `${params.title}\n\n${params.context.trim()}`
-        : params.title;
+      const prompt = params.context?.trim() ? `${params.title}\n\n${params.context.trim()}` : params.title;
 
       if (params.mode === "confirm") {
         const answer = await ctx.ui.confirm(params.title, params.context || "");
@@ -69,12 +65,14 @@ export default function humanInLoop(pi: ExtensionAPI) {
         const option = index >= 0 ? options[index] : undefined;
 
         return {
-          content: [{
-            type: "text",
-            text: option
-              ? `User selected: ${option.label}${option.description ? ` — ${option.description}` : ""}`
-              : "User cancelled the selection.",
-          }],
+          content: [
+            {
+              type: "text",
+              text: option
+                ? `User selected: ${option.label}${option.description ? ` — ${option.description}` : ""}`
+                : "User cancelled the selection.",
+            },
+          ],
           details: { mode: params.mode, answer: option?.label ?? null, option, index: index >= 0 ? index : null },
         };
       }

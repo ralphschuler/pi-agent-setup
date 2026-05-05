@@ -3,6 +3,7 @@ import { Type } from "typebox";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { decodeStoredBlock, encodeStoredBlock, normalizeSingleLine } from "../shared/markdown-store-codec.ts";
 import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 
 const STORE_PATH = join(homedir(), ".pi", "agent", "cronjobs.md");
@@ -393,25 +394,8 @@ function formatWhen(iso: string) {
   return new Date(iso).toLocaleString();
 }
 
-function encodeStoredBlock(value: string) {
-  return ["```base64", Buffer.from(value, "utf8").toString("base64"), "```"].join("\n");
-}
-
-function decodeStoredBlock(value: string) {
-  const match = value.match(/^```base64\n([A-Za-z0-9+/=\s]*)\n```$/);
-  if (!match) return value;
-  try {
-    return Buffer.from(match[1].replace(/\s+/g, ""), "base64").toString("utf8").trim();
-  } catch {
-    return value;
-  }
-}
-
 function safeSingleLine(value: string) {
-  return value
-    .replace(/[\r\n\t]+/g, " ")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-    .trim();
+  return normalizeSingleLine(value);
 }
 
 function oneLine(value: string) {

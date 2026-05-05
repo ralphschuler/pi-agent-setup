@@ -4,6 +4,7 @@ import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
+import { normalizeSingleLine } from "../shared/markdown-store-codec.ts";
 
 const STORE_DIR = join(homedir(), ".pi", "agent", "todos");
 const LEGACY_STORE_PATH = join(homedir(), ".pi", "agent", "todo.md");
@@ -276,9 +277,5 @@ export function renderMarkdown(items: TodoItem[]) {
 }
 
 export function sanitizeTodoText(value: string | undefined) {
-  return (value || "")
-    .replace(/[\r\n\t]+/g, " ")
-    .replace(/[\u0000-\u001F\u007F]/g, "")
-    .replace(/\s+/g, " ")
-    .trim();
+  return normalizeSingleLine(value, { collapseWhitespace: true });
 }

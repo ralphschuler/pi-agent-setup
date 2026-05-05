@@ -52,6 +52,7 @@ nav:
       - Compact footer: extensions/compact-footer.md
       - Cronjobs: extensions/cronjobs.md
       - Custom agents: extensions/custom-agents.md
+      - GitHub handoff: extensions/github-handoff.md
       - Graph memory: extensions/graph-memory.md
       - Human in loop: extensions/human-in-loop.md
       - Plan workflow: extensions/plan.md

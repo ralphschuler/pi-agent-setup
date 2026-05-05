@@ -6,9 +6,13 @@
 
 - Agent-facing `todo` tool
 - Active-todo injection into the system prompt
-- TUI widget for pending and in-progress tasks
-- Persistent markdown store at `~/.pi/agent/todo.md`
+- TUI widget for pending, in-progress, and recently completed tasks
+- Session-scoped persistent markdown stores under `~/.pi/agent/todos/`
 
 ## Purpose
 
-The agent uses todo items to track multi-step work, open user requests, and follow-up tasks that should survive future sessions.
+The agent uses todo items to track multi-step work, open user requests, and follow-up tasks for the current session. Todos are scoped by pi session file so unrelated sessions do not mix their task lists.
+
+## Widget behavior
+
+The TUI widget shows a rolling window of up to 5 entries. Completed items remain visible until the window needs space for newer/open items. When more than 5 open todos exist, completed items are hidden first, then the newest 5 open items are shown.

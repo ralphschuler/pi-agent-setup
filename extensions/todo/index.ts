@@ -3,8 +3,11 @@ import { Type } from "typebox";
 import { mkdir, readFile, writeFile } from "node:fs/promises";
 import { dirname, join } from "node:path";
 import { homedir } from "node:os";
+import { createHash } from "node:crypto";
 
-const STORE_PATH = join(homedir(), ".pi", "agent", "todo.md");
+const STORE_DIR = join(homedir(), ".pi", "agent", "todos");
+const LEGACY_STORE_PATH = join(homedir(), ".pi", "agent", "todo.md");
+const DISPLAY_LIMIT = 5;
 
 type TodoStatus = "pending" | "in_progress" | "completed";
 
@@ -29,17 +32,23 @@ const markdownMarker: Record<TodoStatus, string> = {
 export default function todo(pi: ExtensionAPI) {
   let items: TodoItem[] = [];
   let nextId = 1;
+  let storePath = sessionStorePath();
 
-  async function loadStore() {
+  function setSessionStore(ctx?: { sessionManager?: { getSessionFile?: () => string | undefined } }) {
+    storePath = sessionStorePath(ctx?.sessionManager?.getSessionFile?.());
+  }
+
+  async function loadStore(ctx?: { sessionManager?: { getSessionFile?: () => string | undefined } }) {
+    setSessionStore(ctx);
     try {
-      const raw = await readFile(STORE_PATH, "utf8");
+      const raw = await readFile(storePath, "utf8");
       items = parseMarkdown(raw);
       const maxId = items.reduce((max, item) => Math.max(max, item.id), 0);
       nextId = maxId + 1;
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? (error as { code?: string }).code : undefined;
       if (code !== "ENOENT") {
-        console.warn(`[todo] Failed to read ${STORE_PATH}:`, error);
+        console.warn(`[todo] Failed to read ${storePath}:`, error);
       }
       items = [];
       nextId = 1;
@@ -47,24 +56,38 @@ export default function todo(pi: ExtensionAPI) {
   }
 
   async function saveStore() {
-    await mkdir(dirname(STORE_PATH), { recursive: true });
-    await writeFile(STORE_PATH, renderMarkdown(items), "utf8");
+    await mkdir(dirname(storePath), { recursive: true });
+    await writeFile(storePath, renderMarkdown(items), "utf8");
   }
 
   function visibleItems() {
+    const visible = [...items];
+
+    while (visible.length > DISPLAY_LIMIT) {
+      const completedIndex = visible.findIndex((item) => item.status === "completed");
+      if (completedIndex === -1) break;
+      visible.splice(completedIndex, 1);
+    }
+
+    return visible.length > DISPLAY_LIMIT ? visible.slice(-DISPLAY_LIMIT) : visible;
+  }
+
+  function openItems() {
     return items.filter((item) => item.status !== "completed");
   }
 
   function renderLines() {
-    const active = visibleItems();
-    if (active.length === 0) return [];
+    const visible = visibleItems();
+    if (visible.length === 0) return [];
 
+    const openCount = openItems().length;
+    const hiddenCount = Math.max(0, items.length - visible.length);
     const lines = ["Todo"];
-    for (const item of active.slice(0, 8)) {
+    for (const item of visible) {
       lines.push(`${statusIcon[item.status]} #${item.id} ${item.text}`);
     }
-    if (active.length > 8) {
-      lines.push(`… ${active.length - 8} more`);
+    if (hiddenCount > 0) {
+      lines.push(`… ${hiddenCount} hidden${openCount > DISPLAY_LIMIT ? ` (${openCount} open)` : ""}`);
     }
     return lines;
   }
@@ -81,24 +104,32 @@ export default function todo(pi: ExtensionAPI) {
   }
 
   pi.on("session_start", async (_event, ctx) => {
-    await loadStore();
+    await loadStore(ctx);
     updateWidget(ctx);
   });
 
   pi.on("agent_start", async (_event, ctx) => {
-    await loadStore();
+    await loadStore(ctx);
     updateWidget(ctx);
   });
 
-  pi.on("before_agent_start", async (event) => {
-    await loadStore();
-    const active = visibleItems();
+  pi.on("before_agent_start", async (event, ctx) => {
+    await loadStore(ctx);
+    const active = openItems();
+    const visible = visibleItems();
     const instructions = [
       "Todo is your private durable task list across sessions.",
-      `Storage: ${STORE_PATH}`,
+      `Storage: ${storePath}`,
+      `Legacy global store, no longer used for new session todos: ${LEGACY_STORE_PATH}`,
       "Use the todo tool to track multi-step work, user requests that remain open, and follow-up tasks that should survive future sessions.",
       "Do not ask the user to manage todo manually; treat it as your own persistent task system.",
       "Keep todo current: add tasks when work should be remembered, start tasks when actively working, complete tasks when finished, and clear completed tasks when appropriate.",
+      visible.length === 0
+        ? "No todos."
+        : [
+            `Visible todo window (${visible.length}/${DISPLAY_LIMIT}; completed items stay visible until space is needed):`,
+            ...visible.map((item) => `- ${statusIcon[item.status]} #${item.id} ${item.status}: ${item.text}`),
+          ].join("\n"),
       active.length === 0
         ? "No active todos."
         : [`Active todos:`, ...active.map((item) => `- ${statusIcon[item.status]} #${item.id} ${item.status}: ${item.text}`)].join("\n"),
@@ -129,7 +160,7 @@ export default function todo(pi: ExtensionAPI) {
       id: Type.Optional(Type.Number({ description: "Todo id for start, pending, or complete" })),
     }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
-      await loadStore();
+      await loadStore(ctx);
 
       let message = "";
       await mutate(() => {
@@ -162,7 +193,7 @@ export default function todo(pi: ExtensionAPI) {
 
       return {
         content: [{ type: "text", text: `${message}\n\n${formatTodos()}` }],
-        details: { todos: items, storePath: STORE_PATH },
+        details: { todos: items, storePath, legacyStorePath: LEGACY_STORE_PATH },
       };
     },
   });
@@ -187,9 +218,15 @@ export default function todo(pi: ExtensionAPI) {
   }
 
   function formatTodos() {
-    if (items.length === 0) return `No todos.\n\nStore: ${STORE_PATH}`;
-    return `${renderMarkdown(items).trim()}\n\nStore: ${STORE_PATH}`;
+    if (items.length === 0) return `No todos.\n\nStore: ${storePath}`;
+    return `${renderMarkdown(items).trim()}\n\nStore: ${storePath}`;
   }
+}
+
+function sessionStorePath(sessionFile?: string) {
+  const key = sessionFile || "ephemeral";
+  const hash = createHash("sha256").update(key).digest("hex").slice(0, 16);
+  return join(STORE_DIR, `${hash}.md`);
 }
 
 function parseMarkdown(markdown: string): TodoItem[] {

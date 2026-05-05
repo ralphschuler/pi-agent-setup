@@ -24,10 +24,13 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/browser-bridge`   | Start/show browser bridge setup.             |
 | `/caveman`          | Toggle terse caveman/wenyan language modes.  |
 | `/pet`              | Show or manage the Tamagotchi pet.           |
+| `/pick-issue`       | Pick an issue, branch, and create a WIP PR.  |
 | `/plan <task>`      | Clarification-first planning workflow.       |
 | `/pretty-output`    | Toggle/preview pretty output rendering.      |
 | `/ps`               | Process dashboard.                           |
 | `/research <topic>` | Research using the `search` tool.            |
+| `/to-issue`         | Create GitHub issues from repo/conversation. |
+| `/to-pr`            | Create a GitHub PR from repo/conversation.   |
 | `/web-terminal`     | Start/show authenticated web terminal setup. |
 | `/welcome`          | Show the welcome screen.                     |
 

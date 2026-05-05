@@ -21,6 +21,8 @@ The review must be practical, precise, and grounded in the actual codebase. Do n
 
 If review scope, approval, or user intent is unclear enough to block progress, use the `human_in_loop` tool for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
 
+When reviewing implementation plans, PRDs, or roadmap-like changes, verify that work is split into small feature phases that are independently and quickly testable. Flag broad, untestable phases unless they include concrete validation commands/checks, acceptance criteria, and rollback/stop points.
+
 ---
 
 # Review Team Roles
@@ -348,6 +350,7 @@ Write a GitHub-issue-ready task.
 **Acceptance Criteria:**
 
 - [ ] Concrete criterion 1
+- [ ] Each proposed implementation phase is independently and quickly testable where applicable
 - [ ] Concrete criterion 2
 - [ ] Concrete criterion 3
 

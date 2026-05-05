@@ -179,6 +179,8 @@ Look for:
 
 Recommendations must be specific enough to become implementation tasks.
 
+When recommending plans, PRDs, or implementation roadmaps, split work into small feature phases that are independently and quickly testable. Each phase should include quick validation commands or checks, acceptance criteria, and rollback/stop points where practical. Avoid broad, untestable phases when smaller slices are possible.
+
 ---
 
 # Required Research Process
@@ -273,8 +275,8 @@ Provide a practical plan:
 
 1. Immediate next step
 2. Follow-up validation
-3. Implementation or adoption steps
-4. Testing/verification
+3. Implementation or adoption steps split into quickly testable feature phases
+4. Testing/verification, including quick validation per phase
 5. Rollout and rollback considerations
 6. Documentation updates
 

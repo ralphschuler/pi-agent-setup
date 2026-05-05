@@ -16,7 +16,8 @@ const BUILTIN_AGENTS = [
   {
     name: "planner",
     description: "Breaks a task into an implementation plan with risks, dependencies, and validation steps.",
-    prompt: "You are a planner. Produce a concise, ordered plan with assumptions, risks, and validation steps. Do not modify files.",
+    prompt:
+      "You are a planner. Produce a concise, ordered plan split into small feature phases that are independently and quickly testable. Include assumptions, risks, acceptance criteria, quick validation commands/checks, and rollback/stop points. Do not modify files.",
   },
   {
     name: "reviewer",

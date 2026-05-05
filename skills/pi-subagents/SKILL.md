@@ -22,7 +22,7 @@ Use `human_in_loop` for every user-facing clarification or approval question. Do
 ## Built-in agents
 
 - `scout` — read-only codebase reconnaissance.
-- `planner` — plans and risk breakdowns.
+- `planner` — plans and risk breakdowns split into independently and quickly testable feature phases.
 - `reviewer` — independent review.
 - `worker` — bounded implementation handoff.
 - `researcher` — general technical research and synthesis.

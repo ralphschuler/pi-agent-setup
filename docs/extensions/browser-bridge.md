@@ -28,6 +28,8 @@ It binds to localhost by default. LAN access is opt-in:
 PI_BROWSER_BRIDGE_HOST=0.0.0.0
 ```
 
+The companion extension declares `<all_urls>` host permissions so pi can automate arbitrary sites after you explicitly connect it. Treat the bridge token like a local secret, disconnect when finished, and avoid LAN binding unless you trust the network.
+
 ## More information
 
 See `extensions/browser-bridge/README.md` for companion-extension setup details.

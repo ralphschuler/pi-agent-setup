@@ -1,9 +1,13 @@
 import crypto from "node:crypto";
 
+export const MAX_WS_FRAME_BYTES = 1024 * 1024;
+export const MAX_WS_BUFFER_BYTES = MAX_WS_FRAME_BYTES + 16;
+
 export type ParsedFrames = {
   messages: string[];
   remaining: Buffer;
   close: boolean;
+  error?: string;
 };
 
 export function sendFrame(socket: import("node:net").Socket, payload: unknown) {
@@ -26,7 +30,11 @@ export function sendFrame(socket: import("node:net").Socket, payload: unknown) {
   socket.write(Buffer.concat([header, data]));
 }
 
-export function parseFrames(buffer: Buffer): ParsedFrames {
+export function parseFrames(buffer: Buffer, options: { maxFrameBytes?: number; maxBufferBytes?: number } = {}): ParsedFrames {
+  const maxFrameBytes = options.maxFrameBytes ?? MAX_WS_FRAME_BYTES;
+  const maxBufferBytes = options.maxBufferBytes ?? MAX_WS_BUFFER_BYTES;
+  if (buffer.length > maxBufferBytes) return { messages: [], remaining: Buffer.alloc(0), close: true, error: "WebSocket buffer too large" };
+
   const messages: string[] = [];
   let offset = 0;
   while (offset + 2 <= buffer.length) {
@@ -42,9 +50,14 @@ export function parseFrames(buffer: Buffer): ParsedFrames {
       headerLength = 4;
     } else if (length === 127) {
       if (offset + 10 > buffer.length) break;
-      length = Number(buffer.readBigUInt64BE(offset + 2));
+      const bigLength = buffer.readBigUInt64BE(offset + 2);
+      if (bigLength > BigInt(maxFrameBytes)) {
+        return { messages, remaining: Buffer.alloc(0), close: true, error: "WebSocket frame too large" };
+      }
+      length = Number(bigLength);
       headerLength = 10;
     }
+    if (length > maxFrameBytes) return { messages, remaining: Buffer.alloc(0), close: true, error: "WebSocket frame too large" };
     const maskLength = masked ? 4 : 0;
     const frameEnd = offset + headerLength + maskLength + length;
     if (frameEnd > buffer.length) break;

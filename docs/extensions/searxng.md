@@ -1,11 +1,10 @@
 # SearXNG search
 
-`extensions/searxng/` adds web search and research support backed by SearXNG.
+`extensions/searxng/` adds web search support backed by SearXNG.
 
 ## Provides
 
 - Agent-facing `search` tool
-- `/research <topic>` command
 
 ## Configuration
 
@@ -31,10 +30,4 @@ SEARXNG_URL=https://your-searxng.example
 - `timeRange`
 - `safesearch`
 
-## Research command
-
-```text
-/research <topic>
-```
-
-The command asks the agent to run focused searches, compare sources, prefer reputable references, and produce a concise synthesis with URL citations.
+Use the prompt-template `/research <topic>` command for sourced research workflows.

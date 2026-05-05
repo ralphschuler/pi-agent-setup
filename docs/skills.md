@@ -1,6 +1,6 @@
 # Skills
 
-Skills are markdown workflows that the agent loads on demand for specialized tasks.
+Skills are markdown workflows that the agent loads on demand for specialized tasks. When a prompt or slash command supplies arguments, skills treat those arguments as the task scope/focus and preserve them in plans, subagent tasks, and summaries.
 
 ## Included skills
 

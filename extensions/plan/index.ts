@@ -22,7 +22,7 @@ export default function planCommand(pi: ExtensionAPI) {
   let approvedPlan = "";
 
   pi.registerCommand("plan", {
-    description: "Clarify a task until fully covered, create a reviewed plan, then apply it after approval",
+    description: "<task> — clarify a task, create a reviewed plan, then apply it after approval",
     handler: async (args, ctx) => {
       let task = args.trim();
       if (!task && ctx.hasUI) {

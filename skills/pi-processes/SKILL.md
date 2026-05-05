@@ -7,6 +7,8 @@ description: Manage long-running commands with this package's custom process too
 
 Use the custom `process` tool instead of shell background patterns such as `&`, `nohup`, `disown`, or `setsid`.
 
+If the user invoked a prompt or slash command with arguments, treat those arguments as the target process name, command, filter, or action context.
+
 ## Workflow
 
 1. Start a command with a stable descriptive name.

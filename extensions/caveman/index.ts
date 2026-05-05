@@ -57,7 +57,7 @@ export default function cavemanExtension(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("caveman", {
-    description: "Toggle terse English caveman language and choose intensity (lite/full/ultra/on/off/status)",
+    description: "[lite|full|ultra|on|off|status] — toggle terse English caveman language",
     getArgumentCompletions: (prefix) => {
       const filtered = COMPLETION_ITEMS.filter(({ value }) => value.startsWith(prefix));
       return filtered.length > 0 ? filtered : null;

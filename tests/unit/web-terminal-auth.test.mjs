@@ -12,6 +12,7 @@ test("web terminal auth accepts query token or matching cookie", () => {
   assert.equal(isAuthed(req({ cookie: "pi_web_terminal_token=abc" }), new URL("http://localhost/"), "abc"), true);
   assert.equal(isAuthed(req({ cookie: "pi_web_terminal_token=wrong" }), new URL("http://localhost/"), "abc"), false);
   assert.equal(cookieValue("a=1; pi_web_terminal_token=hello%20world", "pi_web_terminal_token"), "hello world");
+  assert.equal(cookieValue("a=1", "pi_web_terminal_token"), undefined);
 });
 
 test("web terminal origin checks require same host", () => {
@@ -19,6 +20,7 @@ test("web terminal origin checks require same host", () => {
   assert.equal(isTrustedOrigin(req({ host: "localhost:17474", origin: "http://evil.example" })), false);
   assert.equal(isTrustedOrigin(req({ host: "localhost:17474" })), true);
   assert.equal(isTrustedOrigin(req({ host: "localhost:17474", origin: ["http://localhost:17474"] })), false);
+  assert.equal(isTrustedOrigin(req({ host: "localhost:17474", origin: "http://[bad" })), false);
 });
 
 test("web terminal csrf checks only unsafe cookie-authenticated requests", () => {

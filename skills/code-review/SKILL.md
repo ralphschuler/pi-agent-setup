@@ -7,6 +7,8 @@ description: Review code changes for correctness, maintainability, tests, securi
 
 When reviewing code, be direct and prioritize actionable findings.
 
+If the user invoked a prompt or slash command with arguments, treat those arguments as the review scope/focus and cite them in the summary.
+
 ## Checklist
 
 - Understand the requested behavior and the actual diff.

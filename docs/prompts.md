@@ -1,12 +1,12 @@
 # Prompts
 
-Prompt templates in `prompts/` become slash commands when prompt commands are enabled.
+Prompt templates in `prompts/` become slash commands. Arguments typed after the command are expanded into the Markdown via `$ARGUMENTS`, `$@`, `$1`, `$2`, `${@:N}`, and `${@:N:L}`.
 
 ## Included prompts
 
 ### `bootstrap.md`
 
-A clarification-first repository bootstrap/improvement workflow.
+A clarification-first repository bootstrap/improvement workflow. Accepts optional scope/goals via `/bootstrap [scope / goals]`.
 
 It asks the agent to:
 
@@ -18,13 +18,13 @@ It asks the agent to:
 
 ### `review.md`
 
-A multiagent-style deep technical audit prompt for architecture, backend/API, frontend/UI, security, testing, DevOps, and code quality review.
+A multiagent-style deep technical audit prompt for architecture, backend/API, frontend/UI, security, testing, DevOps, and code quality review. Accepts optional scope, files, PR URL, or focus areas via `/review [scope / files / PR URL / focus areas]`.
 
 Expected output includes an executive summary, risk matrix, concrete findings, GitHub-issue-ready tasks, and recommended implementation order.
 
 ### `research.md`
 
-A multiagent-style research prompt for source discovery, technical analysis, security/risk review, alternatives comparison, and implementation planning.
+A multiagent-style research prompt for source discovery, technical analysis, security/risk review, alternatives comparison, and implementation planning. Requires a topic/question via `/research <topic or question>`.
 
 Expected output includes sourced findings, confidence levels, risk/tradeoff tables, GitHub-issue-ready tasks, and recommended implementation order.
 

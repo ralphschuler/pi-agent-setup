@@ -7,6 +7,8 @@ description: Bootstrap new software projects with a repeatable plan, repository 
 
 Use this skill when the user asks to initialize, restructure, or standardize a project repository.
 
+If the user invoked a prompt or slash command with arguments, treat those arguments as the requested bootstrap scope, constraints, or goals.
+
 ## Workflow
 
 1. Inspect the current repository structure before changing files.

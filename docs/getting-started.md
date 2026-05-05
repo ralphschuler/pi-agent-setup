@@ -26,7 +26,7 @@ Restart pi or run `/reload` in an existing session after installing.
 - `/welcome` — show the startup welcome card.
 - `/ps` — inspect managed background processes.
 - `/plan <task>` — start a clarification-first planning workflow.
-- `/research <topic>` — research a topic with the SearXNG-backed search tool.
+- `/research <topic>` — run the research prompt with typed arguments passed into the Markdown template.
 - `/pet` — inspect the Tamagotchi widget state.
 - `/web-terminal` — start/show the browser terminal setup.
 - `/browser-bridge` — start/show browser bridge setup details.

@@ -147,7 +147,7 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("pet", {
-    description: "Show the always-visible bug-fed Tamagotchi pet; use /pet reset to start over",
+    description: "[reset|name <name>] — show or configure the bug-fed Tamagotchi pet",
     handler: async (args, ctx) => {
       lastCtx = ctx;
       const action = args.trim().toLowerCase();

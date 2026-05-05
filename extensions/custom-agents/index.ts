@@ -88,7 +88,7 @@ async function showAgentCatalog(ctx: any, agents: CustomAgentInfo[]) {
 
 export default function customAgents(pi: ExtensionAPI) {
   pi.registerCommand("agent", {
-    description: "List, create, show, or delete custom subagent definitions",
+    description: "[list|new|show <name>|delete <name>] — manage custom subagent definitions",
     getArgumentCompletions: (prefix: string) => {
       const values = ["list", "new", "show", "delete"];
       return values.filter((value) => value.startsWith(prefix)).map((value) => ({ value, label: value }));

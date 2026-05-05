@@ -7,6 +7,8 @@ description: Diagnose and fix bugs with a disciplined evidence-first workflow. U
 
 Use this skill whenever the task is to investigate or fix a bug. The goal is to avoid guessing: reproduce, localize, explain, fix, and verify.
 
+If the user invoked a prompt or slash command with arguments, treat those arguments as the symptom, failing command, environment, or reproduction scope.
+
 ## Core Workflow
 
 1. **State the symptom**

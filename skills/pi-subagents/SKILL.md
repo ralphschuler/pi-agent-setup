@@ -7,6 +7,8 @@ description: Delegate bounded work to this package's custom subagent tool. Use f
 
 Use the custom `subagent` tool for bounded delegation while keeping the parent agent responsible for synthesis and final user-facing decisions.
 
+If the user invoked a prompt or slash command with arguments, pass the relevant arguments into each subagent task so delegated work preserves the user's scope.
+
 ## Workflow
 
 1. Call `subagent` with `action: "list"` before non-trivial delegation.

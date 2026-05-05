@@ -117,35 +117,6 @@ export default function searxngExtension(pi: ExtensionAPI) {
       };
     },
   });
-
-  pi.registerCommand("research", {
-    description: "Research a topic using web search and produce a sourced synthesis",
-    handler: async (args, ctx) => {
-      const topic = args.trim();
-      if (!topic) {
-        ctx.ui.notify("Usage: /research <topic or question>", "warning");
-        return;
-      }
-
-      pi.sendUserMessage(
-        [
-          {
-            type: "text",
-            text: [
-              `Research this topic using the search tool: ${topic}`,
-              "",
-              "Process:",
-              "1. Run several focused web searches with the search tool.",
-              "2. Compare sources and prefer primary/reputable references.",
-              "3. Provide a concise synthesis with citations as URLs.",
-              "4. Call out uncertainty, conflicting claims, and what was not found.",
-            ].join("\n"),
-          },
-        ],
-        { deliverAs: "followUp" },
-      );
-    },
-  });
 }
 
 function normalizeBaseUrl(value: string) {

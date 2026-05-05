@@ -28,6 +28,10 @@ test("safety guard covers bash and process shell execution", () => {
   assert.match(source, /Blocked dangerous shell command/);
 });
 
+test("critical process and browser bridge extensions are typechecked", () => {
+  assert.doesNotMatch(readText("extensions/processes/index.ts"), /@ts-nocheck/);
+});
+
 test("browser bridge is typechecked", () => {
   const source = readText("extensions/browser-bridge/index.ts");
 
@@ -48,6 +52,7 @@ test("web terminal enforces origin and csrf checks", () => {
 
   assert.match(web, /requiresCsrfCheck\(req, url\) && !isTrustedOrigin\(req\)/);
   assert.match(web, /HTTP\/1\.1 403 Forbidden/);
+  assert.match(web, /safeHandleApi/);
   assert.match(auth, /originUrl\.host === host/);
   assert.match(auth, /pi_web_terminal_token/);
 });
@@ -82,6 +87,14 @@ test("synthwave theme is packaged", () => {
   assert.equal(theme.colors.bashMode, "green");
 });
 
+test("browser bridge documents broad host permissions", () => {
+  const docs = readText("docs/extensions/browser-bridge.md");
+  const popup = readText("extensions/browser-bridge/browser-extension/popup.html");
+
+  assert.match(docs, /<all_urls>/);
+  assert.match(popup, /&lt;all_urls&gt;/);
+});
+
 test("process tool implements advertised alerts and log watches", () => {
   const source = readText("extensions/processes/index.ts");
 
@@ -92,6 +105,8 @@ test("process tool implements advertised alerts and log watches", () => {
   assert.match(source, /regex = new RegExp\(input\.pattern\)/);
   assert.match(source, /watch\.regex\.test\(text\)/);
   assert.doesNotMatch(source, /new RegExp\(watch\.pattern\)/);
+  assert.match(source, /LOG_FILE_LIMIT/);
+  assert.match(source, /appendBoundedLog/);
 });
 
 test("repository has type and lint hygiene scripts", () => {

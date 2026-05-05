@@ -2,7 +2,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 
 export default function githubHandoff(pi: ExtensionAPI) {
   pi.registerCommand("to-issue", {
-    description: "Create GitHub issue(s) from the current repository and conversation context",
+    description: "Create GitHub issue(s); optional args become issue scope/title/filter",
     handler: async (args, ctx) => {
       const scope = args.trim();
       ctx.ui.notify("Queued GitHub issue creation workflow.", "info");
@@ -11,7 +11,7 @@ export default function githubHandoff(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("to-pr", {
-    description: "Create a GitHub pull request from the current repository changes and conversation context",
+    description: "Create a GitHub pull request; optional args become PR title/scope",
     handler: async (args, ctx) => {
       const scope = args.trim();
       ctx.ui.notify("Queued GitHub PR creation workflow.", "info");
@@ -20,7 +20,7 @@ export default function githubHandoff(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("pick-issue", {
-    description: "Pick the next most important GitHub issue, create a branch and WIP PR, and output the issue into the session",
+    description: "Pick a GitHub issue; optional args become priority/filter",
     handler: async (args, ctx) => {
       const scope = args.trim();
       ctx.ui.notify("Queued GitHub issue pickup workflow.", "info");

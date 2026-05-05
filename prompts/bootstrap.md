@@ -1,3 +1,14 @@
+---
+description: Bootstrap or improve a repository
+argument-hint: "[scope / goals]"
+---
+
+Repository bootstrap request / user arguments:
+
+$ARGUMENTS
+
+---
+
 Bootstrap or improve this repository with a clarification-first workflow.
 
 Steps:

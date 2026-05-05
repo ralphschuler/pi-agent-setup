@@ -51,7 +51,7 @@ export default function prettyOutput(pi: ExtensionAPI) {
   });
 
   pi.registerCommand("pretty-output", {
-    description: "Toggle rich Markdown assistant guidance and show a pretty-output preview",
+    description: "[on|off|preview] — toggle rich Markdown assistant guidance",
     handler: async (args, ctx) => {
       const action = args.trim().toLowerCase();
       if (action === "off") enabled = false;

@@ -1,4 +1,3 @@
-// @ts-nocheck
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
@@ -50,6 +49,7 @@ type ProcessDetails = {
 const processes = new Map<string, ManagedProcess>();
 let nextId = 1;
 const LOG_LIMIT = 400;
+const LOG_FILE_LIMIT = Number(process.env.PI_PROCESS_LOG_FILE_LIMIT || 1024 * 1024);
 
 const actionSchema = Type.Union([
   Type.Literal("start"),
@@ -146,7 +146,7 @@ export default function processesExtension(pi: ExtensionAPI) {
         ),
       ),
     }),
-    async execute(_toolCallId, params, _signal, onUpdate, ctx) {
+    async execute(_toolCallId, params, _signal, onUpdate, ctx): Promise<any> {
       try {
         switch (params.action) {
           case "start":
@@ -177,7 +177,7 @@ export default function processesExtension(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme) {
+    renderResult(result: any, { expanded }, theme) {
       const details = result.details as ProcessDetails | undefined;
       if (result.isError) return new Text(theme.fg("error", textFromResult(result)), 0, 0);
       if (!details) return new Text(textFromResult(result), 0, 0);
@@ -272,7 +272,26 @@ function appendOutput(proc: ManagedProcess, stream: "stdout" | "stderr", data: B
   proc[stream].push(...lines);
   if (proc[stream].length > LOG_LIMIT) proc[stream].splice(0, proc[stream].length - LOG_LIMIT);
   checkLogWatches(proc, stream, lines, ui);
-  void fs.appendFile(stream === "stdout" ? proc.stdoutLog : proc.stderrLog, text, "utf8");
+  void appendBoundedLog(stream === "stdout" ? proc.stdoutLog : proc.stderrLog, text);
+}
+
+async function appendBoundedLog(file: string, text: string) {
+  try {
+    await fs.appendFile(file, text, "utf8");
+    const stat = await fs.stat(file);
+    if (stat.size <= LOG_FILE_LIMIT) return;
+    const handle = await fs.open(file, "r");
+    try {
+      const keep = Math.floor(LOG_FILE_LIMIT * 0.8);
+      const buffer = Buffer.alloc(keep);
+      await handle.read(buffer, 0, keep, stat.size - keep);
+      await fs.writeFile(file, `[log truncated to last ${keep} bytes]\n${buffer.toString("utf8")}`, "utf8");
+    } finally {
+      await handle.close();
+    }
+  } catch {
+    // Log persistence is best-effort; in-memory output remains available.
+  }
 }
 
 function normalizeLogWatches(value: unknown): LogWatch[] {
@@ -393,7 +412,7 @@ function safeName(name: string) {
 }
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {
-  return { content: [{ type: "text", text }], details, isError };
+  return { content: [{ type: "text" as const, text }], details, isError };
 }
 
 function updateProcessStatus(ui?: any) {

@@ -10,6 +10,7 @@ import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
 import { isAuthed, isTrustedOrigin, requiresCsrfCheck } from "./auth.ts";
+import { json, readBody, safeHandleApi } from "./http.ts";
 
 const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.PI_WEB_TERMINAL_PORT || 17474);
@@ -27,33 +28,6 @@ type WebSocketClient = {
 type SseClient = http.ServerResponse;
 
 const SKIP_DIRS = new Set(["node_modules", ".git", ".todos", "dist", "build", ".next", ".nuxt", "__pycache__"]);
-
-function send(res: http.ServerResponse, status: number, contentType: string, body: string) {
-  res.writeHead(status, { "content-type": contentType });
-  res.end(body);
-}
-
-function json(res: http.ServerResponse, status: number, data: unknown) {
-  send(res, status, "application/json; charset=utf-8", JSON.stringify(data));
-}
-
-function readBody(req: http.IncomingMessage) {
-  return new Promise<string>((resolve, reject) => {
-    const chunks: Buffer[] = [];
-    let size = 0;
-    req.on("data", (chunk: Buffer) => {
-      size += chunk.length;
-      if (size > 1024 * 1024) {
-        req.destroy();
-        reject(new Error("Request body too large"));
-        return;
-      }
-      chunks.push(chunk);
-    });
-    req.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
-    req.on("error", reject);
-  });
-}
 
 function sse(req: http.IncomingMessage, res: http.ServerResponse, clients: Set<SseClient>, initial: unknown) {
   res.writeHead(200, {
@@ -362,7 +336,7 @@ export default function webTerminal(pi: ExtensionAPI) {
       if (url.pathname.startsWith("/api/")) {
         if (!authed) return json(res, 401, { error: "Unauthorized" });
         if (requiresCsrfCheck(req, url) && !isTrustedOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
-        void handleApi(req, res, url.pathname.slice("/api".length));
+        void safeHandleApi(res, () => handleApi(req, res, url.pathname.slice("/api".length)));
         return;
       }
 
@@ -465,6 +439,7 @@ export default function webTerminal(pi: ExtensionAPI) {
         buffered = Buffer.concat([buffered, chunk]);
         const parsed = parseFrames(buffered);
         buffered = parsed.remaining;
+        if (parsed.error) log("warning", "terminal", parsed.error);
         if (parsed.close) socket.destroy();
         for (const message of parsed.messages) {
           try {

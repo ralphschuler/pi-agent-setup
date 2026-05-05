@@ -58,7 +58,6 @@ nav:
       - Plan workflow: extensions/plan.md
       - Pretty output: extensions/pretty-output.md
       - Processes: extensions/processes.md
-      - Prompt arguments: extensions/prompt-arguments.md
       - Safety guard: extensions/safety-guard.md
       - SearXNG search: extensions/searxng.md
       - Subagent orchestrator: extensions/subagent-orchestrator.md

@@ -28,7 +28,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/debug`            | Prompt-template strategic debugging workflow. |
 | `/package-scout`    | Audit npm package metadata without install.   |
 | `/pet`              | Show or manage the Tamagotchi pet.            |
-| `/pick-issue`       | Pick an issue, branch, and create a WIP PR.   |
+| `/pick-issue`       | Prompt-template issue pickup and WIP PR flow. |
 | `/plan <task>`      | Clarification-first planning workflow.        |
 | `/pretty-output`    | Toggle/preview pretty output rendering.       |
 | `/refine-codebase`  | Prompt-template architecture refinement.      |
@@ -36,8 +36,8 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/ps`               | Process dashboard.                            |
 | `/research <topic>` | Prompt-template research workflow.            |
 | `/searxng`          | Show SearXNG status/setup help.               |
-| `/to-issue`         | Create GitHub issues from repo/conversation.  |
-| `/to-pr`            | Create a GitHub PR from repo/conversation.    |
+| `/to-issue`         | Prompt-template GitHub issue creation flow.   |
+| `/to-pr`            | Prompt-template GitHub PR creation flow.      |
 | `/web-terminal`     | Start/show authenticated web terminal setup.  |
 | `/welcome`          | Show the welcome screen.                      |
 

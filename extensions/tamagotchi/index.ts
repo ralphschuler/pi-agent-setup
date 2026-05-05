@@ -177,11 +177,13 @@ export default function tamagotchiPet(pi: ExtensionAPI) {
     const art = petArt(mood);
     const xpNeeded = xpForNextLevel(state.level);
     const xpPct = Math.round((state.xp / xpNeeded) * 100);
+    const lastMeal = singleLine(state.lastMeal, 44);
     const lines = [
-      `╭─ ${art} ${state.name} ─ Lv.${state.level} ─ ${moodLabel(mood)} ─╮`,
-      `│ hunger ${bar(pct, 12)} ${String(pct).padStart(3)}% │ xp ${bar(xpPct, 8)} ${state.xp}/${xpNeeded}`,
-      `│ bugs ${String(state.bugsFixed).padStart(3)} │ meals ${String(state.meals).padStart(3)} │ last: ${state.lastMeal}`,
-      `╰─ global pet across sessions: ${STORE_PATH} ─╯`,
+      `┌ ${art} ${state.name}  Lv.${state.level}  ${moodLabel(mood)}`,
+      `├ hunger ${bar(pct, 12)} ${String(pct).padStart(3)}%`,
+      `├ xp     ${bar(xpPct, 12)} ${state.xp}/${xpNeeded}`,
+      `├ bugs ${state.bugsFixed}  meals ${state.meals}  last: ${lastMeal}`,
+      `└ global pet • /pet`,
     ];
     if (changedDuringBugTurn && !fedThisTurn) lines.push("🐛 sniffing a fresh bug fix… run tests/checks to make it extra tasty");
     return lines;

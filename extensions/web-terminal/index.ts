@@ -9,6 +9,7 @@ import path from "node:path";
 import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
 import { fileURLToPath } from "node:url";
 import { parseFrames, sendFrame, wsAcceptKey } from "../shared/websocket.ts";
+import { isAuthed, isTrustedOrigin, requiresCsrfCheck } from "./auth.ts";
 
 const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1";
 const DEFAULT_PORT = Number(process.env.PI_WEB_TERMINAL_PORT || 17474);
@@ -121,19 +122,6 @@ function localAddresses(port: number, host = DEFAULT_HOST) {
     addresses.push(`http://${host}:${port}`);
   }
   return [...new Set(addresses)];
-}
-
-function cookieValue(cookieHeader: string | undefined, name: string) {
-  if (!cookieHeader) return undefined;
-  for (const part of cookieHeader.split(";")) {
-    const [rawKey, ...rawValue] = part.trim().split("=");
-    if (rawKey === name) return decodeURIComponent(rawValue.join("="));
-  }
-  return undefined;
-}
-
-function isAuthed(req: http.IncomingMessage, url: URL, token: string) {
-  return url.searchParams.get("token") === token || cookieValue(req.headers.cookie, "pi_web_terminal_token") === token;
 }
 
 function contentType(file: string) {
@@ -373,6 +361,7 @@ export default function webTerminal(pi: ExtensionAPI) {
 
       if (url.pathname.startsWith("/api/")) {
         if (!authed) return json(res, 401, { error: "Unauthorized" });
+        if (requiresCsrfCheck(req, url) && !isTrustedOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
         void handleApi(req, res, url.pathname.slice("/api".length));
         return;
       }
@@ -425,6 +414,11 @@ export default function webTerminal(pi: ExtensionAPI) {
       const authed = isAuthed(req, url, currentToken);
       if (url.pathname !== "/terminal" || !authed) {
         socket.write("HTTP/1.1 401 Unauthorized\r\n\r\n");
+        socket.destroy();
+        return;
+      }
+      if (!isTrustedOrigin(req)) {
+        socket.write("HTTP/1.1 403 Forbidden\r\n\r\n");
         socket.destroy();
         return;
       }

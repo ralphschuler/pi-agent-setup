@@ -4,7 +4,7 @@
 
 ## Provides
 
-- Always-visible, boxed pet widget below the editor with hunger/xp progress bars
+- Always-visible, clean outlined pet widget below the editor with hunger/xp progress bars and truncated last-meal text
 - Compact footer status
 - `/pet`, `/pet name <name>`, and `/pet reset`
 - Global cross-session persistent state at `~/.pi/agent/tamagotchi-pet.json`

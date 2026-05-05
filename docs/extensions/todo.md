@@ -15,4 +15,4 @@ The agent uses todo items to track multi-step work, open user requests, and foll
 
 ## Widget behavior
 
-The TUI widget shows a rolling window of up to 5 entries. Completed items remain visible until the window needs space for newer/open items. When more than 5 open todos exist, completed items are hidden first, then the newest 5 open items are shown.
+The TUI widget shows a rolling window of up to 5 entries. It prioritizes the oldest unfinished todos first. Completed items remain visible until the window needs space, but the widget is hidden when no unfinished todos remain.

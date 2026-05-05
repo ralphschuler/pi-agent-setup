@@ -1,4 +1,3 @@
-// @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import http from "node:http";
@@ -141,13 +140,14 @@ export default function browserBridge(pi: ExtensionAPI) {
         ].join("\r\n"),
       );
 
+      const wsSocket = socket as import("node:net").Socket;
       if (client) client.socket.destroy();
-      client = { socket, id: crypto.randomUUID().slice(0, 8), connectedAt: Date.now() };
+      client = { socket: wsSocket, id: crypto.randomUUID().slice(0, 8), connectedAt: Date.now() };
       pi.appendEntry("browser-bridge-connection", { connectedAt: client.connectedAt, id: client.id });
       socket.on(
         "data",
         (() => {
-          let buffered = Buffer.alloc(0);
+          let buffered: Buffer = Buffer.alloc(0);
           return (chunk: Buffer) => {
             buffered = Buffer.concat([buffered, chunk]);
             const parsed = parseFrames(buffered);
@@ -165,9 +165,9 @@ export default function browserBridge(pi: ExtensionAPI) {
         })(),
       );
       socket.on("close", () => {
-        if (client?.socket === socket) client = undefined;
+        if (client?.socket === wsSocket) client = undefined;
       });
-      sendFrame(socket, { action: "hello", args: { server: "pi-browser-bridge" } });
+      sendFrame(wsSocket, { action: "hello", args: { server: "pi-browser-bridge" } });
     });
 
     await new Promise<void>((resolve, reject) => {
@@ -202,7 +202,7 @@ export default function browserBridge(pi: ExtensionAPI) {
     handler: async (_args, ctx) => {
       await startServer();
       const urls = localAddresses(port);
-      ctx.ui.notify(`Browser bridge ${client ? "connected" : "waiting"}. Open ${urls[0]} for setup details.`, client ? "success" : "info");
+      ctx.ui.notify(`Browser bridge ${client ? "connected" : "waiting"}. Open ${urls[0]} for setup details.`, "info");
     },
   });
 
@@ -242,7 +242,7 @@ export default function browserBridge(pi: ExtensionAPI) {
       script: Type.Optional(Type.String({ description: "JavaScript expression/function body for evaluate action" })),
       timeoutMs: Type.Optional(Type.Number({ description: "Command timeout in milliseconds" })),
     }),
-    async execute(_toolCallId, params) {
+    async execute(_toolCallId, params: any) {
       if (params.action === "status") {
         const urls = server ? localAddresses(port) : [];
         return {
@@ -293,5 +293,5 @@ export default function browserBridge(pi: ExtensionAPI) {
         details: { action: params.action, result },
       };
     },
-  });
+  } as any);
 }

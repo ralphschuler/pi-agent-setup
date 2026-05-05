@@ -83,10 +83,12 @@ export default function todo(pi: ExtensionAPI) {
   }
 
   function renderLines() {
+    const openCount = openItems().length;
+    if (openCount === 0) return [];
+
     const visible = visibleItems();
     if (visible.length === 0) return [];
 
-    const openCount = openItems().length;
     const hiddenCount = Math.max(0, items.length - visible.length);
     const lines = [`Todo (${progressSummary()})`];
     for (const item of visible) {

@@ -28,6 +28,12 @@ test("safety guard covers bash and process shell execution", () => {
   assert.match(source, /Blocked dangerous shell command/);
 });
 
+test("browser bridge is typechecked", () => {
+  const source = readText("extensions/browser-bridge/index.ts");
+
+  assert.doesNotMatch(source, /@ts-nocheck/);
+});
+
 test("browser bridge HTTP setup does not expose token", () => {
   const source = readText("extensions/browser-bridge/index.ts");
 
@@ -36,14 +42,24 @@ test("browser bridge HTTP setup does not expose token", () => {
   assert.match(source, /details: \{ active: true, connected: Boolean\(client\), port, host: DEFAULT_HOST, urls, token: TOKEN/);
 });
 
+test("web terminal enforces origin and csrf checks", () => {
+  const web = readText("extensions/web-terminal/index.ts");
+  const auth = readText("extensions/web-terminal/auth.ts");
+
+  assert.match(web, /requiresCsrfCheck\(req, url\) && !isTrustedOrigin\(req\)/);
+  assert.match(web, /HTTP\/1\.1 403 Forbidden/);
+  assert.match(auth, /originUrl\.host === host/);
+  assert.match(auth, /pi_web_terminal_token/);
+});
+
 test("web and browser servers default to localhost with opt-in LAN binding", () => {
   const web = readText("extensions/web-terminal/index.ts");
   const browser = readText("extensions/browser-bridge/index.ts");
 
   assert.match(web, /PI_WEB_TERMINAL_HOST \|\| "127\.0\.0\.1"/);
   assert.match(browser, /PI_BROWSER_BRIDGE_HOST \|\| "127\.0\.0\.1"/);
-  assert.match(web, /function isAuthed\(req: http\.IncomingMessage, url: URL, token: string\)/);
-  assert.match(web, /cookieValue\(req\.headers\.cookie, "pi_web_terminal_token"\) === token/);
+  assert.match(readText("extensions/web-terminal/auth.ts"), /function isAuthed\(req: http\.IncomingMessage, url: URL, token: string\)/);
+  assert.match(readText("extensions/web-terminal/auth.ts"), /cookieValue\(req\.headers\.cookie, "pi_web_terminal_token"\) === token/);
   assert.doesNotMatch(web, /cookie\?\.includes\(`pi_web_terminal_token=/);
 });
 

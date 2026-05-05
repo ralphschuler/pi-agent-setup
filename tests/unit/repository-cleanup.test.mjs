@@ -62,12 +62,13 @@ test("web and browser servers default to localhost with opt-in LAN binding", () 
   const web = readText("extensions/web-terminal/index.ts");
   const browser = readText("extensions/browser-bridge/index.ts");
 
-  assert.match(web, /PI_WEB_TERMINAL_HOST"\) \|\| "127\.0\.0\.1"/);
-  assert.match(web, /key\.toUpperCase\(\) === name/);
+  assert.match(web, /PI_WEB_TERMINAL_HOST"\) \|\| LOCALHOST_BIND_HOST/);
+  assert.match(readText("extensions/shared/local-network.ts"), /key\.toUpperCase\(\) === name/);
   assert.match(web, /function configuredHost\(\)/);
   assert.match(web, /activeServer\.listen\(desiredPort, desiredHost/);
   assert.match(web, /if \(server && \(host !== desiredHost \|\| port !== desiredPort\)\) await stopServer\(\)/);
-  assert.match(browser, /PI_BROWSER_BRIDGE_HOST \|\| "127\.0\.0\.1"/);
+  assert.match(browser, /PI_BROWSER_BRIDGE_HOST \|\| LOCALHOST_BIND_HOST/);
+  assert.match(readText("extensions/shared/local-network.ts"), /export function localNetworkUrls/);
   assert.match(readText("extensions/web-terminal/auth.ts"), /function isAuthed\(req: http\.IncomingMessage, url: URL, token: string\)/);
   assert.match(readText("extensions/web-terminal/auth.ts"), /cookieValue\(req\.headers\.cookie, "pi_web_terminal_token"\) === token/);
   assert.doesNotMatch(web, /cookie\?\.includes\(`pi_web_terminal_token=/);

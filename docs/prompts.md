@@ -18,18 +18,20 @@ It asks the agent to:
 
 ### `review.md`
 
-A structured repository-change review prompt focused on:
+A multiagent-style deep technical audit prompt for architecture, backend/API, frontend/UI, security, testing, DevOps, and code quality review.
 
-- Correctness and edge cases
-- Test coverage and validation gaps
-- Security and privacy impact
-- Maintainability, docs, and user-facing behavior
+Expected output includes an executive summary, risk matrix, concrete findings, GitHub-issue-ready tasks, and recommended implementation order.
 
-Expected output includes prioritized findings, questions, and a short summary.
+### `research.md`
+
+A multiagent-style research prompt for source discovery, technical analysis, security/risk review, alternatives comparison, and implementation planning.
+
+Expected output includes sourced findings, confidence levels, risk/tradeoff tables, GitHub-issue-ready tasks, and recommended implementation order.
 
 ## Usage examples
 
 ```text
 /bootstrap improve this repository
 /review review my current diff
+/research compare deployment options for this repo
 ```

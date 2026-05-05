@@ -54,8 +54,8 @@ npm run test:docker
 ## What is included
 
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
-  - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/github-handoff/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
-- `skills/` — on-demand workflows for project bootstrap, code review, debugging, processes, and subagents.
+  - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
+- `skills/` — on-demand workflows for project bootstrap, code review, debugging, GitHub merge, processes, and subagents.
 - `prompts/` — reusable prompt templates such as review, research, refine-codebase, to-issue, to-pr, and pick-issue.
 - `themes/` — custom TUI themes, including synthwave.
 - `scripts/` — install, update, uninstall, validation, and Docker test helpers.
@@ -71,6 +71,7 @@ npm run test:docker
 /review [scope]
 /research <topic>
 /refine-codebase [scope]
+/merge [PR number / URL / branch]
 /to-issue [scope]
 /to-pr [title or scope]
 /pick-issue [priority/filter]

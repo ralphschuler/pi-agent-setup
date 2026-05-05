@@ -16,6 +16,12 @@ The workflow inspects repo/auth state, reviews conversation and relevant files, 
 
 Required issue body headings: Summary, Evidence/Context, Decisions, Tasks, Proposed Solution, Acceptance Criteria, Relevant Files/Commands, Validation, Risks/Rollback, and Source Conversation Context.
 
+### `merge.md`
+
+A safe GitHub rebase merge workflow. Accepts optional PR number, URL, or branch via `/merge [PR number / URL / branch]`.
+
+The workflow identifies an existing open PR, waits for checks, uses `human_in_loop` for approval when needed, calls `github_rebase_merge`, and verifies final merged state. It never auto-creates a PR and stops on draft, failed checks, non-mergeable, missing PR, or ambiguous target state.
+
 ### `to-pr.md`
 
 A GitHub pull request workflow. Accepts optional PR title or scope via `/to-pr [PR title / scope]`.
@@ -52,6 +58,7 @@ Expected output is a numbered list of deepening opportunities using the vocabula
 /debug npm test is failing with a timeout
 /to-issue turn the last review findings into issues
 /to-pr create a PR for the current branch
+/merge current branch PR
 /pick-issue implement, test, push, wait for checks, merge
 /review review my current diff
 /research compare deployment options for this repo

@@ -107,29 +107,51 @@ export default function planCommand(pi: ExtensionAPI) {
 }
 
 function buildKickoffPrompt(task: string) {
-  return `Start the /plan workflow for this task:\n\n${task}\n\nClarify the task until you have complete coverage, then produce a reviewable plan. Do not modify files until I approve the plan.`;
+  return `Start the /plan workflow for this task:\n\n${task}\n\nRun deep drilldown planning before implementation. Walk the decision tree one branch at a time, inspect the codebase for answers when possible, ask only necessary user questions, and include your recommended answer for every question. Do not modify files until I approve the plan.`;
 }
 
 function planningInstructions() {
   return [
-    "You are in /plan workflow.",
-    "Goal: refine the user's task until requirements, constraints, risks, acceptance criteria, files/areas to inspect, and implementation approach have 100% coverage.",
-    "Planning rules:",
+    "You are in /plan workflow: a deep drilldown planning mode inspired by a relentless design interview.",
+    "Goal: reach shared understanding before implementation by resolving every material branch of the decision tree: requirements, constraints, architecture, UX/API behavior, state/data, failure modes, security, tests, deployment, rollback, and acceptance criteria.",
+    "Core rules:",
     "- Do not modify files, write files, or apply changes before user approval.",
+    "- Ask questions one at a time when user input is required. Do not dump a long questionnaire unless the UI specifically supports it and it reduces back-and-forth.",
+    "- For every question, include your recommended answer and why. Format: Question / Recommended answer / Why it matters.",
+    "- If a question can be answered by inspecting the repo, docs, config, tests, or current state, inspect first instead of asking the user.",
+    "- Walk dependencies between decisions one-by-one. Resolve upstream decisions before downstream implementation details.",
+    "- Continue drilling until there are no material unknowns, not merely until a plausible plan exists.",
     "- Research with read-only tools as needed. You may use subagent for read-only scout/research/review/context-building work before approval, but do not delegate edits until the plan is approved.",
-    "- Ask clarifying questions with human_in_loop whenever any requirement, constraint, acceptance criterion, or risk is unknown.",
-    "- Prefer concise grouped questions. Continue asking until there are no material unknowns.",
-    "- Use todo for durable open planning/application tasks when useful.",
+    "- Use todo for durable planning/application tasks when useful.",
     "- Use graph_memory for durable user preferences, project decisions, and reusable facts when useful.",
+    "Deep drilldown phases:",
+    "1. Frame the objective: restate goal, success criteria, non-goals, user-visible impact, and affected surfaces.",
+    "2. Reconnaissance: inspect relevant files, docs, tests, CI/config, runtime assumptions, and prior decisions before asking anything discoverable.",
+    "3. Decision tree: identify branches and dependencies. For each unresolved branch, ask exactly one targeted question with a recommended answer.",
+    "4. Risk sweep: enumerate correctness, security, privacy, data loss, performance, migration, compatibility, UX, and operational risks; resolve each by evidence or question.",
+    "5. Plan synthesis: produce an implementation plan with phases, files, tests, validation commands, rollback, and acceptance criteria.",
+    "6. Review gate: only after coverage is complete, present the plan for approval using the exact READY FOR REVIEW structure.",
+    "Coverage checklist before READY FOR REVIEW:",
+    "- Goal and non-goals are explicit.",
+    "- All user preferences and constraints are captured.",
+    "- Affected files/modules/APIs/UI/config/tests are identified.",
+    "- Alternatives and rejected approaches are noted when meaningful.",
+    "- Security, error handling, edge cases, observability, and rollback are addressed.",
+    "- Validation commands and test cases are concrete.",
+    "- Remaining assumptions are either confirmed by the user or clearly low-risk.",
     "When coverage is complete, output exactly this structure:",
     "READY FOR REVIEW",
     "Coverage: 100%",
     "Summary: ...",
+    "Decisions resolved: ...",
     "Assumptions: ...",
+    "Non-goals: ...",
     "Plan:",
     "1. ...",
+    "Files/areas: ...",
     "Validation: ...",
     "Rollback/risks: ...",
+    "Acceptance criteria: ...",
     "Do not say READY FOR REVIEW until you are ready for the user to approve or refine the plan.",
   ].join("\n");
 }

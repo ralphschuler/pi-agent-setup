@@ -4,15 +4,27 @@
 
 ## Purpose
 
-The plan workflow enforces clarification before implementation for non-trivial tasks.
+The plan workflow enforces deep drilldown planning before implementation for non-trivial tasks. It behaves like a rigorous design interview: resolve each branch of the decision tree, inspect the codebase before asking discoverable questions, and ask one targeted question at a time when user input is required.
 
 ## Provides
 
-- Clarification-first workflow
+- Deep drilldown planning phases
+- One-question-at-a-time clarification with recommended answers
+- Codebase reconnaissance before asking discoverable questions
+- Decision-tree and risk-sweep coverage
 - Reviewable plan output
 - Write blocking until plan approval
 - Review UI with apply, refine, or cancel choices
 
 ## Recommended use
 
-Use `/plan` before changes that affect architecture, workflows, multiple files, deployment, or user-facing behavior.
+Use `/plan` before changes that affect architecture, workflows, multiple files, deployment, security, data handling, or user-facing behavior.
+
+## Planning phases
+
+1. Frame the objective, success criteria, non-goals, and affected surfaces.
+2. Inspect relevant files, docs, tests, and config before asking user questions.
+3. Walk the decision tree one branch at a time.
+4. Ask targeted questions only when needed, always with a recommended answer.
+5. Sweep risks: correctness, security, data loss, performance, compatibility, UX, operations, and rollback.
+6. Produce `READY FOR REVIEW` only when coverage is complete.

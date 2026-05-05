@@ -56,6 +56,7 @@ fi
 if command -v npm >/dev/null 2>&1 && [[ -d node_modules ]]; then
   npm run typecheck
   npm run lint
+  npm run format:check
 fi
 
 if [[ "$fail" -ne 0 ]]; then

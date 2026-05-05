@@ -5,9 +5,9 @@ const dangerousPatterns = [/\brm\s+-rf\s+\/(?:\s|$)/, /\bsudo\s+rm\b/, /\bmkfs(?
 
 export default function safetyGuard(pi: ExtensionAPI) {
   pi.on("tool_call", async (event, ctx) => {
-    if (!isToolCallEventType("bash", event)) return;
+    const command = commandFromToolCall(event);
+    if (!command) return;
 
-    const command = event.input.command ?? "";
     const matched = dangerousPatterns.find((pattern) => pattern.test(command));
     if (!matched) return;
 
@@ -21,4 +21,20 @@ export default function safetyGuard(pi: ExtensionAPI) {
       return { block: true, reason: "User rejected dangerous shell command" };
     }
   });
+}
+
+function commandFromToolCall(event: unknown) {
+  if (isToolCallEventType("bash", event as any)) return (event as { input: { command?: string } }).input.command ?? "";
+  if (isProcessStartToolCall(event)) return event.input.command ?? "";
+  return "";
+}
+
+function isProcessStartToolCall(event: unknown): event is { toolName: "process"; input: { action?: string; command?: string } } {
+  return (
+    typeof event === "object" &&
+    event !== null &&
+    (event as { toolName?: unknown }).toolName === "process" &&
+    typeof (event as { input?: unknown }).input === "object" &&
+    (event as { input?: { action?: unknown } }).input?.action === "start"
+  );
 }

@@ -108,8 +108,8 @@ export default function browserBridge(pi: ExtensionAPI) {
         [
           "Pi Browser Bridge",
           "",
-          `WebSocket URL: ws://${req.headers.host || `localhost:${port}`}/bridge?token=${TOKEN}`,
-          `Token: ${TOKEN}`,
+          `WebSocket URL: ws://${req.headers.host || `localhost:${port}`}/bridge?token=<token-from-pi-tui>`,
+          "Token: hidden on HTTP setup page. Run /browser-bridge in pi or use browser_bridge setup to show the token locally.",
           "",
           "Install companion extension:",
           `1. Copy this folder to the browser machine: ${EXTENSION_DIR}`,

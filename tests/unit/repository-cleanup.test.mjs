@@ -16,6 +16,23 @@ test("todo start action maps to in_progress status and icon", () => {
   assert.doesNotMatch(source, /status as TodoStatus/);
 });
 
+test("safety guard covers bash and process shell execution", () => {
+  const source = readText("extensions/safety-guard/index.ts");
+
+  assert.match(source, /isToolCallEventType\("bash", event as any\)/);
+  assert.match(source, /toolName === "process"/);
+  assert.match(source, /input\?\.action === "start"/);
+  assert.match(source, /Blocked dangerous shell command/);
+});
+
+test("browser bridge HTTP setup does not expose token", () => {
+  const source = readText("extensions/browser-bridge/index.ts");
+
+  assert.match(source, /Token: hidden on HTTP setup page/);
+  assert.match(source, /bridge\?token=<token-from-pi-tui>/);
+  assert.match(source, /details: \{ active: true, connected: Boolean\(client\), port, host: DEFAULT_HOST, urls, token: TOKEN/);
+});
+
 test("web and browser servers default to localhost with opt-in LAN binding", () => {
   const web = readText("extensions/web-terminal/index.ts");
   const browser = readText("extensions/browser-bridge/index.ts");
@@ -52,6 +69,10 @@ test("process tool implements advertised alerts and log watches", () => {
   for (const phrase of ["alertOnSuccess", "alertOnFailure", "alertOnKill", "logWatches", "notifyProcessExit", "checkLogWatches"]) {
     assert.match(source, new RegExp(phrase), `missing ${phrase}`);
   }
+  assert.match(source, /Invalid log watch regex/);
+  assert.match(source, /regex = new RegExp\(input\.pattern\)/);
+  assert.match(source, /watch\.regex\.test\(text\)/);
+  assert.doesNotMatch(source, /new RegExp\(watch\.pattern\)/);
 });
 
 test("repository has type and lint hygiene scripts", () => {

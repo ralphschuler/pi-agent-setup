@@ -12,6 +12,7 @@ test("GitHub Actions runs validation, test suite, and Docker smoke test", () => 
   assert.match(workflow, /npm ci --legacy-peer-deps/);
   assert.match(workflow, /npm run check/);
   assert.match(workflow, /npm run test:ci/);
+  assert.match(readText("scripts/check.sh"), /npm run format:check/);
   assert.match(workflow, /bash scripts\/test-docker\.sh/);
 });
 
@@ -19,7 +20,7 @@ test("Dockerfile performs package validation and full CI tests", () => {
   const dockerfile = readText("Dockerfile");
 
   assert.match(dockerfile, /FROM node:22-bookworm-slim/);
-  assert.match(dockerfile, /npm install -g @mariozechner\/pi-coding-agent/);
+  assert.match(dockerfile, /npm install -g @mariozechner\/pi-coding-agent@0\.73\.0/);
   assert.match(dockerfile, /npm run check/);
   assert.match(dockerfile, /npm run test:ci/);
   assert.match(dockerfile, /npm run install:pi/);

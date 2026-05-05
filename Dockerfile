@@ -10,7 +10,7 @@ RUN apt-get update \
     git \
   && rm -rf /var/lib/apt/lists/*
 
-RUN npm install -g @mariozechner/pi-coding-agent
+RUN npm install -g @mariozechner/pi-coding-agent@0.73.0
 
 WORKDIR /opt/pi-agent-setup
 

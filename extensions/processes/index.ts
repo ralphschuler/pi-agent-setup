@@ -9,6 +9,7 @@ import { Type } from "typebox";
 
 type LogWatch = {
   pattern: string;
+  regex: RegExp;
   stream: "stdout" | "stderr" | "both";
   repeat: boolean;
   matched: boolean;
@@ -280,7 +281,14 @@ function normalizeLogWatches(value: unknown): LogWatch[] {
     .filter((watch) => watch && typeof watch === "object" && typeof (watch as { pattern?: unknown }).pattern === "string")
     .map((watch) => {
       const input = watch as { pattern: string; stream?: "stdout" | "stderr" | "both"; repeat?: boolean };
-      return { pattern: input.pattern, stream: input.stream || "both", repeat: Boolean(input.repeat), matched: false };
+      let regex: RegExp;
+      try {
+        regex = new RegExp(input.pattern);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        throw new Error(`Invalid log watch regex "${input.pattern}": ${message}`, { cause: error });
+      }
+      return { pattern: input.pattern, regex, stream: input.stream || "both", repeat: Boolean(input.repeat), matched: false };
     });
 }
 
@@ -290,7 +298,7 @@ function checkLogWatches(proc: ManagedProcess, stream: "stdout" | "stderr", line
   for (const watch of proc.logWatches) {
     if (watch.matched && !watch.repeat) continue;
     if (watch.stream !== "both" && watch.stream !== stream) continue;
-    if (!new RegExp(watch.pattern).test(text)) continue;
+    if (!watch.regex.test(text)) continue;
     watch.matched = true;
     ui.notify(`Process #${proc.id} (${proc.name}) matched ${stream} watch: ${watch.pattern}`, "warning");
   }

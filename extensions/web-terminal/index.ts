@@ -13,18 +13,48 @@ import { json, safeHandleApi } from "./http.ts";
 import { handleApi } from "./routes.ts";
 import { handleTerminalUpgrade, type WebSocketClient } from "./terminal-session.ts";
 
-const DEFAULT_HOST = process.env.PI_WEB_TERMINAL_HOST || "127.0.0.1";
-const DEFAULT_PORT = Number(process.env.PI_WEB_TERMINAL_PORT || 17474);
-const INITIAL_TOKEN = process.env.PI_WEB_TERMINAL_TOKEN || crypto.randomBytes(18).toString("base64url");
+function env(name: string) {
+  const exact = process.env[name];
+  if (exact !== undefined) return exact;
+  const match = Object.keys(process.env).find((key) => key.toUpperCase() === name);
+  return match ? process.env[match] : undefined;
+}
+
+const DEFAULT_HOST = env("PI_WEB_TERMINAL_HOST") || "127.0.0.1";
+const DEFAULT_PORT = Number(env("PI_WEB_TERMINAL_PORT") || 17474);
+const INITIAL_TOKEN = env("PI_WEB_TERMINAL_TOKEN") || crypto.randomBytes(18).toString("base64url");
 const PUBLIC_DIR = path.join(path.dirname(fileURLToPath(import.meta.url)), "public");
 const IS_CHILD = process.env.PI_WEB_TERMINAL_CHILD === "1";
+let runtimeHost: string | undefined;
+let runtimePort: number | undefined;
+
+function normalizeHost(value: unknown) {
+  const host = typeof value === "string" ? value.trim() : "";
+  if (!host) return undefined;
+  if (!/^[a-zA-Z0-9:._-]+$/.test(host)) throw new Error("Invalid host. Use an IP address or hostname.");
+  return host;
+}
+
+function normalizePort(value: unknown) {
+  if (value === undefined || value === null || value === "") return undefined;
+  const port = Number(value);
+  if (!Number.isInteger(port) || port < 1 || port > 65535) throw new Error("Invalid port. Use 1-65535.");
+  return port;
+}
+
+function configureBind(options: { host?: unknown; port?: unknown }) {
+  const host = normalizeHost(options.host);
+  const port = normalizePort(options.port);
+  if (host !== undefined) runtimeHost = host;
+  if (port !== undefined) runtimePort = port;
+}
 
 function configuredHost() {
-  return process.env.PI_WEB_TERMINAL_HOST || DEFAULT_HOST;
+  return runtimeHost || env("PI_WEB_TERMINAL_HOST") || DEFAULT_HOST;
 }
 
 function configuredPort() {
-  const configured = Number(process.env.PI_WEB_TERMINAL_PORT || DEFAULT_PORT);
+  const configured = runtimePort || Number(env("PI_WEB_TERMINAL_PORT") || DEFAULT_PORT);
   return Number.isFinite(configured) && configured > 0 ? configured : DEFAULT_PORT;
 }
 
@@ -153,6 +183,7 @@ export default function webTerminal(pi: ExtensionAPI) {
           handleApi(req, res, url.pathname.slice("/api".length), {
             pi,
             cwd: currentCwd,
+            host,
             port,
             clients,
             eventClients,
@@ -272,14 +303,26 @@ export default function webTerminal(pi: ExtensionAPI) {
 
   pi.registerCommand("web-terminal", {
     description: "Show the authenticated web/PWA terminal URL for this pi session",
-    handler: async (_args, ctx) => {
+    handler: async (args, ctx) => {
+      const parts = String(args || "")
+        .trim()
+        .split(/\s+/)
+        .filter(Boolean);
+      const hostArg = parts.find((part) => part.startsWith("--host="))?.slice("--host=".length) || parts[0];
+      const portArg = parts.find((part) => part.startsWith("--port="))?.slice("--port=".length);
+      configureBind({ host: hostArg, port: portArg });
       await startServer(ctx.cwd);
       rotateToken();
       const urls = setupUrls();
       const message = [
         `Web terminal token generated.`,
+        `Bind: ${host}:${port}`,
         `Open: ${urls[0]}`,
-        urls.length > 1 ? `LAN: ${urls.slice(1).join(" or ")}` : undefined,
+        urls.length > 1
+          ? `LAN: ${urls.slice(1).join(" or ")}`
+          : host === "127.0.0.1"
+            ? `LAN: disabled; run /web-terminal 0.0.0.0 to bind all interfaces.`
+            : undefined,
       ]
         .filter(Boolean)
         .join("\n");
@@ -293,8 +336,13 @@ export default function webTerminal(pi: ExtensionAPI) {
     description: "Show status and setup URLs for the Hyper-inspired Pi Web Terminal PWA.",
     promptSnippet: "Expose this pi session through an authenticated browser terminal/PWA.",
     promptGuidelines: ["Use web_terminal status/setup when the user asks for the browser/PWA terminal URL."],
-    parameters: Type.Object({ action: Type.Union([Type.Literal("status"), Type.Literal("setup")]) }),
+    parameters: Type.Object({
+      action: Type.Union([Type.Literal("status"), Type.Literal("setup")]),
+      host: Type.Optional(Type.String({ description: "Optional bind host for setup, e.g. 0.0.0.0 for LAN access." })),
+      port: Type.Optional(Type.Number({ description: "Optional bind port for setup." })),
+    }),
     async execute(_toolCallId, params, _signal, _onUpdate, ctx) {
+      if (params.action === "setup") configureBind({ host: params.host, port: params.port });
       if (params.action === "status" && !server) {
         return {
           content: [{ type: "text", text: "Web terminal server: inactive\nRun setup to activate the web terminal server." }],

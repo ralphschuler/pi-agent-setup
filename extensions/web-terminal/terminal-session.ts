@@ -16,11 +16,14 @@ export type WebSocketClient = {
 
 export function spawnPiTerminal(cwd: string, cols?: number, rows?: number) {
   const command = process.env.PI_WEB_TERMINAL_COMMAND || "pi -c";
+  const { NO_COLOR: _noColor, ...baseEnv } = process.env;
   const env = {
-    ...process.env,
+    ...baseEnv,
     PI_WEB_TERMINAL_CHILD: "1",
     TERM: process.env.PI_WEB_TERMINAL_TERM || "xterm-256color",
+    TERM_PROGRAM: process.env.TERM_PROGRAM || "pi-web-terminal",
     COLORTERM: process.env.COLORTERM || "truecolor",
+    FORCE_COLOR: process.env.FORCE_COLOR || "1",
     COLUMNS: String(cols || 120),
     LINES: String(rows || 34),
   };

@@ -1,38 +1,11 @@
-import { spawn, type ChildProcessWithoutNullStreams } from "node:child_process";
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
+import { appendOutput, createManagedProcess, notifyProcessExit, safeProcessName, serializeProcess, type ManagedProcess } from "./domain.ts";
 import { matchesKey, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
-
-type LogWatch = {
-  pattern: string;
-  regex: RegExp;
-  stream: "stdout" | "stderr" | "both";
-  repeat: boolean;
-  matched: boolean;
-};
-
-type ManagedProcess = {
-  id: string;
-  name: string;
-  command: string;
-  cwd: string;
-  startedAt: number;
-  status: "running" | "exited" | "killed";
-  exitCode?: number | null;
-  signal?: string | null;
-  stdout: string[];
-  stderr: string[];
-  stdoutLog: string;
-  stderrLog: string;
-  alertOnSuccess: boolean;
-  alertOnFailure: boolean;
-  alertOnKill: boolean;
-  logWatches: LogWatch[];
-  child?: ChildProcessWithoutNullStreams;
-};
 
 type ProcessDetails = {
   action: string;
@@ -48,7 +21,6 @@ type ProcessDetails = {
 
 const processes = new Map<string, ManagedProcess>();
 let nextId = 1;
-const LOG_LIMIT = 400;
 const LOG_FILE_LIMIT = Number(process.env.PI_PROCESS_LOG_FILE_LIMIT || 1024 * 1024);
 
 const actionSchema = Type.Union([
@@ -225,33 +197,29 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
   const id = String(nextId++);
   const logDir = path.join(os.tmpdir(), "pi-processes");
   await fs.mkdir(logDir, { recursive: true });
-  const stdoutLog = path.join(logDir, `${id}-${safeName(params.name)}.stdout.log`);
-  const stderrLog = path.join(logDir, `${id}-${safeName(params.name)}.stderr.log`);
+  const stdoutLog = path.join(logDir, `${id}-${safeProcessName(params.name)}.stdout.log`);
+  const stderrLog = path.join(logDir, `${id}-${safeProcessName(params.name)}.stderr.log`);
   await fs.writeFile(stdoutLog, "", "utf8");
   await fs.writeFile(stderrLog, "", "utf8");
 
   const child = spawn(params.command, { cwd, shell: true, stdio: "pipe", env: process.env });
-  const proc: ManagedProcess = {
+  const proc = createManagedProcess({
     id,
     name: params.name,
     command: params.command,
     cwd,
-    startedAt: Date.now(),
-    status: "running",
-    stdout: [],
-    stderr: [],
     stdoutLog,
     stderrLog,
-    alertOnSuccess: Boolean(params.alertOnSuccess),
-    alertOnFailure: Boolean(params.alertOnFailure),
-    alertOnKill: Boolean(params.alertOnKill),
-    logWatches: normalizeLogWatches(params.logWatches),
+    alertOnSuccess: params.alertOnSuccess,
+    alertOnFailure: params.alertOnFailure,
+    alertOnKill: params.alertOnKill,
+    logWatches: params.logWatches,
     child,
-  };
+  });
   processes.set(id, proc);
 
-  child.stdout.on("data", (data) => appendOutput(proc, "stdout", data, ui));
-  child.stderr.on("data", (data) => appendOutput(proc, "stderr", data, ui));
+  child.stdout.on("data", (data) => appendOutput(proc, "stdout", data, { ui, logFileLimit: LOG_FILE_LIMIT }));
+  child.stderr.on("data", (data) => appendOutput(proc, "stderr", data, { ui, logFileLimit: LOG_FILE_LIMIT }));
   child.on("exit", (code, signal) => {
     proc.status = signal ? "killed" : "exited";
     proc.exitCode = code;
@@ -259,88 +227,14 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
     notifyProcessExit(proc, ui);
     updateProcessStatus(ui);
   });
-  child.on("error", (error) => appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), ui));
+  child.on("error", (error) => appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), { ui, logFileLimit: LOG_FILE_LIMIT }));
 
   updateProcessStatus(ui);
   onUpdate?.({ content: [{ type: "text", text: `Started ${params.name} as #${id}` }] });
-  return textResult(`Started process #${id} (${params.name}).`, { action: "start", process: serialize(proc) });
+  return textResult(`Started process #${id} (${params.name}).`, { action: "start", process: serializeProcess(proc) });
 }
 
-function appendOutput(proc: ManagedProcess, stream: "stdout" | "stderr", data: Buffer, ui?: any) {
-  const text = data.toString();
-  const lines = text.split(/\r?\n/).filter((line, index, arr) => line.length > 0 || index < arr.length - 1);
-  proc[stream].push(...lines);
-  if (proc[stream].length > LOG_LIMIT) proc[stream].splice(0, proc[stream].length - LOG_LIMIT);
-  checkLogWatches(proc, stream, lines, ui);
-  void appendBoundedLog(stream === "stdout" ? proc.stdoutLog : proc.stderrLog, text);
-}
-
-async function appendBoundedLog(file: string, text: string) {
-  try {
-    await fs.appendFile(file, text, "utf8");
-    const stat = await fs.stat(file);
-    if (stat.size <= LOG_FILE_LIMIT) return;
-    const handle = await fs.open(file, "r");
-    try {
-      const keep = Math.floor(LOG_FILE_LIMIT * 0.8);
-      const buffer = Buffer.alloc(keep);
-      await handle.read(buffer, 0, keep, stat.size - keep);
-      await fs.writeFile(file, `[log truncated to last ${keep} bytes]\n${buffer.toString("utf8")}`, "utf8");
-    } finally {
-      await handle.close();
-    }
-  } catch {
-    // Log persistence is best-effort; in-memory output remains available.
-  }
-}
-
-function normalizeLogWatches(value: unknown): LogWatch[] {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((watch) => watch && typeof watch === "object" && typeof (watch as { pattern?: unknown }).pattern === "string")
-    .map((watch) => {
-      const input = watch as { pattern: string; stream?: "stdout" | "stderr" | "both"; repeat?: boolean };
-      if (!isSafeLogWatchPattern(input.pattern)) throw new Error(`Unsafe log watch regex "${input.pattern}"`);
-      let regex: RegExp;
-      try {
-        regex = new RegExp(input.pattern);
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        throw new Error(`Invalid log watch regex "${input.pattern}": ${message}`, { cause: error });
-      }
-      return { pattern: input.pattern, regex, stream: input.stream || "both", repeat: Boolean(input.repeat), matched: false };
-    });
-}
-
-export function isSafeLogWatchPattern(pattern: string) {
-  if (pattern.length > 200) return false;
-  if (/(\([^)]*[+*][^)]*\))[+*{]/.test(pattern)) return false;
-  if (/(\[[^\]]*[+*][^\]]*\])[+*{]/.test(pattern)) return false;
-  if (/(\.\*){2,}/.test(pattern)) return false;
-  return true;
-}
-
-function checkLogWatches(proc: ManagedProcess, stream: "stdout" | "stderr", lines: string[], ui?: any) {
-  if (!ui?.notify || lines.length === 0) return;
-  const text = lines.join("\n");
-  for (const watch of proc.logWatches) {
-    if (watch.matched && !watch.repeat) continue;
-    if (watch.stream !== "both" && watch.stream !== stream) continue;
-    if (!watch.regex.test(text)) continue;
-    watch.matched = true;
-    ui.notify(`Process #${proc.id} (${proc.name}) matched ${stream} watch: ${watch.pattern}`, "warning");
-  }
-}
-
-function notifyProcessExit(proc: ManagedProcess, ui?: any) {
-  if (!ui?.notify) return;
-  if (proc.status === "killed" && proc.alertOnKill)
-    ui.notify(`Process #${proc.id} (${proc.name}) was killed${proc.signal ? ` by ${proc.signal}` : ""}.`, "warning");
-  if (proc.status === "exited" && proc.exitCode === 0 && proc.alertOnSuccess)
-    ui.notify(`Process #${proc.id} (${proc.name}) completed successfully.`, "success");
-  if (proc.status === "exited" && proc.exitCode !== 0 && proc.alertOnFailure)
-    ui.notify(`Process #${proc.id} (${proc.name}) failed with exit code ${proc.exitCode ?? "?"}.`, "error");
-}
+export { isSafeLogWatchPattern } from "./domain.ts";
 
 function requiredProcess(id?: string) {
   if (!id) throw new Error("Process id is required.");
@@ -356,14 +250,14 @@ function outputFor(proc: ManagedProcess) {
       proc.stdout.length ? `\nstdout:\n${proc.stdout.join("\n")}` : "\nstdout: <empty>",
       proc.stderr.length ? `\nstderr:\n${proc.stderr.join("\n")}` : "\nstderr: <empty>",
     ].join("\n"),
-    { action: "output", process: serialize(proc), stdout: proc.stdout, stderr: proc.stderr },
+    { action: "output", process: serializeProcess(proc), stdout: proc.stdout, stderr: proc.stderr },
   );
 }
 
 function logsFor(proc: ManagedProcess) {
   return textResult(`stdout: ${proc.stdoutLog}\nstderr: ${proc.stderrLog}`, {
     action: "logs",
-    process: serialize(proc),
+    process: serializeProcess(proc),
     stdoutLog: proc.stdoutLog,
     stderrLog: proc.stderrLog,
   });
@@ -371,11 +265,11 @@ function logsFor(proc: ManagedProcess) {
 
 function killProcess(proc: ManagedProcess, ui?: any) {
   if (proc.status !== "running")
-    return textResult(`Process #${proc.id} is already ${proc.status}.`, { action: "kill", process: serialize(proc) });
+    return textResult(`Process #${proc.id} is already ${proc.status}.`, { action: "kill", process: serializeProcess(proc) });
   proc.child?.kill("SIGTERM");
   proc.status = "killed";
   updateProcessStatus(ui);
-  return textResult(`Sent SIGTERM to process #${proc.id} (${proc.name}).`, { action: "kill", process: serialize(proc) });
+  return textResult(`Sent SIGTERM to process #${proc.id} (${proc.name}).`, { action: "kill", process: serializeProcess(proc) });
 }
 
 function clearFinished(ui?: any) {
@@ -394,7 +288,11 @@ function writeInput(proc: ManagedProcess, input: string, end: boolean) {
   if (proc.status !== "running" || !proc.child) throw new Error(`Process #${proc.id} is not running.`);
   proc.child.stdin.write(input);
   if (end) proc.child.stdin.end();
-  return textResult(`Wrote ${input.length} byte(s) to process #${proc.id}.`, { action: "write", process: serialize(proc), ended: end });
+  return textResult(`Wrote ${input.length} byte(s) to process #${proc.id}.`, {
+    action: "write",
+    process: serializeProcess(proc),
+    ended: end,
+  });
 }
 
 function formatList() {
@@ -402,22 +300,8 @@ function formatList() {
   return rows.length ? rows.join("\n") : "No managed processes.";
 }
 
-function serialize(proc: ManagedProcess) {
-  const { child: _child, ...rest } = proc;
-  return rest;
-}
-
 function serializeAll() {
-  return [...processes.values()].map(serialize);
-}
-
-function safeName(name: string) {
-  return (
-    name
-      .toLowerCase()
-      .replace(/[^a-z0-9._-]+/g, "-")
-      .replace(/^-+|-+$/g, "") || "process"
-  );
+  return [...processes.values()].map(serializeProcess);
 }
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {

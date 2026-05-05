@@ -1,13 +1,13 @@
 # Pi Web Terminal
 
-A pi extension that serves a Hyper-inspired browser terminal/PWA and connects each browser tab to a running `pi` terminal session. It also includes pi-mobile-style mobile screens for chat, status, tasks, files, logs, cron, tools/skills, CRM, calendar, extensions, and settings.
+A pi extension that serves a terminal-only browser/PWA and connects each browser tab to a running `pi` terminal session.
 
 ## Usage
 
 1. Install/reload this pi package.
 2. Run `/web-terminal` in pi, or ask the agent to call `web_terminal` with `action: "setup"`. The server stays inactive until this step activates it.
 3. Open the authenticated URL shown by pi.
-4. Use the browser install button to add it as a PWA.
+4. Add it as a PWA from the browser menu if desired.
 
 Each connected terminal tab launches a child command in a pseudo-terminal. By default that command is:
 
@@ -15,20 +15,9 @@ Each connected terminal tab launches a child command in a pseudo-terminal. By de
 pi -c
 ```
 
-## Mobile/PWA features
+## PWA behavior
 
-- **Terminal** — Hyper-inspired xterm.js terminal connected to a child pi session.
-- **Chat** — send prompts to the current pi session and stream responses via SSE.
-- **Status** — agent health, system metrics, cwd, terminal clients, and tool count.
-- **Tasks** — optional `td` integration for viewing issues; API also supports create/start/close/reopen when `td` is installed.
-- **Files** — browse workspace files and read file contents with cwd sandboxing.
-- **Logs** — live SSE log stream for agent, tool, chat, and terminal activity.
-- **Cron** — optional `pi-cron` integration for viewing jobs; API also supports toggle/run when `pi-cron` is installed.
-- **Skills** — searchable registered tool/skill list.
-- **CRM** — optional `pi-crm` integration for viewing contacts and creating contacts when `pi-crm` is installed.
-- **Calendar** — optional `pi-calendar` integration for viewing events and creating events when `pi-calendar` is installed.
-- **Extensions** — grouped registered tools/extensions.
-- **Settings** — connection and runtime configuration.
+The web UI is intentionally terminal-only: no bottom navigation, chat, files, logs, tools, or settings screens. Markdown rendering is handled by the child `pi` TUI running inside xterm.js; the browser terminal renders the ANSI styling emitted by `pi`.
 
 ## Configuration
 
@@ -39,8 +28,6 @@ pi -c
 - `PI_WEB_TERMINAL_TERM` — child `TERM`, default `xterm-256color`
 
 The implementation uses the system `script` command to allocate a pseudo-terminal without native dependencies. If your system does not provide `script`, install `util-linux` (Linux) or set `PI_WEB_TERMINAL_COMMAND` and adapt the extension to your PTY launcher.
-
-Optional mobile integrations call external CLIs when present: `td`, `pi-cron`, `pi-crm`, and `pi-calendar`. Missing commands are reported as integration errors in the UI rather than required for the terminal itself.
 
 ## Security
 

@@ -93,11 +93,9 @@ The `subagent-orchestrator` extension injects guidance so the main agent uses su
 
 ### Extensions
 
-- `extensions/hello-tool/` registers:
-  - `/hello-setup` command
-  - `hello_setup` tool
-  - a small status indicator when loaded
+- `extensions/welcome-screen/` shows a neofetch-style pi agent welcome card on startup/reload and via `/welcome`.
 - `extensions/caveman/` registers `/caveman` to toggle terse caveman language and choose `lite`, `full`, `ultra`, `wenyan-lite`, `wenyan` (friendly label for full wenyan), or `wenyan-ultra` intensity.
+- `extensions/compact-footer/` replaces the default TUI footer with a one-line synthwave-friendly layout: model, git branch, compact extension chips, and token/cost summary.
 - `extensions/safety-guard/` asks before dangerous shell commands such as destructive root deletes.
 - `extensions/human-in-loop/` registers:
   - agent-facing `human_in_loop` tool
@@ -172,7 +170,7 @@ Prompt templates in `prompts/` become slash commands when prompt commands are en
 ```text
 .
 ├── extensions/
-│   ├── hello-tool/
+│   ├── welcome-screen/
 │   │   └── index.ts
 │   ├── caveman/
 │   │   └── index.ts

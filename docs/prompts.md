@@ -1,6 +1,6 @@
 # Prompts
 
-Prompt templates in `prompts/` become slash commands. Workflow prompts should instruct the agent to use tools, skills, `human_in_loop`, and subagents directly instead of hiding the workflow behind extension command handlers.
+Prompt templates in `prompts/` become slash commands. Workflow prompts should instruct the agent to use tools, skills, `human_in_loop`, and subagents directly instead of hiding the workflow behind extension command handlers. Use [`Resource rules`](resource-rules.md) when creating or changing prompt templates.
 
 ## Included prompts
 

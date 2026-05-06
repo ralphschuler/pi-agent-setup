@@ -40,3 +40,12 @@ test("pretty-output passes MarkdownTheme to pi-tui Markdown", () => {
   assert.doesNotMatch(source, /new Markdown\([^)]*, 0, 0, theme\)/);
   assert.match(source, /new Markdown\(markdown, 0, 0, getMarkdownTheme\(\)\)/);
 });
+
+test("pretty-output renders partial tool output compactly when available", () => {
+  const source = readText("extensions/shared/pretty-render.ts");
+
+  assert.match(source, /partialToolMarkdown\(toolName, result, args\)/);
+  assert.match(source, /textFromResult\(result\)\.trimEnd\(\)/);
+  assert.match(source, /tailLines\(text, 8, 4000\)/);
+  assert.match(source, /_Working…_/);
+});

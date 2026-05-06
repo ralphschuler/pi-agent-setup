@@ -1,4 +1,5 @@
 // @ts-nocheck
+import { spawn } from "node:child_process";
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
@@ -104,19 +105,19 @@ export default function subagents(pi: ExtensionAPI) {
       return new Text(label, 0, 0);
     },
 
-    renderResult(result, { expanded }, theme) {
+    renderResult(result, { expanded, isPartial }, theme) {
       const details = result.details as any;
       if (result.isError) return new Text(theme.fg("error", textFromResult(result)), 0, 0);
       if (!details?.runs) return new Text(textFromResult(result), 0, 0);
       const runs = details.runs as RunRecord[];
       const ok = runs.filter((run) => run.ok).length;
-      let text = `${theme.fg(ok === runs.length ? "success" : "warning", `◉ ${ok}/${runs.length} subagent run(s) succeeded`)}`;
+      let text = `${theme.fg(isPartial ? "accent" : ok === runs.length ? "success" : "warning", `${isPartial ? "◌" : "◉"} ${ok}/${runs.length} subagent run(s) ${isPartial ? "running" : "succeeded"}`)}`;
       const display = expanded ? runs : runs.slice(0, 6);
       for (const run of display) {
         const mark = run.ok ? theme.fg("success", "✓") : theme.fg("error", "✗");
         const output = run.output ? theme.fg("dim", ` → ${run.output}`) : "";
         text += `\n${mark} ${theme.fg("accent", run.agent)} ${theme.fg("muted", trimLine(run.task, 80))}${output}`;
-        if (expanded && (run.error || run.text)) text += `\n  ${theme.fg(run.ok ? "dim" : "error", trimLine(run.error || run.text, 160))}`;
+        if ((expanded || isPartial) && (run.error || run.text)) text += `\n  ${theme.fg(run.ok ? "dim" : "error", trimLine(run.error || run.text, isPartial ? 240 : 160))}`;
       }
       if (!expanded && runs.length > display.length) text += `\n${theme.fg("dim", `… ${runs.length - display.length} more`)}`;
       return new Text(text, 0, 0);
@@ -197,7 +198,7 @@ async function runParallel(
       const task = expanded[index];
       onUpdate?.({ content: [{ type: "text", text: `Running subagent ${index + 1}/${expanded.length}: ${task.agent}` }] });
       try {
-        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal);
+        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal, onUpdate);
       } catch (error) {
         records[index] = {
           agent: task.agent,
@@ -274,19 +275,99 @@ async function runAgentRecord(
 
   const runCwd = cwdOverride || cwd;
   try {
-    const result = await pi.exec("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], {
-      cwd: runCwd,
-      signal,
-      timeout: 10 * 60 * 1000,
-    } as any);
-    const text = String((result as any).stdout || (result as any).output || "").trim() || String((result as any).stderr || "").trim();
+    const result = await execSubagentProcess(agent.runtimeName, task, promptFile, runCwd, index, signal, onUpdate);
+    const text = result.stdout.trim() || result.stderr.trim();
     const outPath = await writeOutput(runCwd, output, text, index);
-    return { agent: agent.runtimeName, task, ok: true, text, output: outPath, index };
+    return { agent: agent.runtimeName, task, ok: result.code === 0, text, error: result.code === 0 ? undefined : `Exited ${result.code}`, output: outPath, index };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const outPath = await writeOutput(runCwd, output, message, index);
     return { agent: agent.runtimeName, task, ok: false, text: "", error: message, output: outPath, index };
   }
+}
+
+function execSubagentProcess(
+  agent: string,
+  task: string,
+  promptFile: string,
+  cwd: string,
+  index: number,
+  signal?: AbortSignal,
+  onUpdate?: (update: any) => void,
+): Promise<{ stdout: string; stderr: string; code: number | null }> {
+  return new Promise((resolve, reject) => {
+    const child = spawn("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
+    const stdout: string[] = [];
+    const stderr: string[] = [];
+    const killTimer = setTimeout(() => child.kill("SIGTERM"), 10 * 60 * 1000);
+    const abort = () => child.kill("SIGTERM");
+    signal?.addEventListener("abort", abort, { once: true });
+    const liveUpdate = createSubagentLiveUpdate(agent, task, index, stdout, stderr, onUpdate);
+
+    child.stdout.on("data", (data) => {
+      stdout.push(data.toString());
+      trimChunks(stdout);
+      liveUpdate();
+    });
+    child.stderr.on("data", (data) => {
+      stderr.push(data.toString());
+      trimChunks(stderr);
+      liveUpdate();
+    });
+    child.on("error", (error) => {
+      clearTimeout(killTimer);
+      signal?.removeEventListener("abort", abort);
+      reject(error);
+    });
+    child.on("exit", (code) => {
+      clearTimeout(killTimer);
+      signal?.removeEventListener("abort", abort);
+      liveUpdate(true);
+      resolve({ stdout: stdout.join(""), stderr: stderr.join(""), code });
+    });
+  });
+}
+
+function createSubagentLiveUpdate(
+  agent: string,
+  task: string,
+  index: number,
+  stdout: string[],
+  stderr: string[],
+  onUpdate?: (update: any) => void,
+) {
+  let timer: NodeJS.Timeout | undefined;
+  const emit = () => {
+    timer = undefined;
+    const tail = tailText([...stdout, ...stderr].join(""), 8, 4000);
+    onUpdate?.(
+      textResult(tail || `Running ${agent}...`, {
+        action: "run",
+        runs: [{ agent, task, ok: false, text: tail, index }],
+        live: true,
+        stdout: tailText(stdout.join(""), 6, 2000),
+        stderr: tailText(stderr.join(""), 6, 2000),
+      }),
+    );
+  };
+  return (immediate = false) => {
+    if (!onUpdate) return;
+    if (immediate) {
+      if (timer) clearTimeout(timer);
+      emit();
+      return;
+    }
+    if (!timer) timer = setTimeout(emit, 500);
+  };
+}
+
+function trimChunks(chunks: string[], max = 64) {
+  if (chunks.length > max) chunks.splice(0, chunks.length - max);
+}
+
+function tailText(text: string, maxLines: number, maxChars: number) {
+  const lines = text.split(/\r?\n/).filter(Boolean).slice(-maxLines).join("\n");
+  return lines.length <= maxChars ? lines : `…${lines.slice(lines.length - maxChars)}`;
 }
 
 async function writeOutput(cwd: string, output: string | boolean | undefined, text: string, index: number) {

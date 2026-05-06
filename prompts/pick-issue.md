@@ -32,10 +32,11 @@ Show a compact TUI-style progress checklist throughout discovery, selection, dir
 4. Output the selected issue into the session, including title, URL, labels, body summary, acceptance criteria, and relevant files/commands.
 5. Ensure the working tree is clean before creating a branch. If dirty, stop and use `human_in_loop` to ask the user how to proceed.
 6. Create a branch named like `issue-<number>-<short-slug>` from the default branch or current base after confirming it is safe.
-7. Push the branch and create a draft/WIP PR with `gh pr create --draft` (or title prefixed with `WIP:` if draft PRs are unavailable).
-8. Link the PR to the issue using closing/linking text in the PR body, e.g. `Closes #<number>` or `Refs #<number>` depending on whether the PR is intended to close it.
-9. Report the issue URL, branch, PR URL, and recommended first implementation steps.
-10. Keep the TUI-style checklist updated in the final report with completed/skipped/blocked states.
+7. Create an empty starter commit before PR creation, e.g. `git commit --allow-empty -m "chore: start issue #<number>"`, so GitHub can create the PR even before implementation changes.
+8. Push the branch and create a draft/WIP PR with `gh pr create --draft` (or title prefixed with `WIP:` if draft PRs are unavailable).
+9. Link the PR to the issue using closing/linking text in the PR body, e.g. `Closes #<number>` or `Refs #<number>` depending on whether the PR is intended to close it.
+10. Report the issue URL, branch, PR URL, and recommended first implementation steps.
+11. Keep the TUI-style checklist updated in the final report with completed/skipped/blocked states.
 
 ## TUI-style progress checklist
 
@@ -43,7 +44,8 @@ Show a compact TUI-style progress checklist throughout discovery, selection, dir
 - [ ] Open issues loaded and scored
 - [ ] Issue selected or human-in-loop choice confirmed
 - [ ] Dirty tree checked and resolved via human_in_loop when needed
-- [ ] Branch created and pushed
+- [ ] Branch created
+- [ ] Empty starter commit created and branch pushed
 - [ ] Draft/WIP PR created and linked
 - [ ] Issue context and next steps reported
 

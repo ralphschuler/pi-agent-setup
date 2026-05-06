@@ -8,6 +8,12 @@ Prompt templates in `prompts/` become slash commands. Workflow prompts should in
 
 A strategic evidence-first debugging prompt that guides reproduction, hypothesis ranking, localization, root-cause fix, regression coverage, validation, and reporting. Accepts a symptom, failing command, or bug report via `/debug <symptom / failing command / bug report>`.
 
+### `standup.md`
+
+A read-only repository standup workflow. Accepts optional scope, date, or focus via `/standup [scope / date / focus]`.
+
+The workflow uses the `standup` skill to inspect git state, GitHub issues, and pull requests, then summarizes completed, in-progress, blocked, and upcoming work with repo hygiene notes and links.
+
 ### `to-issue.md`
 
 A GitHub issue creation workflow. Accepts optional scope, title, or filter via `/to-issue [scope / title / filter]`.
@@ -59,6 +65,7 @@ Expected output is a numbered list of deepening opportunities using the vocabula
 /to-issue turn the last review findings into issues
 /to-pr create a PR for the current branch
 /merge current branch PR
+/standup weekly repo status
 /pick-issue implement, test, push, wait for checks, merge
 /review review my current diff
 /research compare deployment options for this repo

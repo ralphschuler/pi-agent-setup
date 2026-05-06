@@ -35,6 +35,7 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/pretty-output`    | Toggle/preview pretty output rendering.       |
 | `/refine-codebase`  | Prompt-template architecture refinement.      |
 | `/review [scope]`   | Prompt-template project/code review workflow. |
+| `/standup`          | Prompt-template repo standup summary flow.    |
 | `/ps`               | Process dashboard.                            |
 | `/research <topic>` | Prompt-template research workflow.            |
 | `/searxng`          | Show SearXNG status/setup help.               |

@@ -12,6 +12,7 @@ Skills are markdown workflows that the agent loads on demand for specialized tas
 | `pi-processes`         | Manage long-running commands with the custom `process` tool.                                          |
 | `pi-subagents`         | Delegate bounded work to custom subagents while keeping parent-agent synthesis.                       |
 | `github-merge`         | Safely wait for PR checks and merge an existing GitHub PR with rebase.                                |
+| `standup`              | Create read-only repository standup summaries from git state, GitHub issues, and PRs.                 |
 
 ## Usage
 
@@ -31,6 +32,7 @@ skills/
 ├── pi-processes/SKILL.md
 ├── pi-subagents/SKILL.md
 ├── project-bootstrap/SKILL.md
+├── standup/SKILL.md
 └── systematic-debugging/SKILL.md
 ```
 
@@ -42,5 +44,6 @@ skills/
 - Use `pi-processes` when starting servers, watchers, or logs.
 - Use `pi-subagents` when independent research, planning, implementation, or review would help.
 - Use `github-merge` when merging an existing GitHub PR with checks and rebase merge.
+- Use `standup` when summarizing completed, in-progress, blocked, and upcoming repository work.
 - Ask all user-facing clarification and approval questions through `human_in_loop`; do not ask those questions only in assistant prose.
 - When a skill produces a plan, PRD, roadmap, or rollout sequence, split it into independently and quickly testable feature phases with concrete validation commands.

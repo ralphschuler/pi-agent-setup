@@ -1,10 +1,31 @@
 // @ts-nocheck
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
-import { Markdown } from "@mariozechner/pi-tui";
+import { Markdown, Text } from "@mariozechner/pi-tui";
 
 export function createPrettyMarkdown(markdown: string) {
   return new Markdown(markdown, 0, 0, getMarkdownTheme());
 }
+
+export type ToolDisplayTone = "accent" | "success" | "warning" | "error" | "muted" | "dim" | "toolTitle";
+export type ToolDisplayLine = string | { text: string; tone?: ToolDisplayTone; prefix?: string };
+export type ToolDisplaySection = {
+  title?: string;
+  titleTone?: ToolDisplayTone;
+  lines?: string[];
+  text?: string;
+  tone?: ToolDisplayTone;
+  maxLines?: number;
+};
+export type ToolDisplayContract = {
+  title?: string;
+  titleTone?: ToolDisplayTone;
+  summary?: string;
+  summaryTone?: ToolDisplayTone;
+  lines?: ToolDisplayLine[];
+  sections?: ToolDisplaySection[];
+  footer?: string;
+  footerTone?: ToolDisplayTone;
+};
 
 export function renderPrettyToolResult(toolName: string) {
   return (
@@ -15,6 +36,34 @@ export function renderPrettyToolResult(toolName: string) {
   ) => {
     return createPrettyMarkdown(formatPrettyToolMarkdown(toolName, result, options, context.args));
   };
+}
+
+export function renderToolDisplayContract(display: ToolDisplayContract, theme: any) {
+  return new Text(formatToolDisplayContract(display, theme), 0, 0);
+}
+
+export function formatToolDisplayContract(display: ToolDisplayContract, theme: any) {
+  const lines: string[] = [];
+  if (display.title) lines.push(color(theme, display.titleTone || "accent", display.title));
+  if (display.summary) lines.push(color(theme, display.summaryTone || "dim", display.summary));
+  for (const line of display.lines || []) lines.push(formatDisplayLine(line, theme));
+  for (const section of display.sections || []) {
+    const body = section.lines ? section.lines.join("\n") : section.text || "";
+    const text = section.maxLines ? tailLines(body, section.maxLines, 4000) : body;
+    if (section.title) lines.push(color(theme, section.titleTone || "muted", section.title));
+    if (text) lines.push(color(theme, section.tone || "", text));
+  }
+  if (display.footer) lines.push(color(theme, display.footerTone || "dim", display.footer));
+  return lines.join("\n");
+}
+
+function formatDisplayLine(line: ToolDisplayLine, theme: any) {
+  if (typeof line === "string") return line;
+  return `${line.prefix || ""}${color(theme, line.tone || "", line.text)}`;
+}
+
+function color(theme: any, tone: string, text: string) {
+  return tone && theme?.fg ? theme.fg(tone, text) : text;
 }
 
 export function formatPrettyToolMarkdown(
@@ -92,7 +141,7 @@ function partialToolMarkdown(toolName: string, result: unknown, args: unknown) {
   return `${titleLine(title, args)}\n\n${fenced(tail, languageForTool(toolName, args))}`;
 }
 
-function tailLines(text: string, maxLines: number, maxChars: number) {
+export function tailLines(text: string, maxLines: number, maxChars: number) {
   const lines = text.split(/\r?\n/).slice(-maxLines).join("\n");
   return lines.length <= maxChars ? lines : `…${lines.slice(lines.length - maxChars)}`;
 }
@@ -107,7 +156,9 @@ function fenced(text: string, language: string) {
   return `\`\`\`${language}\n${safe}\n\`\`\``;
 }
 
-function singleLine(text: string, max: number) {
-  const cleaned = text.replace(/[\r\n\t]+/g, " ").trim();
+export function singleLine(text: string, max: number) {
+  const cleaned = String(text || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .trim();
   return cleaned.length <= max ? cleaned : `${cleaned.slice(0, Math.max(0, max - 1))}…`;
 }

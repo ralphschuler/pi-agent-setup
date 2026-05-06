@@ -6,6 +6,7 @@ import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
 import { appendOutput, createManagedProcess, notifyProcessExit, safeProcessName, serializeProcess, type ManagedProcess } from "./domain.ts";
 import { matchesKey, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
+import { renderToolDisplayContract, singleLine } from "../shared/pretty-render.ts";
 
 type ProcessDetails = {
   action: string;
@@ -150,33 +151,7 @@ export default function processesExtension(pi: ExtensionAPI) {
     },
 
     renderResult(result: any, { expanded, isPartial }, theme) {
-      const details = result.details as ProcessDetails | undefined;
-      if (result.isError) return new Text(theme.fg("error", textFromResult(result)), 0, 0);
-      if (!details) return new Text(textFromResult(result), 0, 0);
-      if (details.process) {
-        const proc = details.process;
-        let text = `${statusIcon(proc.status, theme)} ${theme.fg("accent", `#${proc.id} ${proc.name}`)} ${statusText(proc, theme)}`;
-        text += `\n${theme.fg("dim", trimLine(proc.command, 120))}`;
-        const showLive = Boolean(isPartial);
-        const stdout = details.stdout || [];
-        const stderr = details.stderr || [];
-        if ((expanded || showLive) && stdout.length)
-          text += `\n${theme.fg("muted", showLive ? "stdout (live):" : "stdout:")}\n${stdout.slice(showLive ? -4 : -20).join("\n")}`;
-        if ((expanded || showLive) && stderr.length)
-          text += `\n${theme.fg("warning", showLive ? "stderr (live):" : "stderr:")}\n${stderr.slice(showLive ? -4 : -20).join("\n")}`;
-        return new Text(text, 0, 0);
-      }
-      if (details.processes) {
-        const running = details.processes.filter((proc) => proc.status === "running").length;
-        const shown = expanded ? details.processes : details.processes.slice(0, 8);
-        let text = theme.fg("accent", `${running} running / ${details.processes.length} total`);
-        for (const proc of shown)
-          text += `\n${statusIcon(proc.status, theme)} ${theme.fg("accent", `#${proc.id}`)} ${theme.fg("muted", proc.name)} ${theme.fg("dim", trimLine(proc.command, 70))}`;
-        if (!expanded && details.processes.length > shown.length)
-          text += `\n${theme.fg("dim", `… ${details.processes.length - shown.length} more`)}`;
-        return new Text(text, 0, 0);
-      }
-      return new Text(theme.fg("success", textFromResult(result)), 0, 0);
+      return renderToolDisplayContract(processDisplayContract(result, Boolean(expanded), Boolean(isPartial)), theme);
     },
   });
 
@@ -356,16 +331,49 @@ function processLiveResult(proc: ManagedProcess, stream: "stdout" | "stderr" | "
   return textResult(live, { action: "start", process: serializeProcess(proc), stdout, stderr, stream, live: true });
 }
 
+function processDisplayContract(result: any, expanded: boolean, isPartial: boolean) {
+  const details = result.details as ProcessDetails | undefined;
+  if (result.isError) return { title: textFromResult(result), titleTone: "error" as const };
+  if (!details) return { title: textFromResult(result) };
+  if (details.process) {
+    const proc = details.process;
+    const showLive = isPartial;
+    const stdout = details.stdout || [];
+    const stderr = details.stderr || [];
+    return {
+      title: `${statusGlyph(proc.status)} #${proc.id} ${proc.name} ${statusLabel(proc)}`,
+      titleTone: statusTone(proc.status, proc.exitCode),
+      summary: singleLine(proc.command, 120),
+      sections: [
+        (expanded || showLive) && stdout.length
+          ? { title: showLive ? "stdout (live):" : "stdout:", titleTone: "muted" as const, lines: stdout, maxLines: showLive ? 4 : 20 }
+          : undefined,
+        (expanded || showLive) && stderr.length
+          ? { title: showLive ? "stderr (live):" : "stderr:", titleTone: "warning" as const, lines: stderr, maxLines: showLive ? 4 : 20 }
+          : undefined,
+      ].filter(Boolean),
+    };
+  }
+  if (details.processes) {
+    const running = details.processes.filter((proc) => proc.status === "running").length;
+    const shown = expanded ? details.processes : details.processes.slice(0, 8);
+    return {
+      title: `${running} running / ${details.processes.length} total`,
+      titleTone: "accent" as const,
+      lines: shown.map((proc) => ({
+        text: `${statusGlyph(proc.status)} #${proc.id} ${proc.name} ${singleLine(proc.command, 70)}`,
+        tone: statusTone(proc.status, proc.exitCode),
+      })),
+      footer: !expanded && details.processes.length > shown.length ? `… ${details.processes.length - shown.length} more` : undefined,
+    };
+  }
+  return { title: textFromResult(result), titleTone: "success" as const };
+}
+
 function updateProcessStatus(ui?: any) {
   if (!ui?.setStatus) return;
   const running = [...processes.values()].filter((proc) => proc.status === "running").length;
   ui.setStatus("processes", running ? `processes: ${running} running` : undefined);
-}
-
-function statusIcon(status: ManagedProcess["status"], theme: Theme) {
-  if (status === "running") return theme.fg("success", "●");
-  if (status === "killed") return theme.fg("warning", "■");
-  return theme.fg("dim", "○");
 }
 
 function statusText(proc: Pick<ManagedProcess, "status" | "exitCode" | "signal">, theme: Theme) {
@@ -374,14 +382,29 @@ function statusText(proc: Pick<ManagedProcess, "status" | "exitCode" | "signal">
   return proc.exitCode === 0 ? theme.fg("success", "exited 0") : theme.fg("error", `exited ${proc.exitCode ?? "?"}`);
 }
 
+function statusGlyph(status: ManagedProcess["status"]) {
+  if (status === "running") return "●";
+  if (status === "killed") return "■";
+  return "○";
+}
+
+function statusLabel(proc: Pick<ManagedProcess, "status" | "exitCode" | "signal">) {
+  if (proc.status === "running") return "running";
+  if (proc.status === "killed") return `killed${proc.signal ? ` (${proc.signal})` : ""}`;
+  return proc.exitCode === 0 ? "exited 0" : `exited ${proc.exitCode ?? "?"}`;
+}
+
+function statusTone(status: ManagedProcess["status"], exitCode?: number | null) {
+  if (status === "running") return "success" as const;
+  if (status === "killed") return "warning" as const;
+  return exitCode === 0 ? ("success" as const) : ("error" as const);
+}
+
 function textFromResult(result: any) {
   const first = result.content?.[0];
   return first?.type === "text" ? first.text : "";
 }
 
 function trimLine(text: string, max: number) {
-  const flat = String(text || "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return flat.length > max ? `${flat.slice(0, Math.max(0, max - 1))}…` : flat;
+  return singleLine(text, max);
 }

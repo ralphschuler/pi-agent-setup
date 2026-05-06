@@ -49,3 +49,16 @@ test("pretty-output renders partial tool output compactly when available", () =>
   assert.match(source, /tailLines\(text, 8, 4000\)/);
   assert.match(source, /_Working…_/);
 });
+
+test("pretty-output exposes a shared structured tool display contract", () => {
+  const shared = readText("extensions/shared/pretty-render.ts");
+  const processes = readText("extensions/processes/index.ts");
+  const subagents = readText("extensions/subagents/index.ts");
+
+  assert.match(shared, /export type ToolDisplayContract/);
+  assert.match(shared, /export function renderToolDisplayContract/);
+  assert.match(shared, /export function formatToolDisplayContract/);
+  assert.match(shared, /sections\?: ToolDisplaySection\[\]/);
+  assert.match(processes, /renderToolDisplayContract\(processDisplayContract/);
+  assert.match(subagents, /renderToolDisplayContract\(subagentDisplayContract/);
+});

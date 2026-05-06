@@ -6,6 +6,7 @@ import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Text } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
+import { renderToolDisplayContract, singleLine } from "../shared/pretty-render.ts";
 import { deleteCustomAgent, readCustomAgents, type AgentScope, writeCustomAgent } from "../custom-agents/registry";
 
 const BUILTIN_AGENTS = [
@@ -108,24 +109,33 @@ export default function subagents(pi: ExtensionAPI) {
     },
 
     renderResult(result, { expanded, isPartial }, theme) {
-      const details = result.details as any;
-      if (result.isError) return new Text(theme.fg("error", textFromResult(result)), 0, 0);
-      if (!details?.runs) return new Text(textFromResult(result), 0, 0);
-      const runs = details.runs as RunRecord[];
-      const ok = runs.filter((run) => run.ok).length;
-      let text = `${theme.fg(isPartial ? "accent" : ok === runs.length ? "success" : "warning", `${isPartial ? "◌" : "◉"} ${ok}/${runs.length} subagent run(s) ${isPartial ? "running" : "succeeded"}`)}`;
-      const display = expanded ? runs : runs.slice(0, 6);
-      for (const run of display) {
-        const mark = run.ok ? theme.fg("success", "✓") : theme.fg("error", "✗");
-        const output = run.output ? theme.fg("dim", ` → ${run.output}`) : "";
-        text += `\n${mark} ${theme.fg("accent", run.agent)} ${theme.fg("muted", trimLine(run.task, 80))}${output}`;
-        if ((expanded || isPartial) && (run.error || run.text))
-          text += `\n  ${theme.fg(run.ok ? "dim" : "error", trimLine(run.error || run.text, isPartial ? 240 : 160))}`;
-      }
-      if (!expanded && runs.length > display.length) text += `\n${theme.fg("dim", `… ${runs.length - display.length} more`)}`;
-      return new Text(text, 0, 0);
+      return renderToolDisplayContract(subagentDisplayContract(result, Boolean(expanded), Boolean(isPartial)), theme);
     },
   });
+}
+
+function subagentDisplayContract(result: any, expanded: boolean, isPartial: boolean) {
+  const details = result.details as any;
+  if (result.isError) return { title: textFromResult(result), titleTone: "error" as const };
+  if (!details?.runs) return { title: textFromResult(result) };
+  const runs = details.runs as RunRecord[];
+  const ok = runs.filter((run) => run.ok).length;
+  const display = expanded ? runs : runs.slice(0, 6);
+  return {
+    title: `${isPartial ? "◌" : "◉"} ${ok}/${runs.length} subagent run(s) ${isPartial ? "running" : "succeeded"}`,
+    titleTone: (isPartial ? "accent" : ok === runs.length ? "success" : "warning") as const,
+    lines: display.flatMap((run) => {
+      const output = run.output ? ` → ${run.output}` : "";
+      const head = `${run.ok ? "✓" : "✗"} ${run.agent} ${singleLine(run.task, 80)}${output}`;
+      const body =
+        (expanded || isPartial) && (run.error || run.text) ? `  ${singleLine(run.error || run.text, isPartial ? 240 : 160)}` : undefined;
+      return [
+        { text: head, tone: run.ok ? ("success" as const) : ("error" as const) },
+        body ? { text: body, tone: run.ok ? ("dim" as const) : ("error" as const) } : undefined,
+      ].filter(Boolean);
+    }),
+    footer: !expanded && runs.length > display.length ? `… ${runs.length - display.length} more` : undefined,
+  };
 }
 
 async function allAgents(cwd: string): Promise<AgentDef[]> {
@@ -401,11 +411,4 @@ function textResult(text: string, details: Record<string, unknown> = {}, isError
 function textFromResult(result: any) {
   const first = result.content?.[0];
   return first?.type === "text" ? first.text : "";
-}
-
-function trimLine(text: string, max: number) {
-  const flat = String(text || "")
-    .replace(/\s+/g, " ")
-    .trim();
-  return flat.length > max ? `${flat.slice(0, Math.max(0, max - 1))}…` : flat;
 }

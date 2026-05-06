@@ -3,6 +3,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import fs from "node:fs";
 import http from "node:http";
 import path from "node:path";
+import { WEB_TERMINAL_READ_MAX_BYTES, resolveExistingInsideRoot } from "../shared/safety.ts";
 import { broadcast, sse, type SseClient } from "./events.ts";
 import { json, readBody } from "./http.ts";
 
@@ -21,15 +22,7 @@ export type WebTerminalApiContext = {
 };
 
 export function safeResolve(cwd: string, requestedPath: string) {
-  const resolved = path.resolve(cwd, requestedPath || ".");
-  if (!resolved.startsWith(cwd + path.sep) && resolved !== cwd) return null;
-  try {
-    const real = fs.realpathSync(resolved);
-    if (!real.startsWith(cwd + path.sep) && real !== cwd) return null;
-    return real;
-  } catch {
-    return resolved;
-  }
+  return resolveExistingInsideRoot(cwd, requestedPath);
 }
 
 export async function execJson(anyPi: any, command: string, args: string[], fallbackKey: string) {
@@ -128,7 +121,7 @@ export async function handleApi(req: http.IncomingMessage, res: http.ServerRespo
     try {
       const stat = fs.statSync(resolved);
       if (stat.isDirectory()) return json(res, 400, { error: "Is a directory" });
-      if (stat.size > 512 * 1024) return json(res, 400, { error: "File too large" });
+      if (stat.size > WEB_TERMINAL_READ_MAX_BYTES) return json(res, 400, { error: "File too large" });
       return json(res, 200, { path: path.relative(ctx.cwd, resolved), content: fs.readFileSync(resolved, "utf8"), size: stat.size });
     } catch {
       return json(res, 404, { error: "File not found" });

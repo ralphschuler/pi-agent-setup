@@ -4,20 +4,21 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 
 ## Agent-facing tools
 
-| Tool                  | Extension      | Purpose                                     |
-| --------------------- | -------------- | ------------------------------------------- |
-| `browser_bridge`      | Browser bridge | Control a connected Chrome/Edge browser.    |
-| `cronjob`             | Cronjobs       | Schedule future or recurring agent tasks.   |
-| `graph_memory`        | Graph memory   | Persist durable knowledge across sessions.  |
-| `github_rebase_merge` | GitHub merge   | Wait for checks and rebase-merge PRs.       |
-| `human_in_loop`       | Human in loop  | Ask for clarification/approval in the TUI.  |
-| `package_scout`       | Package scout  | Audit npm package metadata without install. |
-| `process`             | Processes      | Manage long-running commands.               |
-| `search`              | SearXNG search | Search the web through SearXNG.             |
-| `searxng_status`      | SearXNG status | Check SearXNG health and setup steps.       |
-| `subagent`            | Subagents      | Run bounded specialist agents.              |
-| `todo`                | Todo           | Track persistent agent tasks.               |
-| `web_terminal`        | Web terminal   | Show web terminal status/setup URLs.        |
+| Tool                  | Extension      | Purpose                                      |
+| --------------------- | -------------- | -------------------------------------------- |
+| `browser_bridge`      | Browser bridge | Control a connected Chrome/Edge browser.     |
+| `cronjob`             | Cronjobs       | Schedule future or recurring agent tasks.    |
+| `evolve`              | Evolve         | Archive, compare, and restore file variants. |
+| `graph_memory`        | Graph memory   | Persist durable knowledge across sessions.   |
+| `github_rebase_merge` | GitHub merge   | Wait for checks and rebase-merge PRs.        |
+| `human_in_loop`       | Human in loop  | Ask for clarification/approval in the TUI.   |
+| `package_scout`       | Package scout  | Audit npm package metadata without install.  |
+| `process`             | Processes      | Manage long-running commands.                |
+| `search`              | SearXNG search | Search the web through SearXNG.              |
+| `searxng_status`      | SearXNG status | Check SearXNG health and setup steps.        |
+| `subagent`            | Subagents      | Run bounded specialist agents.               |
+| `todo`                | Todo           | Track persistent agent tasks.                |
+| `web_terminal`        | Web terminal   | Show web terminal status/setup URLs.         |
 
 ## Common slash commands
 
@@ -27,7 +28,10 @@ Extensions are TypeScript modules that customize pi. This package includes exten
 | `/browser-bridge`   | Start/show browser bridge setup.              |
 | `/caveman`          | Toggle terse English caveman language mode.   |
 | `/debug`            | Prompt-template strategic debugging workflow. |
+| `/darwin`           | Queue bounded evolve iteration workflow.      |
+| `/evolve`           | Manage local file variant archive workflows.  |
 | `/merge`            | Prompt-template safe PR rebase merge flow.    |
+| `/mutate`           | Queue safe file variant generation workflow.  |
 | `/package-scout`    | Audit npm package metadata without install.   |
 | `/pet`              | Show or manage the Tamagotchi pet.            |
 | `/pick-issue`       | Prompt-template issue pickup and WIP PR flow. |

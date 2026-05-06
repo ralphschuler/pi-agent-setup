@@ -52,6 +52,7 @@ nav:
       - Compact footer: extensions/compact-footer.md
       - Cronjobs: extensions/cronjobs.md
       - Custom agents: extensions/custom-agents.md
+      - Evolve: extensions/evolve.md
       - GitHub handoff: extensions/github-handoff.md
       - GitHub merge: extensions/github-merge.md
       - Graph memory: extensions/graph-memory.md

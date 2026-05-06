@@ -10,6 +10,8 @@
 
 The extension intentionally does not register duplicate slash commands, preventing collisions with prompt templates.
 
+These workflows follow the shared prompt safety policy: use `human_in_loop` for clarification or approval, list available specialists with `subagent action=list` before non-trivial delegation, create narrow custom specialists when needed, and preserve validation plus rollback/stop-point notes in generated issues and PRs.
+
 ## `/to-issue`
 
 Runs an agent workflow to inspect the current repository and conversation, then create GitHub issues with `gh issue create`.
@@ -69,3 +71,21 @@ gh auth status
 ```
 
 If `gh` is unavailable or unauthenticated, the workflow reports setup steps instead of pretending to create issues or PRs.
+
+## Validation and rollback
+
+Validate workflow prompt changes with:
+
+```bash
+npm run check
+npm run test:unit
+```
+
+For PR-ready changes, also run:
+
+```bash
+npm run test:ci
+npm run docs:build
+```
+
+Rollback by reverting prompt-template or docs changes if they misrepresent shipped workflow behavior, create duplicate slash-command claims, or weaken `human_in_loop`/subagent safety requirements.

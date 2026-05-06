@@ -44,10 +44,20 @@ npm run uninstall:pi
 
 ## Validate and test
 
+Fast local checks:
+
 ```bash
+npm run typecheck
+npm run lint
 npm run check
-npm test
+npm run test:unit
+```
+
+Full pre-merge sweep:
+
+```bash
 npm run test:ci
+npm run docs:build
 npm run test:docker
 ```
 
@@ -55,8 +65,8 @@ npm run test:docker
 
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
   - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
-- `skills/` — on-demand workflows for project bootstrap, code review, debugging, GitHub merge, standups, processes, and subagents.
-- `prompts/` — reusable prompt templates such as review, research, refine-codebase, to-issue, to-pr, and pick-issue.
+- `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
+- `prompts/` — reusable prompt templates such as debug, review, research, refine-codebase, merge, standup, to-issue, to-pr, and pick-issue.
 - `themes/` — custom TUI themes, including synthwave.
 - `scripts/` — install, update, uninstall, validation, and Docker test helpers.
 - `tests/` — unit, integration, and e2e tests.

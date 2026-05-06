@@ -2,6 +2,8 @@
 
 Prompt templates in `prompts/` become slash commands. Workflow prompts should instruct the agent to use tools, skills, `human_in_loop`, and subagents directly instead of hiding the workflow behind extension command handlers. Use [`Resource rules`](resource-rules.md) when creating or changing prompt templates.
 
+Workflow prompts must keep user-facing clarification and approval questions in `human_in_loop`, list available subagents with `subagent action=list` before non-trivial delegation, create narrow custom specialists when no match exists, and report validation plus rollback/stop points when they create issues, PRs, plans, or code changes.
+
 ## Included prompts
 
 ### `debug.md`

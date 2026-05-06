@@ -16,7 +16,7 @@ Run the `/to-issue` workflow for the current repository and conversation.
 If `$ARGUMENTS` is non-empty, treat it as user-provided scope/title/filter. Otherwise infer actionable issues from the conversation.
 
 Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
-Use `subagent` when independent reconnaissance or review would reduce context load; the parent agent remains responsible for final selection and creation.
+Use `subagent` when independent reconnaissance or review would reduce context load; first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep the parent agent responsible for synthesis, verification, final selection, and creation.
 Use GitHub CLI commands against the current repository only.
 
 ## Goal

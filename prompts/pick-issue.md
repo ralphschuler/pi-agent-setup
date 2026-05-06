@@ -16,7 +16,7 @@ Run the `/pick-issue` workflow for the current repository.
 If `$ARGUMENTS` is non-empty, treat it as the user-provided priority/filter. Otherwise pick the next most important open issue from the repo.
 
 Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
-Use `subagent` for non-trivial read-only reconnaissance or independent issue scoring when it helps; the parent agent remains responsible for final selection and all user-facing decisions.
+Use `subagent` for non-trivial read-only reconnaissance or independent issue scoring when it helps; first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep the parent agent responsible for synthesis, verification, final selection, and all user-facing decisions.
 Use GitHub CLI commands against the current repository only.
 
 ## Goal

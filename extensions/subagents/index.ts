@@ -50,8 +50,10 @@ export default function subagents(pi: ExtensionAPI) {
       "Delegate bounded work to built-in or custom specialist agents; supports list, create, delete, single-agent execution, and parallel task arrays.",
     promptGuidelines: [
       "Use subagent action=list before non-trivial delegation to inspect available specialists.",
+      "Create a narrow custom specialist with subagent action=create when no matching specialist exists.",
+      "When creating custom specialists, include description, tool limits, success criteria, escalation rules, and output contract.",
       "Use subagent tasks for independent bounded research, planning, or review that can run concurrently.",
-      "Keep parent responsibility for synthesis and final decisions; verify important child claims directly.",
+      "Keep parent responsibility for synthesis, verification, and final decisions; verify important child claims directly.",
       "Do not use subagent for simple tasks that can be handled directly.",
     ],
     parameters: Type.Object({

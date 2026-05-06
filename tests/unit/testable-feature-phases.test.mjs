@@ -23,7 +23,7 @@ test("plan workflow requires independently and quickly testable feature phases",
 });
 
 test("planning subagent prompt requires quickly testable phases", () => {
-  const source = readText("extensions/subagents/index.ts");
+  const source = readText("extensions/subagents/catalog.ts");
 
   assert.ok(source.includes("small feature phases"));
   assert.ok(source.includes("independently and quickly testable"));

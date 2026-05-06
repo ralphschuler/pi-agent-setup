@@ -117,7 +117,8 @@ export default function subagents(pi: ExtensionAPI) {
         const mark = run.ok ? theme.fg("success", "✓") : theme.fg("error", "✗");
         const output = run.output ? theme.fg("dim", ` → ${run.output}`) : "";
         text += `\n${mark} ${theme.fg("accent", run.agent)} ${theme.fg("muted", trimLine(run.task, 80))}${output}`;
-        if ((expanded || isPartial) && (run.error || run.text)) text += `\n  ${theme.fg(run.ok ? "dim" : "error", trimLine(run.error || run.text, isPartial ? 240 : 160))}`;
+        if ((expanded || isPartial) && (run.error || run.text))
+          text += `\n  ${theme.fg(run.ok ? "dim" : "error", trimLine(run.error || run.text, isPartial ? 240 : 160))}`;
       }
       if (!expanded && runs.length > display.length) text += `\n${theme.fg("dim", `… ${runs.length - display.length} more`)}`;
       return new Text(text, 0, 0);
@@ -278,7 +279,15 @@ async function runAgentRecord(
     const result = await execSubagentProcess(agent.runtimeName, task, promptFile, runCwd, index, signal, onUpdate);
     const text = result.stdout.trim() || result.stderr.trim();
     const outPath = await writeOutput(runCwd, output, text, index);
-    return { agent: agent.runtimeName, task, ok: result.code === 0, text, error: result.code === 0 ? undefined : `Exited ${result.code}`, output: outPath, index };
+    return {
+      agent: agent.runtimeName,
+      task,
+      ok: result.code === 0,
+      text,
+      error: result.code === 0 ? undefined : `Exited ${result.code}`,
+      output: outPath,
+      index,
+    };
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     const outPath = await writeOutput(runCwd, output, message, index);

@@ -160,8 +160,10 @@ export default function processesExtension(pi: ExtensionAPI) {
         const showLive = Boolean(isPartial);
         const stdout = details.stdout || [];
         const stderr = details.stderr || [];
-        if ((expanded || showLive) && stdout.length) text += `\n${theme.fg("muted", showLive ? "stdout (live):" : "stdout:")}\n${stdout.slice(showLive ? -4 : -20).join("\n")}`;
-        if ((expanded || showLive) && stderr.length) text += `\n${theme.fg("warning", showLive ? "stderr (live):" : "stderr:")}\n${stderr.slice(showLive ? -4 : -20).join("\n")}`;
+        if ((expanded || showLive) && stdout.length)
+          text += `\n${theme.fg("muted", showLive ? "stdout (live):" : "stdout:")}\n${stdout.slice(showLive ? -4 : -20).join("\n")}`;
+        if ((expanded || showLive) && stderr.length)
+          text += `\n${theme.fg("warning", showLive ? "stderr (live):" : "stderr:")}\n${stderr.slice(showLive ? -4 : -20).join("\n")}`;
         return new Text(text, 0, 0);
       }
       if (details.processes) {

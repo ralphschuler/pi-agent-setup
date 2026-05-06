@@ -3,10 +3,11 @@ import { join } from "node:path";
 import { homedir } from "node:os";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { isToolCallEventType } from "@mariozechner/pi-coding-agent";
+import { dangerousShellReason, exposesNetwork, isPackageInstallCommand, isProtectedSystemPath } from "../shared/safety.ts";
 
 const AUDIT_LOG_PATH = join(homedir(), ".pi", "agent", "policy-guard-audit.log");
-const destructiveTargets = new Set(["/", "/*", "/.", "/..", "~", "~/", "$HOME", "${HOME}"]);
-const dangerousPatterns = [/\bsudo\s+rm\b/, /\bmkfs(?:\.|\s)/, /\bdd\s+if=.*\sof=\/dev\//];
+export { exposesNetwork, isPackageInstallCommand };
+export const dangerousReason = dangerousShellReason;
 
 export type PolicyDecision = {
   action: "allow" | "confirm" | "block";
@@ -78,25 +79,8 @@ export function evaluatePolicy(event: unknown): PolicyDecision {
   return { action: "allow", reason: "no policy matched", category: "none" };
 }
 
-export function dangerousReason(command: string) {
-  const pattern = dangerousPatterns.find((candidate) => candidate.test(command));
-  if (pattern) return String(pattern);
-  return hasDangerousRm(command) ? "destructive rm target" : undefined;
-}
-
-export function isPackageInstallCommand(command: string) {
-  return /\b(npm|pnpm|yarn|bun)\s+(?:add|install|i)\b/.test(command) || /\bpip(?:3)?\s+install\b/.test(command);
-}
-
-export function exposesNetwork(command: string) {
-  return /(--host\s+0\.0\.0\.0|--host=0\.0\.0\.0|--listen\s+0\.0\.0\.0|--listen=0\.0\.0\.0|\b0\.0\.0\.0:)\b/.test(command);
-}
-
 export function touchesProtectedPath(event: unknown) {
-  const text = JSON.stringify((event as { input?: unknown })?.input || {});
-  return /("path"\s*:\s*"(?:\/etc|\/var|\/usr|\/bin|\/sbin|\/boot|\/dev|\/proc|\/sys)\b|"path"\s*:\s*"(?:~\/\.ssh|\$HOME\/\.ssh))/.test(
-    text,
-  );
+  return collectStringValues((event as { input?: unknown })?.input).some(isProtectedSystemPath);
 }
 
 async function auditPolicyDecision(event: unknown, decision: PolicyDecision, approved: boolean) {
@@ -121,79 +105,11 @@ function policyBlockReason(decision: PolicyDecision) {
   return decision.action === "block" ? `Blocked by policy guard: ${decision.reason}` : `Blocked pending approval: ${decision.reason}`;
 }
 
-function hasDangerousRm(command: string) {
-  const tokens = shellWords(command);
-  for (let i = 0; i < tokens.length; i++) {
-    const token = basename(tokens[i]);
-    if (token !== "rm") continue;
-
-    let recursive = false;
-    let force = false;
-    let parsingOptions = true;
-    for (let j = i + 1; j < tokens.length; j++) {
-      const arg = tokens[j];
-      if (parsingOptions && arg === "--") {
-        parsingOptions = false;
-        continue;
-      }
-      if (parsingOptions && arg.startsWith("-") && arg !== "-") {
-        if (arg.includes("r") || arg.includes("R") || arg === "--recursive") recursive = true;
-        if (arg.includes("f") || arg === "--force") force = true;
-        continue;
-      }
-      if (recursive && force && isDangerousRmTarget(arg)) return true;
-      if ([";", "&&", "||", "|"].includes(arg)) break;
-    }
-  }
-  return false;
-}
-
-function isDangerousRmTarget(target: string) {
-  const normalized = target.replace(/\/+$/, "") || "/";
-  return destructiveTargets.has(target) || destructiveTargets.has(normalized) || normalized.startsWith("/dev/") || normalized === "/*";
-}
-
-function basename(value: string) {
-  return value.split("/").pop() || value;
-}
-
-function shellWords(command: string) {
-  const words: string[] = [];
-  let current = "";
-  let quote: '"' | "'" | undefined;
-  for (let i = 0; i < command.length; i++) {
-    const ch = command[i];
-    if (quote) {
-      if (ch === quote) quote = undefined;
-      else current += ch;
-      continue;
-    }
-    if (ch === '"' || ch === "'") {
-      quote = ch;
-      continue;
-    }
-    if (/\s/.test(ch)) {
-      if (current) words.push(current);
-      current = "";
-      continue;
-    }
-    if ((ch === "&" || ch === "|") && command[i + 1] === ch) {
-      if (current) words.push(current);
-      words.push(`${ch}${ch}`);
-      current = "";
-      i++;
-      continue;
-    }
-    if (ch === ";" || ch === "|") {
-      if (current) words.push(current);
-      words.push(ch);
-      current = "";
-      continue;
-    }
-    current += ch;
-  }
-  if (current) words.push(current);
-  return words;
+function collectStringValues(value: unknown): string[] {
+  if (typeof value === "string") return [value];
+  if (!value || typeof value !== "object") return [];
+  if (Array.isArray(value)) return value.flatMap(collectStringValues);
+  return Object.values(value).flatMap(collectStringValues);
 }
 
 function commandFromToolCall(event: unknown) {

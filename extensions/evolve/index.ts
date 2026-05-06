@@ -4,23 +4,18 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import {
+  assertSafeTextContent,
+  DEFAULT_SAFE_TEXT_FILE_MAX_BYTES,
+  isBinaryBuffer,
+  isProtectedSecretPath,
+  normalizeRelativePath,
+} from "../shared/safety.ts";
 
 export const DEFAULT_ARCHIVE_PATH = path.join(homedir(), ".pi", "evolve", "archive.json");
-export const DEFAULT_MAX_FILE_BYTES = 256 * 1024;
-
-const protectedPathPatterns = [
-  /(^|[/\\])\.env(?:\.|$)/i,
-  /(^|[/\\])\.npmrc$/i,
-  /(^|[/\\])\.pypirc$/i,
-  /(^|[/\\])credentials(?:\.|$)/i,
-  /(^|[/\\])id_rsa$/i,
-  /(^|[/\\])id_dsa$/i,
-  /(^|[/\\])id_ecdsa$/i,
-  /(^|[/\\])id_ed25519$/i,
-  /(^|[/\\]).*private[_-]?key.*$/i,
-  /(^|[/\\]).*private-key.*$/i,
-  /(^|[/\\]).*secret.*$/i,
-];
+export const DEFAULT_MAX_FILE_BYTES = DEFAULT_SAFE_TEXT_FILE_MAX_BYTES;
+export { isBinaryBuffer, normalizeRelativePath };
+export const isProtectedEvolvePath = isProtectedSecretPath;
 
 const commandPromptPrefix = [
   "Run the local evolve workflow for the current repository.",
@@ -132,7 +127,7 @@ export async function executeEvolve(params: EvolveParams, cwd: string, archivePa
 export async function archiveVariant(params: EvolveParams, cwd: string, archivePath = DEFAULT_ARCHIVE_PATH) {
   const safe = await validateEvolvePath(params.path, cwd);
   const content = params.content ?? (await fs.readFile(safe.absolutePath, "utf8"));
-  assertSafeContent(content, safe.relativePath);
+  assertSafeTextContent(content, safe.relativePath);
   const variant: EvolveVariant = {
     id: randomUUID(),
     path: safe.relativePath,
@@ -182,7 +177,7 @@ export async function compareVariant(params: EvolveParams, cwd: string, archiveP
   const targetPath = params.path || variant.path;
   const safe = await validateEvolvePath(targetPath, cwd);
   const current = await fs.readFile(safe.absolutePath, "utf8");
-  assertSafeContent(current, safe.relativePath);
+  assertSafeTextContent(current, safe.relativePath);
   const diff = simpleDiff(variant.content, current, variant.path, safe.relativePath);
   return textResult(diff || "No differences.", {
     action: "compare",
@@ -199,7 +194,7 @@ export async function restoreVariant(params: EvolveParams, cwd: string, archiveP
   const variant = findVariant(archive, params.id);
   const targetPath = params.path || variant.path;
   const safe = await validateEvolvePath(targetPath, cwd);
-  assertSafeContent(variant.content, safe.relativePath);
+  assertSafeTextContent(variant.content, safe.relativePath);
   await fs.writeFile(safe.absolutePath, variant.content, "utf8");
   return textResult(`Restored ${variant.id} to ${safe.relativePath}.`, {
     action: "restore",
@@ -229,7 +224,7 @@ export async function writeArchive(archive: EvolveArchive, archivePath = DEFAULT
 export async function validateEvolvePath(inputPath: string | undefined, cwd: string) {
   if (!inputPath?.trim()) throw new Error("evolve action requires path.");
   const relativePath = normalizeRelativePath(inputPath);
-  if (isProtectedEvolvePath(relativePath)) throw new Error(`Protected path denied: ${relativePath}`);
+  if (isProtectedSecretPath(relativePath)) throw new Error(`Protected path denied: ${relativePath}`);
   const root = path.resolve(cwd);
   const absolutePath = path.resolve(root, relativePath);
   if (!absolutePath.startsWith(`${root}${path.sep}`) && absolutePath !== root) throw new Error(`Path escapes repository: ${relativePath}`);
@@ -245,34 +240,6 @@ export async function validateEvolvePath(inputPath: string | undefined, cwd: str
   const buffer = await fs.readFile(absolutePath);
   if (isBinaryBuffer(buffer)) throw new Error(`Binary file denied: ${relativePath}`);
   return { absolutePath, relativePath, exists: true };
-}
-
-export function normalizeRelativePath(inputPath: string) {
-  let normalized = inputPath.trim().replace(/^@/, "").replaceAll("\\", "/");
-  while (normalized.startsWith("./")) normalized = normalized.slice(2);
-  return normalized;
-}
-
-export function isProtectedEvolvePath(inputPath: string) {
-  const normalized = normalizeRelativePath(inputPath);
-  return protectedPathPatterns.some((pattern) => pattern.test(normalized));
-}
-
-export function isBinaryBuffer(buffer: Buffer) {
-  if (buffer.includes(0)) return true;
-  const sample = buffer.subarray(0, Math.min(buffer.length, 4096));
-  if (sample.length === 0) return false;
-  let suspicious = 0;
-  for (const byte of sample) {
-    if (byte < 7 || (byte > 14 && byte < 32)) suspicious++;
-  }
-  return suspicious / sample.length > 0.1;
-}
-
-function assertSafeContent(content: string, relativePath: string) {
-  const bytes = Buffer.byteLength(content);
-  if (bytes > DEFAULT_MAX_FILE_BYTES) throw new Error(`Large content denied: ${relativePath} (${bytes} bytes)`);
-  if (isBinaryBuffer(Buffer.from(content))) throw new Error(`Binary content denied: ${relativePath}`);
 }
 
 function findVariant(archive: EvolveArchive, id: string) {

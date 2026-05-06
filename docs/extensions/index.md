@@ -1,6 +1,6 @@
 # Extensions
 
-Extensions are TypeScript modules that customize pi. This package includes extensions for workflow planning, browser integration, background processes, persistent memory, todo tracking, search, subagents, UI improvements, and safety.
+Extensions are TypeScript modules that customize pi. This package includes extensions for workflow planning, browser integration, background processes, persistent memory, todo tracking, search, subagents, UI improvements, and safety. Use [`Resource rules`](../resource-rules.md) when creating or changing extension commands, tools, or custom subagents.
 
 ## Agent-facing tools
 

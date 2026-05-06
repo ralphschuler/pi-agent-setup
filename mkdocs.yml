@@ -69,6 +69,7 @@ nav:
       - Todo: extensions/todo.md
       - Web terminal: extensions/web-terminal.md
       - Welcome screen: extensions/welcome-screen.md
+  - Resource rules: resource-rules.md
   - Skills: skills.md
   - Prompts: prompts.md
   - Themes: themes.md

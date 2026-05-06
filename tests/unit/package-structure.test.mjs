@@ -77,3 +77,33 @@ test("extension docs are reachable from MkDocs nav", () => {
     assert.match(mkdocs, new RegExp(`extensions/${page.replace(/[.*+?^${}()|[\\]\\]/g, "\\$&")}`), `mkdocs nav missing ${page}`);
   }
 });
+
+test("resource rules and skill are documented", () => {
+  const rules = readText("docs/resource-rules.md");
+  const skill = readText("skills/pi-resource-design/SKILL.md");
+  const skillsDocs = readText("docs/skills.md");
+  const promptsDocs = readText("docs/prompts.md");
+  const extensionsDocs = readText("docs/extensions/index.md");
+  const mkdocs = readText("mkdocs.yml");
+
+  for (const phrase of [
+    "prompt template",
+    "skill",
+    "extension command",
+    "tool",
+    "custom subagent",
+    "frontmatter",
+    "security considerations",
+    "validation commands",
+    "rollback/stop points",
+  ]) {
+    assert.ok(rules.includes(phrase), `resource rules missing ${phrase}`);
+  }
+
+  assert.match(skill, /^name:\s*pi-resource-design$/m);
+  assert.ok(skill.includes("docs/resource-rules.md"));
+  assert.ok(skillsDocs.includes("pi-resource-design"));
+  assert.ok(promptsDocs.includes("Resource rules"));
+  assert.ok(extensionsDocs.includes("Resource rules"));
+  assert.ok(mkdocs.includes("resource-rules.md"));
+});

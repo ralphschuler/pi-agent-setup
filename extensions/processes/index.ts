@@ -149,7 +149,7 @@ export default function processesExtension(pi: ExtensionAPI) {
       return new Text(text, 0, 0);
     },
 
-    renderResult(result: any, { expanded }, theme) {
+    renderResult(result: any, { expanded, isPartial }, theme) {
       const details = result.details as ProcessDetails | undefined;
       if (result.isError) return new Text(theme.fg("error", textFromResult(result)), 0, 0);
       if (!details) return new Text(textFromResult(result), 0, 0);
@@ -157,8 +157,11 @@ export default function processesExtension(pi: ExtensionAPI) {
         const proc = details.process;
         let text = `${statusIcon(proc.status, theme)} ${theme.fg("accent", `#${proc.id} ${proc.name}`)} ${statusText(proc, theme)}`;
         text += `\n${theme.fg("dim", trimLine(proc.command, 120))}`;
-        if (expanded && details.stdout?.length) text += `\n${theme.fg("muted", "stdout:")}\n${details.stdout.slice(-20).join("\n")}`;
-        if (expanded && details.stderr?.length) text += `\n${theme.fg("warning", "stderr:")}\n${details.stderr.slice(-20).join("\n")}`;
+        const showLive = Boolean(isPartial);
+        const stdout = details.stdout || [];
+        const stderr = details.stderr || [];
+        if ((expanded || showLive) && stdout.length) text += `\n${theme.fg("muted", showLive ? "stdout (live):" : "stdout:")}\n${stdout.slice(showLive ? -4 : -20).join("\n")}`;
+        if ((expanded || showLive) && stderr.length) text += `\n${theme.fg("warning", showLive ? "stderr (live):" : "stderr:")}\n${stderr.slice(showLive ? -4 : -20).join("\n")}`;
         return new Text(text, 0, 0);
       }
       if (details.processes) {
@@ -218,19 +221,30 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
   });
   processes.set(id, proc);
 
-  child.stdout.on("data", (data) => appendOutput(proc, "stdout", data, { ui, logFileLimit: LOG_FILE_LIMIT }));
-  child.stderr.on("data", (data) => appendOutput(proc, "stderr", data, { ui, logFileLimit: LOG_FILE_LIMIT }));
+  const liveUpdate = createThrottledLiveUpdate(proc, onUpdate);
+  child.stdout.on("data", (data) => {
+    appendOutput(proc, "stdout", data, { ui, logFileLimit: LOG_FILE_LIMIT });
+    liveUpdate("stdout");
+  });
+  child.stderr.on("data", (data) => {
+    appendOutput(proc, "stderr", data, { ui, logFileLimit: LOG_FILE_LIMIT });
+    liveUpdate("stderr");
+  });
   child.on("exit", (code, signal) => {
     proc.status = signal ? "killed" : "exited";
     proc.exitCode = code;
     proc.signal = signal;
+    liveUpdate("exit", true);
     notifyProcessExit(proc, ui);
     updateProcessStatus(ui);
   });
-  child.on("error", (error) => appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), { ui, logFileLimit: LOG_FILE_LIMIT }));
+  child.on("error", (error) => {
+    appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), { ui, logFileLimit: LOG_FILE_LIMIT });
+    liveUpdate("stderr", true);
+  });
 
   updateProcessStatus(ui);
-  onUpdate?.({ content: [{ type: "text", text: `Started ${params.name} as #${id}` }] });
+  onUpdate?.(processLiveResult(proc, "start"));
   return textResult(`Started process #${id} (${params.name}).`, { action: "start", process: serializeProcess(proc) });
 }
 
@@ -306,6 +320,38 @@ function serializeAll() {
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {
   return { content: [{ type: "text" as const, text }], details, isError };
+}
+
+function createThrottledLiveUpdate(proc: ManagedProcess, onUpdate?: (update: any) => void) {
+  let timer: NodeJS.Timeout | undefined;
+  let lastStream: "stdout" | "stderr" | "start" | "exit" = "start";
+  const emit = () => {
+    timer = undefined;
+    onUpdate?.(processLiveResult(proc, lastStream));
+  };
+  return (stream: "stdout" | "stderr" | "exit", immediate = false) => {
+    lastStream = stream;
+    if (!onUpdate) return;
+    if (immediate) {
+      if (timer) clearTimeout(timer);
+      emit();
+      return;
+    }
+    if (!timer) timer = setTimeout(emit, 250);
+  };
+}
+
+function processLiveResult(proc: ManagedProcess, stream: "stdout" | "stderr" | "start" | "exit") {
+  const stdout = proc.stdout.slice(-4);
+  const stderr = proc.stderr.slice(-4);
+  const live = [
+    `Process #${proc.id} ${proc.name} — ${proc.status}`,
+    stdout.length ? `stdout:\n${stdout.join("\n")}` : undefined,
+    stderr.length ? `stderr:\n${stderr.join("\n")}` : undefined,
+  ]
+    .filter(Boolean)
+    .join("\n");
+  return textResult(live, { action: "start", process: serializeProcess(proc), stdout, stderr, stream, live: true });
 }
 
 function updateProcessStatus(ui?: any) {

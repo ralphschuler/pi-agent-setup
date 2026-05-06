@@ -23,7 +23,7 @@ export function formatPrettyToolMarkdown(
   options: { expanded?: boolean; isPartial?: boolean } = {},
   args?: unknown,
 ) {
-  if (options.isPartial) return `**${toolName}**\n\n_Working…_`;
+  if (options.isPartial) return partialToolMarkdown(toolName, result, args);
 
   const text = textFromResult(result).trimEnd();
   const isError = Boolean((result as { isError?: boolean } | undefined)?.isError);
@@ -82,6 +82,19 @@ function languageFromArgs(args: unknown) {
       } as Record<string, string>
     )[ext || ""] || "text"
   );
+}
+
+function partialToolMarkdown(toolName: string, result: unknown, args: unknown) {
+  const text = textFromResult(result).trimEnd();
+  const title = `⏳ ${toolName}`;
+  if (!text) return `${titleLine(title, args)}\n\n_Working…_`;
+  const tail = tailLines(text, 8, 4000);
+  return `${titleLine(title, args)}\n\n${fenced(tail, languageForTool(toolName, args))}`;
+}
+
+function tailLines(text: string, maxLines: number, maxChars: number) {
+  const lines = text.split(/\r?\n/).slice(-maxLines).join("\n");
+  return lines.length <= maxChars ? lines : `…${lines.slice(lines.length - maxChars)}`;
 }
 
 function emptyTextForTool(toolName: string) {

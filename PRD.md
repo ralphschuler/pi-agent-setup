@@ -447,17 +447,17 @@ Known local caveat:
 
 ## Risks and Mitigations
 
-| Risk | Severity | Mitigation |
-| --- | --- | --- |
-| `/merge` merges unexpectedly | High | Require existing PR, wait for checks, stop on ambiguity, use `human_in_loop` where approval/clarification is needed. |
-| GitHub labels create repo clutter | Medium | Use existing labels first; require approval before creating missing labels. |
-| Prompt/extension command collisions | Medium | Remove/disable duplicate extension commands during prompt migration. |
-| Live output overwhelms context | Medium | Throttle, truncate, cap lines, and keep full logs out-of-context. |
-| Subagent auto-creation creates noise | Medium | Require narrow scope, success criteria, tool limits, and parent synthesis. |
-| Evolve archive leaks secrets | High | Deny/protect sensitive paths and document archive storage. |
-| Evolve restore overwrites files | High | Require approval and path guards; provide rollback guidance. |
-| Darwin-style loops run too long/costly | Medium | Limit generations, require explicit user scope, expose stop points. |
-| Ruleset becomes stale | Low | Add docs/tests and reference from skill/prompt guidance. |
+| Risk                                   | Severity | Mitigation                                                                                                           |
+| -------------------------------------- | -------- | -------------------------------------------------------------------------------------------------------------------- |
+| `/merge` merges unexpectedly           | High     | Require existing PR, wait for checks, stop on ambiguity, use `human_in_loop` where approval/clarification is needed. |
+| GitHub labels create repo clutter      | Medium   | Use existing labels first; require approval before creating missing labels.                                          |
+| Prompt/extension command collisions    | Medium   | Remove/disable duplicate extension commands during prompt migration.                                                 |
+| Live output overwhelms context         | Medium   | Throttle, truncate, cap lines, and keep full logs out-of-context.                                                    |
+| Subagent auto-creation creates noise   | Medium   | Require narrow scope, success criteria, tool limits, and parent synthesis.                                           |
+| Evolve archive leaks secrets           | High     | Deny/protect sensitive paths and document archive storage.                                                           |
+| Evolve restore overwrites files        | High     | Require approval and path guards; provide rollback guidance.                                                         |
+| Darwin-style loops run too long/costly | Medium   | Limit generations, require explicit user scope, expose stop points.                                                  |
+| Ruleset becomes stale                  | Low      | Add docs/tests and reference from skill/prompt guidance.                                                             |
 
 ## Open Questions
 

@@ -19,6 +19,15 @@
 - Compact live stdout/stderr tails while child agents run
 - Write optional outputs for handoffs or reviews
 
+## Delegation policy
+
+- Call `subagent action=list` before non-trivial delegation.
+- Prefer an existing built-in or custom specialist whose description matches the task.
+- Create a narrow custom specialist when no matching specialist exists.
+- Dynamic specialist prompts should include a description, tool limits, success criteria, escalation rules, and output contract.
+- The parent agent remains responsible for synthesis, verification, final decisions, and user-facing communication.
+- Do not use subagents for simple tasks that can be handled directly.
+
 ## Good uses
 
 - Read-only reconnaissance

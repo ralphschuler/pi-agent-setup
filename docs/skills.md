@@ -42,7 +42,7 @@ skills/
 - Use `systematic-debugging` for failing tests, runtime errors, regressions, flakiness, or unclear root causes.
 - Use `project-bootstrap` when changing repository standards or setup.
 - Use `pi-processes` when starting servers, watchers, or logs.
-- Use `pi-subagents` when independent research, planning, implementation, or review would help.
+- Use `pi-subagents` when independent research, planning, implementation, or review would help; list available specialists first, create a narrow custom specialist when no matching specialist exists, and keep parent-agent synthesis/verification.
 - Use `github-merge` when merging an existing GitHub PR with checks and rebase merge.
 - Use `standup` when summarizing completed, in-progress, blocked, and upcoming repository work.
 - Ask all user-facing clarification and approval questions through `human_in_loop`; do not ask those questions only in assistant prose.

@@ -14,7 +14,7 @@ $ARGUMENTS
 Run the standup workflow for the current repository. Use the `standup` skill.
 
 Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
-Use `subagent` for non-trivial read-only reconnaissance when it helps, but keep final synthesis in the parent agent.
+Use `subagent` for non-trivial read-only reconnaissance when it helps; first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep synthesis, verification, and final reporting in the parent agent.
 
 ## Goal
 

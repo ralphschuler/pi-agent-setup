@@ -16,7 +16,7 @@ Run the `/to-pr` workflow for the current repository and conversation.
 If `$ARGUMENTS` is non-empty, treat it as user-provided PR title/scope. Otherwise infer the PR title/body from current changes and conversation.
 
 Use `human_in_loop` for every user-facing clarification or approval question. Do not ask those questions in plain assistant text.
-Use `subagent` for non-trivial review or validation reconnaissance when it helps; the parent agent remains responsible for the PR plan, final decisions, and user-facing summary.
+Use `subagent` for non-trivial review or validation reconnaissance when it helps; first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep the parent agent responsible for synthesis, verification, the PR plan, final decisions, and user-facing summary.
 Use GitHub CLI commands against the current repository only.
 
 ## Goal

@@ -27,7 +27,7 @@ When reviewing implementation plans, PRDs, or roadmap-like changes, verify that 
 
 # Review Team Roles
 
-The review should be split conceptually into the following agents. If you are a single agent, perform all roles sequentially.
+The review should be split conceptually into the following agents. For non-trivial delegated review, first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep synthesis, verification, and user-facing decisions in the parent agent. If you are a single agent, perform all roles sequentially.
 
 ## 1. Architecture Agent
 

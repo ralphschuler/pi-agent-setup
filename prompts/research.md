@@ -23,7 +23,7 @@ Do not invent facts. Do not rely on memory for current or factual claims when we
 
 # Research Team Roles
 
-Split the research conceptually into the following agents. If you are a single agent, perform all roles sequentially.
+Split the research conceptually into the following agents. For non-trivial delegated research, first call `subagent action=list`, create a narrow custom specialist when no matching specialist exists, and keep synthesis, verification, and user-facing decisions in the parent agent. If you are a single agent, perform all roles sequentially.
 
 ## 1. Scope Agent
 

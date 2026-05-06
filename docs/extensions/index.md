@@ -2,6 +2,8 @@
 
 Extensions are TypeScript modules that customize pi. This package includes extensions for workflow planning, browser integration, background processes, persistent memory, todo tracking, search, subagents, UI improvements, and safety. Use [`Resource rules`](../resource-rules.md) when creating or changing extension commands, tools, or custom subagents.
 
+Workflow slash commands are documented here for discoverability and in [`Prompts`](../prompts.md) for prompt-template behavior. GitHub handoff commands also have compatibility notes in [`GitHub handoff`](github-handoff.md), and the rebase merge workflow is detailed in [`GitHub merge`](github-merge.md).
+
 ## Agent-facing tools
 
 | Tool                  | Extension      | Purpose                                      |

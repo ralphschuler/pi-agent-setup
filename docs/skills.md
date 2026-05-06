@@ -50,3 +50,5 @@ skills/
 - Use `standup` when summarizing completed, in-progress, blocked, and upcoming repository work.
 - Ask all user-facing clarification and approval questions through `human_in_loop`; do not ask those questions only in assistant prose.
 - When a skill produces a plan, PRD, roadmap, or rollout sequence, split it into independently and quickly testable feature phases with concrete validation commands.
+- When a skill changes shipped workflow behavior, keep README, prompt docs, extension docs, validation docs, and MkDocs nav in sync.
+- Include rollback/stop-point notes for generated GitHub issues, PRDs, implementation plans, prompt templates, skills, tools, and extensions.

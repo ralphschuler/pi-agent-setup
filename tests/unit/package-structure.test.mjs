@@ -78,6 +78,59 @@ test("extension docs are reachable from MkDocs nav", () => {
   }
 });
 
+test("README covers key skills and skills docs cover every skill", () => {
+  const readme = readText("README.md");
+  const skillsDocs = readText("docs/skills.md");
+  const skillsDir = path.join(repoRoot, "skills");
+  const names = fs
+    .readdirSync(skillsDir, { withFileTypes: true })
+    .filter((entry) => entry.isDirectory())
+    .map((entry) => entry.name)
+    .sort();
+
+  for (const name of names) {
+    assert.ok(skillsDocs.includes(name), `docs/skills.md missing ${name}`);
+  }
+
+  for (const keySkill of ["github-merge", "pi-resource-design", "pi-subagents", "standup", "systematic-debugging"]) {
+    assert.ok(readme.includes(keySkill) || readme.includes(keySkill.replace(/-/g, " ")), `README missing ${keySkill}`);
+  }
+});
+
+test("prompt docs cover every prompt template", () => {
+  const promptsDocs = readText("docs/prompts.md");
+  const promptsDir = path.join(repoRoot, "prompts");
+  const names = fs
+    .readdirSync(promptsDir)
+    .filter((name) => name.endsWith(".md"))
+    .map((name) => name.replace(/\.md$/, ""))
+    .sort();
+
+  for (const name of names) {
+    assert.ok(promptsDocs.includes(`/${name}`), `docs/prompts.md missing /${name}`);
+    assert.ok(promptsDocs.includes(`${name}.md`), `docs/prompts.md missing ${name}.md`);
+  }
+});
+
+test("validation docs cover final workflow sweep commands and rollback notes", () => {
+  const validationDocs = readText("docs/validation-testing.md");
+
+  for (const command of [
+    "npm run typecheck",
+    "npm run lint",
+    "npm run test:unit",
+    "npm run test:ci",
+    "npm run docs:build",
+    "npm run test:docker",
+  ]) {
+    assert.ok(validationDocs.includes(command), `validation docs missing ${command}`);
+  }
+
+  assert.ok(validationDocs.includes("rollback/stop points") || validationDocs.includes("rollback/stop-point"));
+  assert.ok(validationDocs.includes("README"));
+  assert.ok(validationDocs.includes("MkDocs nav"));
+});
+
 test("resource rules and skill are documented", () => {
   const rules = readText("docs/resource-rules.md");
   const skill = readText("skills/pi-resource-design/SKILL.md");

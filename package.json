@@ -80,5 +80,8 @@
     "typebox": "^1.1.37",
     "typescript": "^6.0.3",
     "typescript-eslint": "^8.59.2"
+  },
+  "bin": {
+    "pi-acp": "./bin/pi-acp.mjs"
   }
 }

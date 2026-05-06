@@ -1,6 +1,6 @@
 # Custom Pi Agent Setup
 
-A custom pi package for a personalized coding-agent environment. It bundles TypeScript extensions, reusable skills, prompt templates, themes, scripts, tests, and a MkDocs-powered wiki.
+A custom pi package for a personalized coding-agent environment. It bundles TypeScript extensions, reusable skills, prompt templates, themes, scripts, tests, a MkDocs-powered wiki, and the experimental `pi-acp` editor adapter.
 
 ## Wiki documentation
 
@@ -25,6 +25,12 @@ GitHub Pages must be configured with **Settings → Pages → Source → GitHub 
 npm ci --legacy-peer-deps
 npm run check
 npm run install:pi
+```
+
+Optional editor adapter smoke check:
+
+```bash
+pi-acp --help
 ```
 
 Install into the current project only:
@@ -63,6 +69,7 @@ npm run test:docker
 
 ## What is included
 
+- `bin/pi-acp.mjs` — experimental Agent Client Protocol (ACP) stdio adapter for Zed-style code editor integration via `pi --mode rpc`.
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
   - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
 - `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
@@ -103,6 +110,7 @@ npm run test:docker
 ```text
 .
 ├── .github/workflows/  # CI and docs deployment
+├── bin/                # Executable adapters such as pi-acp
 ├── docs/               # MkDocs wiki source
 ├── extensions/         # TypeScript pi extensions
 ├── prompts/            # Prompt templates

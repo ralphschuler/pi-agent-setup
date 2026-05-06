@@ -44,6 +44,7 @@ nav:
   - Install, update, uninstall: install-update-uninstall.md
   - Validation and testing: validation-testing.md
   - Architecture: architecture.md
+  - ACP adapter: acp-adapter.md
   - Extensions:
       - Overview: extensions/index.md
       - Background processes guidance: extensions/background-processes.md

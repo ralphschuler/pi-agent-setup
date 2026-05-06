@@ -53,7 +53,7 @@ test("pretty-output renders partial tool output compactly when available", () =>
 test("pretty-output exposes a shared structured tool display contract", () => {
   const shared = readText("extensions/shared/pretty-render.ts");
   const processes = readText("extensions/processes/index.ts");
-  const subagents = readText("extensions/subagents/index.ts");
+  const subagents = readText("extensions/subagents/renderer.ts");
 
   assert.match(shared, /export type ToolDisplayContract/);
   assert.match(shared, /export function renderToolDisplayContract/);

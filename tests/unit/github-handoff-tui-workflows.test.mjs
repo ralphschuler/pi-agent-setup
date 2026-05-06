@@ -95,6 +95,8 @@ test("pick-issue workflow includes TUI-style progress checklist", () => {
     "TUI-style progress checklist throughout discovery, selection, dirty-tree handling, branch creation, PR creation, and summary",
     "Open issues loaded and scored",
     "Dirty tree checked and resolved via human_in_loop when needed",
+    "Empty starter commit created and branch pushed",
+    'git commit --allow-empty -m "chore: start issue #<number>"',
     "Draft/WIP PR created and linked",
     "completed/skipped/blocked states",
   ]) {

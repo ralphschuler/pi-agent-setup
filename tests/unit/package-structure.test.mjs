@@ -131,6 +131,25 @@ test("validation docs cover final workflow sweep commands and rollback notes", (
   assert.ok(validationDocs.includes("MkDocs nav"));
 });
 
+test("ACP adapter bin and docs are packaged", () => {
+  const pkg = readJson("package.json");
+  const readme = readText("README.md");
+  const docs = readText("docs/acp-adapter.md");
+  const extensionsDocs = readText("docs/extensions/index.md");
+  const validationDocs = readText("docs/validation-testing.md");
+  const mkdocs = readText("mkdocs.yml");
+
+  assert.equal(pkg.bin["pi-acp"], "./bin/pi-acp.mjs");
+  assert.ok(fs.existsSync(path.join(repoRoot, "bin", "pi-acp.mjs")));
+  for (const phrase of ["pi-acp", "Agent Client Protocol", "Zed", "pi --mode rpc"]) {
+    assert.ok(docs.includes(phrase), `ACP docs missing ${phrase}`);
+  }
+  assert.ok(readme.includes("pi-acp"));
+  assert.ok(extensionsDocs.includes("pi-acp"));
+  assert.ok(validationDocs.includes("acp-adapter.test.mjs"));
+  assert.ok(mkdocs.includes("acp-adapter.md"));
+});
+
 test("resource rules and skill are documented", () => {
   const rules = readText("docs/resource-rules.md");
   const skill = readText("skills/pi-resource-design/SKILL.md");

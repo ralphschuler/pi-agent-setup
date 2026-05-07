@@ -11,6 +11,7 @@ export function execSubagentProcess(
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
   spawnFn = spawn,
+  redactText: (text: string) => string = (text) => text,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
     const child = spawnFn("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
@@ -19,7 +20,7 @@ export function execSubagentProcess(
     const killTimer = setTimeout(() => child.kill("SIGTERM"), 10 * 60 * 1000);
     const abort = () => child.kill("SIGTERM");
     signal?.addEventListener("abort", abort, { once: true });
-    const liveUpdate = createSubagentLiveUpdate(agent, task, index, stdout, stderr, onUpdate);
+    const liveUpdate = createSubagentLiveUpdate(agent, task, index, stdout, stderr, onUpdate, redactText);
 
     child.stdout.on("data", (data) => {
       stdout.push(data.toString());
@@ -52,18 +53,19 @@ export function createSubagentLiveUpdate(
   stdout: string[],
   stderr: string[],
   onUpdate?: (update: any) => void,
+  redactText: (text: string) => string = (text) => text,
 ) {
   let timer: NodeJS.Timeout | undefined;
   const emit = () => {
     timer = undefined;
-    const tail = tailText([...stdout, ...stderr].join(""), 8, 4000);
+    const tail = redactText(tailText([...stdout, ...stderr].join(""), 8, 4000));
     onUpdate?.(
       textResult(tail || `Running ${agent}...`, {
         action: "run",
         runs: [{ agent, task, ok: false, text: tail, index }],
         live: true,
-        stdout: tailText(stdout.join(""), 6, 2000),
-        stderr: tailText(stderr.join(""), 6, 2000),
+        stdout: redactText(tailText(stdout.join(""), 6, 2000)),
+        stderr: redactText(tailText(stderr.join(""), 6, 2000)),
       }),
     );
   };

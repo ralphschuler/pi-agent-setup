@@ -28,10 +28,13 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(runner, /export async function runAgentRecord/);
   assert.match(runner, /Unknown subagent '\$\{name\}'\. Use action=list first\./);
-  assert.match(runner, /execSubagentProcess\(agent\.runtimeName/);
+  assert.match(runner, /createSecretRedactor/);
+  assert.match(runner, /redactor\.redactText\(task\)/);
+  assert.match(runner, /execSubagentProcess\(\s*agent\.runtimeName/);
 
   assert.match(executor, /spawnFn\("bash", \["-lc", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
-  assert.match(executor, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate\)/);
+  assert.match(executor, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate, redactText\)/);
+  assert.match(executor, /redactText\(tailText\(stdout\.join\(""\), 6, 2000\)\)/);
   assert.match(executor, /setTimeout\(emit, 500\)/);
 
   assert.match(writer, /output\.includes\("\{index\}"\)/);

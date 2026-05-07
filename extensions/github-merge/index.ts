@@ -126,11 +126,14 @@ export function assertMergeReady(view: PullRequestView, options: { allowPendingC
   if (view.state && view.state !== "OPEN") throw new Error(`PR #${view.number} is not open (${view.state}).`);
   if (view.isDraft) throw new Error(`PR #${view.number} is draft; mark ready before merging.`);
   if (view.mergeable && view.mergeable !== "MERGEABLE") throw new Error(`PR #${view.number} is not mergeable (${view.mergeable}).`);
+  const checks = checkState(view.statusCheckRollup);
+  const pendingMergeStates = ["UNSTABLE", "UNKNOWN", "BLOCKED"];
   if (view.mergeStateStatus && !["CLEAN", "HAS_HOOKS"].includes(view.mergeStateStatus)) {
-    throw new Error(`PR #${view.number} merge state is ${view.mergeStateStatus}.`);
+    if (!(options.allowPendingChecks && checks.state === "pending" && pendingMergeStates.includes(view.mergeStateStatus))) {
+      throw new Error(`PR #${view.number} merge state is ${view.mergeStateStatus}.`);
+    }
   }
 
-  const checks = checkState(view.statusCheckRollup);
   if (checks.state === "failed") throw new Error(`PR #${view.number} has failing checks: ${checks.failed.join(", ")}.`);
   if (checks.state === "pending" && !options.allowPendingChecks) throw new Error(`PR #${view.number} still has pending checks.`);
 }

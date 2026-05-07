@@ -30,6 +30,20 @@ test("github merge tool blocks unsafe PR states", () => {
       ),
     /failing checks/,
   );
+  assert.doesNotThrow(() =>
+    assertMergeReady(
+      { number: 1, mergeStateStatus: "UNSTABLE", statusCheckRollup: [{ name: "ci", status: "IN_PROGRESS" }] },
+      { allowPendingChecks: true },
+    ),
+  );
+  assert.throws(
+    () =>
+      assertMergeReady(
+        { number: 1, mergeStateStatus: "UNSTABLE", statusCheckRollup: [{ name: "ci", status: "COMPLETED", conclusion: "SUCCESS" }] },
+        { allowPendingChecks: false },
+      ),
+    /merge state is UNSTABLE/,
+  );
 });
 
 test("github merge tool waits for checks, merges, and verifies", async () => {

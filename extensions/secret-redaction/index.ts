@@ -6,7 +6,8 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 const MIN_SECRET_LENGTH = 8;
 const CONFIG_PATH = path.join(os.homedir(), ".pi", "agent", "secret-redaction.json");
 const SECRET_NAME_PATTERN = /(token|secret|password|passwd|pwd|api[_-]?key|access[_-]?key|auth|credential|cookie)/i;
-const EXCLUDED_ENV_PATTERN = /^(npm_config_|npm_package_|npm_lifecycle_|PATH$|HOME$|SHELL$|PWD$|OLDPWD$|USER$|LOGNAME$|TERM$)/i;
+const EXCLUDED_ENV_PATTERN = /^(npm_package_|npm_lifecycle_|PATH$|HOME$|SHELL$|PWD$|OLDPWD$|USER$|LOGNAME$|TERM$)/i;
+const MAX_CONFIG_PATTERN_LENGTH = 256;
 const REDACTION = "[REDACTED]";
 
 type SecretSource = "env" | "config";
@@ -158,6 +159,7 @@ function envCategory(name: string) {
 }
 
 function safeRegex(value: string) {
+  if (!value.trim() || value.length > MAX_CONFIG_PATTERN_LENGTH) return undefined;
   try {
     return new RegExp(value, "g");
   } catch {

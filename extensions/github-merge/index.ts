@@ -51,10 +51,10 @@ export default function githubMerge(pi: ExtensionAPI) {
     name: "github_rebase_merge",
     label: "GitHub Rebase Merge",
     description: "Wait for PR checks and perform a safe GitHub rebase merge on an existing PR.",
-    promptSnippet: "Use github_rebase_merge after identifying one existing PR and getting required approval.",
+    promptSnippet: "Use github_rebase_merge after identifying one existing PR; /merge invocation approves the normal unambiguous safe path.",
     promptGuidelines: [
       "Use only for an existing PR in the current repository; do not auto-create PRs.",
-      "Use human_in_loop before merging when user approval is needed.",
+      "Treat /merge invocation as approval for an unambiguous safe PR; use human_in_loop only when clarification or non-standard approval is needed.",
       "Do not merge draft, non-mergeable, failed-check, ambiguous, or timed-out PRs.",
       "The tool waits for checks, runs gh pr merge --rebase, and verifies final merged state.",
     ],

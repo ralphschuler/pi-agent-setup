@@ -22,7 +22,7 @@ The tool stops on:
 - failed `gh` command
 - final PR state not merged after merge command
 
-The prompt workflow should use `human_in_loop` before calling the tool when approval is needed.
+For `/merge`, invoking the prompt is approval for the normal unambiguous safe path: exactly one current-repo PR, clean target state, non-draft, mergeable, and all checks passing or watched to success. The prompt workflow should use `human_in_loop` only when clarification or non-standard approval is needed.
 
 ## Validation
 

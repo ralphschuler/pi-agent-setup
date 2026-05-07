@@ -69,6 +69,7 @@ nav:
       - Subagents: extensions/subagents.md
       - Tamagotchi: extensions/tamagotchi.md
       - Todo: extensions/todo.md
+      - Wait: extensions/wait.md
       - Web terminal: extensions/web-terminal.md
       - Welcome screen: extensions/welcome-screen.md
   - Resource rules: resource-rules.md

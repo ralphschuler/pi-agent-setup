@@ -17,7 +17,10 @@ It reminds the agent to use managed background processes for:
 
 Long-running commands should not block the agent turn or be started with shell background patterns such as `&`, `nohup`, `disown`, or `setsid`. The `process` tool keeps those commands inspectable and controllable.
 
+For finite background tasks, the agent can call `wait` once before inspecting `process output` or `process list`. This avoids repeated process polling while still giving tasks time to finish.
+
 ## Related pages
 
 - [Processes](processes.md)
+- [Wait](wait.md)
 - [Validation and testing](../validation-testing.md)

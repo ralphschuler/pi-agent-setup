@@ -20,6 +20,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | `searxng_status`      | SearXNG status | Check SearXNG health and setup steps.        |
 | `subagent`            | Subagents      | Run bounded specialist agents.               |
 | `todo`                | Todo           | Track persistent agent tasks.                |
+| `wait`                | Wait           | Pause for a bounded duration.                |
 | `web_terminal`        | Web terminal   | Show web terminal status/setup URLs.         |
 
 ## Common slash commands

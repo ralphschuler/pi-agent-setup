@@ -9,13 +9,17 @@ import { readText, tempDir } from "../helpers.mjs";
 test("secret redaction builds env inventory without short or unrelated values", () => {
   const matchers = secretMatchersFromEnv({
     API_TOKEN: "alpha-secret-token-123",
+    npm_config__authToken: "npm-secret-token-123",
     NORMAL_VALUE: "alpha-secret-token-123",
     SHORT_SECRET: "short",
     PATH: "alpha-secret-token-123",
   });
 
-  assert.equal(matchers.length, 1);
-  assert.equal(matchers[0].category, "token");
+  assert.equal(matchers.length, 2);
+  assert.deepEqual(
+    matchers.map((matcher) => matcher.category),
+    ["token", "token"],
+  );
 });
 
 test("secret redaction redacts exact and encoded forms recursively", () => {

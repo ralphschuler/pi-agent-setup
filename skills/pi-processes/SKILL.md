@@ -15,9 +15,10 @@ Use `human_in_loop` for every user-facing clarification or approval question. Do
 
 1. Start a command with a stable descriptive name.
 2. Continue other work; do not block the conversation waiting for watchers or servers.
-3. Inspect `process output` or `process logs` only when needed.
-4. Use `process write` for stdin.
-5. Kill processes when they are no longer needed and clear finished entries.
+3. For finite tasks where you need a pause before checking completion, use `wait` once, then inspect `process output` or `process list` once.
+4. Inspect `process output` or `process logs` only when needed.
+5. Use `process write` for stdin.
+6. Kill processes when they are no longer needed and clear finished entries.
 
 ## Common actions
 

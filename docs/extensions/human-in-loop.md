@@ -6,6 +6,7 @@
 
 - Agent-facing `human_in_loop` tool
 - Select, confirm, input, and editor modes
+- Bounded interactive prompt text so long approval context does not flood the terminal
 
 ## Use cases
 

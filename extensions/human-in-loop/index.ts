@@ -7,6 +7,10 @@ const OptionSchema = Type.Object({
   description: Type.Optional(Type.String({ description: "Optional context for the option" })),
 });
 
+export const MAX_PROMPT_LINES = 12;
+export const MAX_PROMPT_CHARS = 2000;
+export const MAX_OPTION_CHARS = 180;
+
 export default function humanInLoop(pi: ExtensionAPI) {
   pi.registerTool({
     name: "human_in_loop",
@@ -40,10 +44,10 @@ export default function humanInLoop(pi: ExtensionAPI) {
         };
       }
 
-      const prompt = params.context?.trim() ? `${params.title}\n\n${params.context.trim()}` : params.title;
+      const prompt = formatDialogPrompt(params.title, params.context);
 
       if (params.mode === "confirm") {
-        const answer = await ctx.ui.confirm(params.title, params.context || "");
+        const answer = await ctx.ui.confirm(formatDialogTitle(params.title), formatDialogContext(params.context));
         return {
           content: [{ type: "text", text: answer ? "User approved." : "User declined." }],
           details: { mode: params.mode, answer },
@@ -62,7 +66,10 @@ export default function humanInLoop(pi: ExtensionAPI) {
 
         const labels = options.map((option, index) => {
           const description = option.description?.trim();
-          return description ? `${index + 1}. ${option.label} — ${description}` : `${index + 1}. ${option.label}`;
+          return compactSingleLine(
+            description ? `${index + 1}. ${option.label} — ${description}` : `${index + 1}. ${option.label}`,
+            MAX_OPTION_CHARS,
+          );
         });
         const selected = await ctx.ui.select(prompt, labels);
         const index = selected ? labels.indexOf(selected) : -1;
@@ -96,4 +103,49 @@ export default function humanInLoop(pi: ExtensionAPI) {
       };
     },
   });
+}
+
+export function formatDialogPrompt(title: string, context?: string) {
+  const compactTitle = formatDialogTitle(title);
+  const compactContext = formatDialogContext(context);
+  return compactContext ? `${compactTitle}\n\n${compactContext}` : compactTitle;
+}
+
+export function formatDialogTitle(title: string) {
+  return compactMultiline(String(title || "").trim() || "Question", 4, 800);
+}
+
+export function formatDialogContext(context?: string) {
+  const text = String(context || "").trim();
+  if (!text) return "";
+  return compactMultiline(text, MAX_PROMPT_LINES, MAX_PROMPT_CHARS);
+}
+
+export function compactSingleLine(text: string, maxChars = MAX_OPTION_CHARS) {
+  const cleaned = String(text || "")
+    .replace(/[\r\n\t]+/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+  return cleaned.length <= maxChars ? cleaned : `${cleaned.slice(0, Math.max(0, maxChars - 1))}…`;
+}
+
+export function compactMultiline(text: string, maxLines = MAX_PROMPT_LINES, maxChars = MAX_PROMPT_CHARS) {
+  const normalized = String(text || "")
+    .replace(/\r\n/g, "\n")
+    .trim();
+  if (!normalized) return "";
+
+  const lines = normalized.split("\n");
+  const truncatedByLines = lines.length > maxLines;
+  let compacted = lines.slice(0, maxLines).join("\n");
+  const truncatedByChars = compacted.length > maxChars;
+
+  if (!truncatedByLines && !truncatedByChars) return compacted;
+  const omitted = [truncatedByLines ? `${lines.length - maxLines} line(s)` : undefined, truncatedByChars ? "extra text" : undefined]
+    .filter(Boolean)
+    .join(" and ");
+  const suffix = `\n… [truncated ${omitted} to keep the interactive prompt stable]`;
+  const contentLimit = Math.max(0, maxChars - suffix.length);
+  if (compacted.length > contentLimit) compacted = compacted.slice(0, contentLimit).trimEnd();
+  return `${compacted}${suffix}`;
 }

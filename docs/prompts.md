@@ -28,7 +28,7 @@ Required issue body headings: Summary, Evidence/Context, Decisions, Tasks, Propo
 
 A safe GitHub rebase merge workflow. Accepts optional PR number, URL, or branch via `/merge [PR number / URL / branch]`.
 
-The workflow identifies an existing open PR, waits for checks, uses `human_in_loop` for approval when needed, calls `github_rebase_merge`, and verifies final merged state. It never auto-creates a PR and stops on draft, failed checks, non-mergeable, missing PR, or ambiguous target state.
+The workflow identifies an existing open PR, waits for checks, treats `/merge` invocation as approval for the normal unambiguous safe path, calls `github_rebase_merge`, and verifies final merged state. It uses `human_in_loop` only for clarification or non-standard approval, never auto-creates a PR, and stops on draft, failed checks, non-mergeable, missing PR, or ambiguous target state.
 
 ### `to-pr.md`
 

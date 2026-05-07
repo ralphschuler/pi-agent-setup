@@ -7,7 +7,7 @@ import http from "node:http";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { env, LOCALHOST_BIND_HOST, localNetworkUrls, normalizeHost, normalizePort } from "../shared/local-network.ts";
-import { isAuthed, isTrustedOrigin, requiresCsrfCheck } from "./auth.ts";
+import { hasTrustedCsrfOrigin, isAuthed, requiresCsrfCheck } from "./auth.ts";
 import { broadcast, type SseClient } from "./events.ts";
 import { json, safeHandleApi } from "./http.ts";
 import { handleApi } from "./routes.ts";
@@ -147,7 +147,7 @@ export default function webTerminal(pi: ExtensionAPI) {
 
       if (url.pathname.startsWith("/api/")) {
         if (!authed) return json(res, 401, { error: "Unauthorized" });
-        if (requiresCsrfCheck(req, url) && !isTrustedOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
+        if (requiresCsrfCheck(req, url) && !hasTrustedCsrfOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
         void safeHandleApi(res, () =>
           handleApi(req, res, url.pathname.slice("/api".length), {
             pi,

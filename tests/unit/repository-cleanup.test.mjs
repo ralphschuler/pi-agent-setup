@@ -51,10 +51,10 @@ test("web terminal enforces origin and csrf checks", () => {
   const web = readText("extensions/web-terminal/index.ts");
   const auth = readText("extensions/web-terminal/auth.ts");
 
-  assert.match(web, /requiresCsrfCheck\(req, url\) && !isTrustedOrigin\(req\)/);
+  assert.match(web, /requiresCsrfCheck\(req, url\) && !hasTrustedCsrfOrigin\(req\)/);
   assert.match(web, /HTTP\/1\.1 403 Forbidden/);
   assert.match(web, /safeHandleApi/);
-  assert.match(auth, /originUrl\.host === host/);
+  assert.match(auth, /url\.host === host/);
   assert.match(auth, /pi_web_terminal_token/);
 });
 

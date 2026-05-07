@@ -64,6 +64,7 @@ nav:
       - Processes: extensions/processes.md
       - Safety guard: extensions/safety-guard.md
       - SearXNG search: extensions/searxng.md
+      - Secret redaction: extensions/secret-redaction.md
       - Subagent orchestrator: extensions/subagent-orchestrator.md
       - Subagents: extensions/subagents.md
       - Tamagotchi: extensions/tamagotchi.md

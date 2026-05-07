@@ -3,6 +3,7 @@ import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { createSecretRedactor } from "../secret-redaction/index.ts";
 import { allAgents } from "./catalog.ts";
 import { execSubagentProcess } from "./executor.ts";
 import { writeOutput } from "./output-writer.ts";
@@ -26,25 +27,39 @@ export async function runAgentRecord(
   if (!agent) throw new Error(`Unknown subagent '${name}'. Use action=list first.`);
   onUpdate?.({ content: [{ type: "text", text: `Running ${agent.runtimeName}...` }] });
 
+  const redactor = createSecretRedactor();
+  const redactedTask = redactor.redactText(task);
   const promptFile = path.join(os.tmpdir(), `pi-subagent-${Date.now()}-${process.pid}-${index}.md`);
-  const prompt = [
-    agent.body,
-    "",
-    "Parent task:",
-    task,
-    "",
-    "Output concise findings, changed files if any, validation performed, and risks.",
-  ].join("\n");
+  const prompt = redactor.redactText(
+    [
+      agent.body,
+      "",
+      "Parent task:",
+      redactedTask,
+      "",
+      "Output concise findings, changed files if any, validation performed, and risks.",
+    ].join("\n"),
+  );
   await fs.writeFile(promptFile, prompt, "utf8");
 
   const runCwd = cwdOverride || cwd;
   try {
-    const result = await execSubagentProcess(agent.runtimeName, task, promptFile, runCwd, index, signal, onUpdate);
-    const text = result.stdout.trim() || result.stderr.trim();
+    const result = await execSubagentProcess(
+      agent.runtimeName,
+      redactedTask,
+      promptFile,
+      runCwd,
+      index,
+      signal,
+      onUpdate,
+      undefined,
+      redactor.redactText,
+    );
+    const text = redactor.redactText(result.stdout.trim() || result.stderr.trim());
     const outPath = await writeOutput(runCwd, output, text, index);
     return {
       agent: agent.runtimeName,
-      task,
+      task: redactedTask,
       ok: result.code === 0,
       text,
       error: result.code === 0 ? undefined : `Exited ${result.code}`,
@@ -52,8 +67,8 @@ export async function runAgentRecord(
       index,
     };
   } catch (error) {
-    const message = error instanceof Error ? error.message : String(error);
+    const message = redactor.redactText(error instanceof Error ? error.message : String(error));
     const outPath = await writeOutput(runCwd, output, message, index);
-    return { agent: agent.runtimeName, task, ok: false, text: "", error: message, output: outPath, index };
+    return { agent: agent.runtimeName, task: redactedTask, ok: false, text: "", error: message, output: outPath, index };
   }
 }

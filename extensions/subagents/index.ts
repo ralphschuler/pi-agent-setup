@@ -5,6 +5,7 @@ import { createAgent, deleteAgent, listAgents } from "./catalog.ts";
 import { renderSubagentCall, renderSubagentResult } from "./renderer.ts";
 import { runAgentRecord } from "./runner.ts";
 import { runParallel } from "./scheduler.ts";
+import { isSubagentPlanModeActive } from "./plan-mode.ts";
 import { textResult } from "./result.ts";
 
 export default function subagents(pi: ExtensionAPI) {
@@ -50,11 +51,15 @@ export default function subagents(pi: ExtensionAPI) {
     async execute(_toolCallId, params, signal, onUpdate, ctx) {
       try {
         const action = params.action || (params.tasks ? "parallel" : "run");
+        const readOnly = isSubagentPlanModeActive();
         if (action === "list") return await listAgents(ctx.cwd);
         if (action === "create") return await createAgent(ctx.cwd, params.config);
         if (action === "delete") return await deleteAgent(ctx.cwd, params.agent);
-        if (action === "parallel") return await runParallel(pi, ctx.cwd, params.tasks || [], params.concurrency, signal, onUpdate);
-        const record = await runAgentRecord(pi, ctx.cwd, params.agent, params.task, params.output, params.cwd, 0, signal, onUpdate);
+        if (action === "parallel")
+          return await runParallel(pi, ctx.cwd, params.tasks || [], params.concurrency, signal, onUpdate, { readOnly });
+        const record = await runAgentRecord(pi, ctx.cwd, params.agent, params.task, params.output, params.cwd, 0, signal, onUpdate, {
+          readOnly,
+        });
         return textResult(
           record.text || `Subagent ${record.agent} completed with no output.`,
           { action: "run", runs: [record], agent: record.agent },

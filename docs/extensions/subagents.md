@@ -18,6 +18,7 @@
 - Run parallel task arrays with optional concurrency
 - Compact live stdout/stderr tails while child agents run
 - Write optional outputs for handoffs or reviews
+- Run in `/plan` mode with read-only child tools before plan approval
 
 ## Delegation policy
 
@@ -35,6 +36,16 @@
 - Independent code review
 - Parallel research
 - Bounded implementation handoffs
+
+## Plan-mode safety
+
+When `/plan` is active, subagent runs are restricted to read-only child execution before the plan is approved:
+
+- Child Pi processes are spawned with `--tools read,grep,find,ls`.
+- Child prompts explicitly forbid edits, writes, implementation, commits, package installs, server starts, and git state mutation.
+- `subagent action=list` and `subagent action=create` remain available.
+- `subagent run` and `subagent parallel` are available without `output` files.
+- `subagent action=delete` and subagent `output` writes are blocked until the plan is approved.
 
 ## Output limits
 

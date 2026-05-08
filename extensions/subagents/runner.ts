@@ -6,6 +6,7 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createSecretRedactor } from "../secret-redaction/index.ts";
 import { allAgents } from "./catalog.ts";
 import { execSubagentProcess } from "./executor.ts";
+import { READ_ONLY_SUBAGENT_INSTRUCTIONS } from "./plan-mode.ts";
 import { writeOutput } from "./output-writer.ts";
 import type { RunRecord } from "./types.ts";
 
@@ -19,6 +20,7 @@ export async function runAgentRecord(
   index = 0,
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
+  options: { readOnly?: boolean } = {},
 ): Promise<RunRecord> {
   if (!name) throw new Error("subagent run requires agent.");
   if (!task?.trim()) throw new Error("subagent run requires task.");
@@ -34,6 +36,8 @@ export async function runAgentRecord(
     [
       agent.body,
       "",
+      options.readOnly ? READ_ONLY_SUBAGENT_INSTRUCTIONS : undefined,
+      options.readOnly ? "" : undefined,
       "Parent task:",
       redactedTask,
       "",
@@ -52,6 +56,7 @@ export async function runAgentRecord(
       index,
       signal,
       onUpdate,
+      options.readOnly,
       undefined,
       redactor.redactText,
     );

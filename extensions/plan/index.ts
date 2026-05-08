@@ -1,6 +1,7 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import { setSubagentPlanModeActive } from "../subagents/plan-mode.ts";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
 const PLANNING_TOOLS = new Set([
@@ -34,6 +35,7 @@ export default function planCommand(pi: ExtensionAPI) {
       }
 
       planningActive = true;
+      setSubagentPlanModeActive(true);
       approvedPlan = "";
       ctx.ui.setStatus("plan", "planning");
       pi.sendUserMessage(buildKickoffPrompt(task));
@@ -58,6 +60,11 @@ export default function planCommand(pi: ExtensionAPI) {
       };
     }
 
+    if (event.toolName === "subagent") {
+      const decision = classifyPlanSubagentCall(event.input);
+      if (!decision.allow) return { block: true, reason: decision.reason };
+    }
+
     if (!PLANNING_TOOLS.has(event.toolName)) {
       return {
         block: true,
@@ -78,6 +85,7 @@ export default function planCommand(pi: ExtensionAPI) {
 
     if (choice === "Apply the plan") {
       planningActive = false;
+      setSubagentPlanModeActive(false);
       ctx.ui.setStatus("plan", "applying");
       pi.sendUserMessage(
         `Apply this approved plan now. Follow it step by step, update todo/graph_memory when useful, and report progress.\n\n${approvedPlan}`,
@@ -97,6 +105,7 @@ export default function planCommand(pi: ExtensionAPI) {
 
     if (choice === "Make PRD.md") {
       planningActive = false;
+      setSubagentPlanModeActive(false);
       ctx.ui.setStatus("plan", "writing PRD.md");
       pi.sendUserMessage(
         `Convert this approved plan into a clear product requirements document at PRD.md. Do not implement the plan. Create or update PRD.md only. Synthesize from the approved plan and already-known conversation/codebase context; do not re-interview the user unless a blocking contradiction makes the PRD unsafe. If needed, inspect CONTEXT.md, docs/adr/, repo docs, and current code first so the PRD uses project domain vocabulary and respects existing decisions. Actively identify major modules to build or modify, opportunities for deep modules with small stable testable interfaces, and which modules need behavior-focused tests.\n\nUse this PRD structure exactly:\n\n## Problem Statement\n\nState the user-facing problem from the user's perspective.\n\n## Solution\n\nState the user-facing solution.\n\n## User Stories\n\nProvide an extensive numbered list in the form: As an <actor>, I want a <feature>, so that <benefit>.\n\n## Implementation Decisions\n\nList durable decisions: modules to build/modify, interface changes, technical clarifications, architecture, schema/API contracts, and specific interactions. Avoid volatile file paths and code snippets unless a prototype snippet captures a decision more precisely than prose; if included, trim it to decision-rich parts and label it prototype-derived.\n\n## Testing Decisions\n\nDescribe behavior-focused testing standards, which modules/interfaces need tests, and prior-art tests or patterns in the codebase. Prefer external behavior over implementation details.\n\n## Feature Phases\n\nStructure the PRD into small feature phases. Each phase must be independently and quickly testable with concrete validation commands/checks, acceptance criteria, and rollback/stop points where practical.\n\n## Out of Scope\n\nList explicit non-goals.\n\n## Further Notes\n\nCapture open questions, risks, rollout notes, issue-tracker follow-up, and anything useful for future agents.\n\n${approvedPlan}`,
@@ -105,6 +114,7 @@ export default function planCommand(pi: ExtensionAPI) {
     }
 
     planningActive = false;
+    setSubagentPlanModeActive(false);
     approvedPlan = "";
     ctx.ui.setStatus("plan", undefined);
     ctx.ui.notify("Planning cancelled.", "info");
@@ -113,6 +123,28 @@ export default function planCommand(pi: ExtensionAPI) {
   pi.on("agent_end", async (_event, ctx) => {
     if (!planningActive && ctx.hasUI) ctx.ui.setStatus("plan", undefined);
   });
+}
+
+export function classifyPlanSubagentCall(input: unknown) {
+  const params = (input || {}) as { action?: unknown; tasks?: unknown; output?: unknown };
+  const action = typeof params.action === "string" ? params.action : Array.isArray(params.tasks) ? "parallel" : "run";
+
+  if (action === "delete") {
+    return { allow: false, reason: "The /plan workflow blocks subagent delete before approval because it removes local agent files." };
+  }
+
+  if (action === "run" && params.output !== undefined) {
+    return { allow: false, reason: "The /plan workflow blocks subagent output files before approval. Run the subagent without output." };
+  }
+
+  if (action === "parallel" && Array.isArray(params.tasks) && params.tasks.some((task: any) => task?.output !== undefined)) {
+    return {
+      allow: false,
+      reason: "The /plan workflow blocks parallel subagent output files before approval. Run read-only subagents without output.",
+    };
+  }
+
+  return { allow: true, reason: "subagent action is allowed during planning with read-only execution constraints" };
 }
 
 function buildKickoffPrompt(task: string) {

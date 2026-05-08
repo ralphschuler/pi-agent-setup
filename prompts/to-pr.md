@@ -51,6 +51,10 @@ Before committing or creating a PR from inferred changes, present a human-in-loo
 - [ ] PR created
 - [ ] Result reported
 
+## Implementation quality standard
+
+When summarizing current changes, verify they are consistent with behavior-first implementation: public-interface tests/checks for observable behavior, vertical slices where practical, no speculative features, and clear validation plus rollback. If gaps remain, list them as follow-ups rather than hiding them in the PR body.
+
 ## Safety rules
 
 - Do not create a PR from dirty or unvalidated changes without clearly reporting what is included.

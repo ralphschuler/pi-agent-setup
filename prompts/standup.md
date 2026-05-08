@@ -82,3 +82,7 @@ Inspect the repository, GitHub issues, and pull requests, then produce a concise
 ```
 
 Keep it concise and action-oriented. Include URLs for referenced issues and PRs.
+
+## Implementation handoff standard
+
+Do not modify files in this workflow. For upcoming work that requires code changes, recommend `/implement <task or issue>` and describe the first independently and quickly testable behavior slice.

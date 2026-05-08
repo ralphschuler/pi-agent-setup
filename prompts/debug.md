@@ -88,6 +88,10 @@ Use this final structure:
 **Risks / follow-ups:** ...
 ```
 
+## Implementation standard for fixes
+
+When Phase 5 changes code, use the `implement` skill for the fix cycle: add or update one behavior-level regression test first when practical, confirm it fails for the observed bug, implement the smallest root-cause fix, then refactor only after GREEN. Prefer public interfaces over private implementation details.
+
 ## Stop conditions
 
 Stop and use `human_in_loop` before proceeding if:

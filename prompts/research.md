@@ -367,3 +367,7 @@ For each item, include expected effort:
 - Small: less than 1 day
 - Medium: 1–3 days
 - Large: more than 3 days
+
+## Implementation handoff standard
+
+When research produces implementation guidance, recommend `/implement <task>` for execution. Plans must use vertical slices: one observable behavior or decision, one public-interface test/check, minimal change, validation, and rollback/stop point. Avoid horizontal "write all tests, then all code" plans.

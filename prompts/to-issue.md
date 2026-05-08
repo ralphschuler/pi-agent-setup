@@ -82,6 +82,10 @@ Each drafted issue body must use these headings:
 - [ ] Confirmed issues created
 - [ ] Summary reported
 
+## Implementation-ready issue standard
+
+Draft acceptance criteria and tasks so each issue can start with `/implement <issue number>`. Prefer vertical behavior slices: one observable behavior, one public-interface test/check, minimal implementation, validation command, and rollback/stop point. Avoid broad, untestable batches.
+
 ## Safety rules
 
 - Use `human_in_loop` for every user-facing clarification or approval question, including issue selection, creation confirmation, ambiguous target repo, ambiguous labels, or ambiguous issue scope.

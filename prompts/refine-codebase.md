@@ -96,3 +96,7 @@ Any domain term to add, decision to preserve, or ADR conflict.
 End by calling `human_in_loop` to ask:
 
 `Which of these would you like to explore?`
+
+## Implementation handoff standard
+
+Do not implement during this command. If the selected candidate becomes work, recommend `/implement <selected candidate>` and split it into vertical behavior slices. Each slice should validate the module interface as the test surface, not private implementation details.

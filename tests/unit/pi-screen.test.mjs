@@ -28,6 +28,21 @@ printf '%s\\n' "$*" >> ${JSON.stringify(logPath)}
   const pi = path.join(dir, "pi");
   fs.writeFileSync(pi, "#!/usr/bin/env bash\nexit 0\n", "utf8");
   fs.chmodSync(pi, 0o755);
+
+  const git = path.join(dir, "git");
+  fs.writeFileSync(
+    git,
+    `#!/usr/bin/env bash
+set -euo pipefail
+if [[ "\${1:-}" == "rev-parse" && "\${2:-}" == "--show-toplevel" && -n "\${PI_FAKE_GIT_ROOT:-}" ]]; then
+  printf '%s\\n' "\${PI_FAKE_GIT_ROOT}"
+  exit 0
+fi
+exit 1
+`,
+    "utf8",
+  );
+  fs.chmodSync(git, 0o755);
   return { dir, logPath };
 }
 
@@ -59,7 +74,9 @@ test("pi-screen --help documents repo and outside-repo behavior", () => {
 
 test("inside a repository starts the default repo session when none exists", () => {
   const fake = fakeBin();
-  const result = runPiScreen(["--dry-run", "--", "hello"], { env: { PATH: `${fake.dir}${path.delimiter}${process.env.PATH}` } });
+  const result = runPiScreen(["--dry-run", "--", "hello"], {
+    env: { PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`, PI_FAKE_GIT_ROOT: repoRoot },
+  });
 
   assert.equal(result.status, 0);
   assert.match(result.stdout.trim(), new RegExp(`^screen -S ${defaultName(repoRoot, repoRoot)} pi hello$`));
@@ -71,6 +88,7 @@ test("inside a repository attaches existing session and warns when pi args are i
   const result = runPiScreen(["--", "new prompt"], {
     env: {
       PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`,
+      PI_FAKE_GIT_ROOT: repoRoot,
       PI_FAKE_SCREEN_LS: `There is a screen on:\n\t1234.${name}\t(Detached)\n`,
     },
   });
@@ -83,7 +101,7 @@ test("inside a repository attaches existing session and warns when pi args are i
 test("--detach creates a detached named pi-screen session", () => {
   const fake = fakeBin();
   const result = runPiScreen(["--name", "docs", "--new", "--detach", "--", "write docs"], {
-    env: { PATH: `${fake.dir}${path.delimiter}${process.env.PATH}` },
+    env: { PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`, PI_FAKE_GIT_ROOT: repoRoot },
   });
 
   assert.equal(result.status, 0);
@@ -96,6 +114,7 @@ test("--name can attach an exact listed pi-screen session name", () => {
   const result = runPiScreen(["--name", existing], {
     env: {
       PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`,
+      PI_FAKE_GIT_ROOT: repoRoot,
       PI_FAKE_SCREEN_LS: `There is a screen on:\n\t1234.${existing}\t(Detached)\n`,
     },
   });
@@ -110,6 +129,7 @@ test("--new avoids duplicate screen names when a managed session exists", () => 
   const result = runPiScreen(["--name", "docs", "--new"], {
     env: {
       PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`,
+      PI_FAKE_GIT_ROOT: repoRoot,
       PI_FAKE_SCREEN_LS: `There is a screen on:\n\t1234.${existing}\t(Detached)\n`,
     },
   });

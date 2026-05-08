@@ -75,5 +75,7 @@ export async function runAgentRecord(
     const message = redactor.redactText(error instanceof Error ? error.message : String(error));
     const outPath = await writeOutput(runCwd, output, message, index);
     return { agent: agent.runtimeName, task: redactedTask, ok: false, text: "", error: message, output: outPath, index };
+  } finally {
+    await fs.rm(promptFile, { force: true });
   }
 }

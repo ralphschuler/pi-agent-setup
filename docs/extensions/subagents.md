@@ -43,9 +43,9 @@ When `/plan` is active, subagent runs are restricted to read-only child executio
 
 - Child Pi processes are spawned with `--tools read,grep,find,ls`.
 - Child prompts explicitly forbid edits, writes, implementation, commits, package installs, server starts, and git state mutation.
-- `subagent action=list` and `subagent action=create` remain available.
+- `subagent action=list` remains available.
 - `subagent run` and `subagent parallel` are available without `output` files.
-- `subagent action=delete` and subagent `output` writes are blocked until the plan is approved.
+- `subagent action=create`, `subagent action=delete`, and subagent `output` writes are blocked until the plan is approved because they write or remove local files.
 
 ## Output limits
 

@@ -40,10 +40,11 @@ test("plan workflow allows only read-only-safe subagent actions before approval"
   const source = readText("extensions/plan/index.ts");
 
   assert.equal(classifyPlanSubagentCall({ action: "list" }).allow, true);
-  assert.equal(classifyPlanSubagentCall({ action: "create" }).allow, true);
   assert.equal(classifyPlanSubagentCall({ action: "run", agent: "scout", task: "inspect" }).allow, true);
   assert.equal(classifyPlanSubagentCall({ tasks: [{ agent: "scout", task: "inspect" }] }).allow, true);
 
+  assert.equal(classifyPlanSubagentCall({ action: "create" }).allow, false);
+  assert.match(classifyPlanSubagentCall({ action: "create" }).reason, /writes local agent files/);
   assert.equal(classifyPlanSubagentCall({ action: "delete", agent: "custom" }).allow, false);
   assert.equal(classifyPlanSubagentCall({ action: "run", agent: "scout", task: "inspect", output: "report.md" }).allow, false);
   assert.equal(classifyPlanSubagentCall({ tasks: [{ agent: "scout", task: "inspect", output: "report.md" }] }).allow, false);

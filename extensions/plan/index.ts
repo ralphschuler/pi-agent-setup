@@ -129,6 +129,10 @@ export function classifyPlanSubagentCall(input: unknown) {
   const params = (input || {}) as { action?: unknown; tasks?: unknown; output?: unknown };
   const action = typeof params.action === "string" ? params.action : Array.isArray(params.tasks) ? "parallel" : "run";
 
+  if (action === "create") {
+    return { allow: false, reason: "The /plan workflow blocks subagent create before approval because it writes local agent files." };
+  }
+
   if (action === "delete") {
     return { allow: false, reason: "The /plan workflow blocks subagent delete before approval because it removes local agent files." };
   }
@@ -163,7 +167,7 @@ function planningInstructions() {
     "- If a question can be answered by inspecting the repo, docs, config, tests, or current state, inspect first instead of asking the user.",
     "- Walk dependencies between decisions one-by-one. Resolve upstream decisions before downstream implementation details.",
     "- Continue drilling until there are no material unknowns, not merely until a plausible plan exists.",
-    "- Research with read-only tools as needed. You may use subagent for read-only scout/research/review/context-building work before approval, but do not delegate edits until the plan is approved.",
+    "- Research with read-only tools as needed. You may use subagent for read-only scout/research/review/context-building work before approval, but do not create/delete custom agents, request output files, or delegate edits until the plan is approved.",
     "- Use todo for durable planning/application tasks when useful.",
     "- Use graph_memory for durable user preferences, project decisions, and reusable facts when useful.",
     "Deep drilldown phases:",

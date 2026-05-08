@@ -4,17 +4,17 @@ Skills are markdown workflows that the agent loads on demand for specialized tas
 
 ## Included skills
 
-| Skill                  | Purpose                                                                                               |
-| ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `project-bootstrap`    | Bootstrap or standardize a repository with a repeatable plan, hygiene, scripts, docs, and validation. |
-| `code-review`          | Review code changes for correctness, maintainability, tests, security, and user-facing impact.        |
-| `systematic-debugging` | Diagnose bugs with an evidence-first root-cause workflow.                                             |
-| `pi-processes`         | Manage long-running commands with the custom `process` tool.                                          |
-| `pi-resource-design`   | Design Pi prompts, skills, extensions, tools, and subagents using the resource ruleset.               |
-| `pi-subagents`         | Delegate bounded work to custom subagents while keeping parent-agent synthesis.                       |
-| `github-merge`         | Safely wait for PR checks and merge an existing GitHub PR with rebase.                                |
-| `implement`            | Implement features/fixes with behavior-first vertical slices, public-interface tests, and validation. |
-| `standup`              | Create read-only repository standup summaries from git state, GitHub issues, and PRs.                 |
+| Skill                  | Purpose                                                                                                             |
+| ---------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| `project-bootstrap`    | Bootstrap or standardize a repository with a repeatable plan, hygiene, scripts, docs, and validation.               |
+| `code-review`          | Review code changes for correctness, maintainability, tests, security, and user-facing impact.                      |
+| `systematic-debugging` | Diagnose bugs with feedback-loop-first reproduction, falsifiable hypotheses, instrumentation, and regression tests. |
+| `pi-processes`         | Manage long-running commands with the custom `process` tool.                                                        |
+| `pi-resource-design`   | Design Pi prompts, skills, extensions, tools, and subagents using the resource ruleset.                             |
+| `pi-subagents`         | Delegate bounded work to custom subagents while keeping parent-agent synthesis.                                     |
+| `github-merge`         | Safely wait for PR checks and merge an existing GitHub PR with rebase.                                              |
+| `implement`            | Implement features/fixes with behavior-first vertical slices, public-interface tests, and validation.               |
+| `standup`              | Create read-only repository standup summaries from git state, GitHub issues, and PRs.                               |
 
 ## Usage
 
@@ -43,7 +43,7 @@ skills/
 ## Guidance
 
 - Use `code-review` for diffs, pull requests, or implementation plans.
-- Use `systematic-debugging` for failing tests, runtime errors, regressions, flakiness, or unclear root causes.
+- Use `systematic-debugging` for failing tests, runtime errors, regressions, flakiness, performance issues, or unclear root causes; build a trusted feedback loop before patching.
 - Use `project-bootstrap` when changing repository standards or setup.
 - Use `pi-processes` when starting servers, watchers, or logs.
 - Use `pi-resource-design` when creating or changing Pi prompt templates, skills, extensions, tools, or custom subagents.

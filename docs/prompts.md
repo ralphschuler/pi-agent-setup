@@ -8,7 +8,7 @@ Workflow prompts must keep user-facing clarification and approval questions in `
 
 ### `debug.md`
 
-A strategic evidence-first debugging prompt that guides reproduction, hypothesis ranking, localization, root-cause fix, regression coverage, validation, and reporting. Accepts a symptom, failing command, or bug report via `/debug <symptom / failing command / bug report>`.
+A strategic evidence-first debugging prompt that guides a diagnosis loop: build a fast feedback loop, reproduce and minimize, rank falsifiable hypotheses, instrument with tagged probes, fix at the root cause, add regression coverage at the correct seam, cleanup, validate, and report. Accepts a symptom, failing command, or bug report via `/debug <symptom / failing command / bug report>`.
 
 ### `standup.md`
 

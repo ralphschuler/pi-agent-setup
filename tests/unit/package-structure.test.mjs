@@ -150,6 +150,25 @@ test("ACP adapter bin and docs are packaged", () => {
   assert.ok(mkdocs.includes("acp-adapter.md"));
 });
 
+test("pi-screen wrapper bin and docs are packaged", () => {
+  const pkg = readJson("package.json");
+  const readme = readText("README.md");
+  const docs = readText("docs/pi-screen.md");
+  const gettingStarted = readText("docs/getting-started.md");
+  const validationDocs = readText("docs/validation-testing.md");
+  const mkdocs = readText("mkdocs.yml");
+
+  assert.equal(pkg.bin["pi-screen"], "./bin/pi-screen.mjs");
+  assert.ok(fs.existsSync(path.join(repoRoot, "bin", "pi-screen.mjs")));
+  for (const phrase of ["pi-screen", "GNU screen", "outside a Git repository", "only pi-screen sessions"]) {
+    assert.ok(docs.includes(phrase), `pi-screen docs missing ${phrase}`);
+  }
+  assert.ok(readme.includes("pi-screen"));
+  assert.ok(gettingStarted.includes("pi-screen"));
+  assert.ok(validationDocs.includes("pi-screen.test.mjs"));
+  assert.ok(mkdocs.includes("pi-screen.md"));
+});
+
 test("resource rules and skill are documented", () => {
   const rules = readText("docs/resource-rules.md");
   const skill = readText("skills/pi-resource-design/SKILL.md");

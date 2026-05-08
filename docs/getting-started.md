@@ -23,6 +23,7 @@ Restart pi or run `/reload` in an existing session after installing.
 
 ## Important runtime commands
 
+- `pi-screen` — start pi through GNU screen for unattended, resumable sessions. Inside a Git repository it auto attaches/creates the repo session; outside a repository it shows a picker for `pi-screen` sessions only.
 - `/welcome` — show the startup welcome card.
 - `/ps` — inspect managed background processes.
 - `/plan <task>` — start a clarification-first planning workflow with quickly testable feature phases.

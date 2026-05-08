@@ -69,7 +69,7 @@ npm run docs:build
 npm run test:docker
 ```
 
-`npm run test:ci` already includes `npm run check`, `npm test`, and coverage. Run `npm run docs:build` after docs, navigation, prompt, skill, or extension documentation changes. Run `npm run test:docker` for CI/Docker smoke-test parity when Docker is available. For ACP/editor adapter changes, include `node --test tests/unit/acp-protocol.test.mjs tests/unit/acp-adapter.test.mjs`.
+`npm run test:ci` already includes `npm run check`, `npm test`, and coverage. Run `npm run docs:build` after docs, navigation, prompt, skill, or extension documentation changes. Run `npm run test:docker` for CI/Docker smoke-test parity when Docker is available. For ACP/editor adapter changes, include `node --test tests/unit/acp-protocol.test.mjs tests/unit/acp-adapter.test.mjs`. For `pi-screen` wrapper changes, include `node --test tests/unit/pi-screen.test.mjs`.
 
 ## Before merging changes
 

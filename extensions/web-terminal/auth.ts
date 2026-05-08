@@ -45,8 +45,9 @@ export function hasTrustedCsrfOrigin(req: http.IncomingMessage) {
   return isSameHttpHost(referer, host);
 }
 
-export function requiresCsrfCheck(req: http.IncomingMessage, url: URL) {
+export function requiresCsrfCheck(req: http.IncomingMessage, url: URL, token: string) {
   const method = req.method || "GET";
   if (["GET", "HEAD", "OPTIONS"].includes(method)) return false;
-  return url.searchParams.get("token") === null && cookieValue(req.headers.cookie, "pi_web_terminal_token") !== undefined;
+  if (url.searchParams.get("token") === token) return false;
+  return cookieValue(req.headers.cookie, "pi_web_terminal_token") !== undefined;
 }

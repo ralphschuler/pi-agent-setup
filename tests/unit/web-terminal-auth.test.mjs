@@ -24,9 +24,23 @@ test("web terminal origin checks require same host", () => {
 });
 
 test("web terminal csrf checks only unsafe cookie-authenticated requests", () => {
-  assert.equal(requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "POST"), new URL("http://localhost/api/chat/prompt")), true);
-  assert.equal(requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "GET"), new URL("http://localhost/api/status")), false);
-  assert.equal(requiresCsrfCheck(req({}, "POST"), new URL("http://localhost/api/chat/prompt?token=abc")), false);
+  assert.equal(
+    requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "POST"), new URL("http://localhost/api/chat/prompt"), "abc"),
+    true,
+  );
+  assert.equal(
+    requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "GET"), new URL("http://localhost/api/status"), "abc"),
+    false,
+  );
+  assert.equal(requiresCsrfCheck(req({}, "POST"), new URL("http://localhost/api/chat/prompt?token=abc"), "abc"), false);
+  assert.equal(
+    requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "POST"), new URL("http://localhost/api/chat/prompt?token=abc"), "abc"),
+    false,
+  );
+  assert.equal(
+    requiresCsrfCheck(req({ cookie: "pi_web_terminal_token=abc" }, "POST"), new URL("http://localhost/api/chat/prompt?token=wrong"), "abc"),
+    true,
+  );
 });
 
 test("web terminal csrf origin checks fail closed without same-origin evidence", () => {

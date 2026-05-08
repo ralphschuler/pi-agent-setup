@@ -31,6 +31,7 @@ Optional editor adapter smoke check:
 
 ```bash
 pi-acp --help
+pi-screen --help
 ```
 
 Install into the current project only:
@@ -70,6 +71,7 @@ npm run test:docker
 ## What is included
 
 - `bin/pi-acp.mjs` — experimental Agent Client Protocol (ACP) stdio adapter for Zed-style code editor integration via `pi --mode rpc`.
+- `bin/pi-screen.mjs` — GNU screen wrapper for unattended, resumable pi sessions. Inside a Git repository it auto attaches/creates the repo session; outside a repository it shows a picker for `pi-screen` sessions only.
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
   - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/secret-redaction/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/wait/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
 - `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `implement`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
@@ -82,6 +84,7 @@ npm run test:docker
 ## Common pi commands
 
 ```text
+pi-screen
 /welcome
 /plan <task>
 /debug <symptom / failing command / bug report>

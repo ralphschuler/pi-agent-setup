@@ -82,6 +82,7 @@
     "typescript-eslint": "^8.59.2"
   },
   "bin": {
-    "pi-acp": "./bin/pi-acp.mjs"
+    "pi-acp": "./bin/pi-acp.mjs",
+    "pi-screen": "./bin/pi-screen.mjs"
   }
 }

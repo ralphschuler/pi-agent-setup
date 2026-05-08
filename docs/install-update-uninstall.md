@@ -10,6 +10,13 @@ bash scripts/install.sh
 npm run install:pi
 ```
 
+Pi can install the repository directly. This helper script installs the current checkout with `pi install` and links runnable aliases:
+
+- `~/.local/bin/pi-acp` -> `./bin/pi-acp.mjs`
+- `~/.local/bin/pi-screen` -> `./bin/pi-screen.mjs`
+
+Override the alias directory with `PI_ALIAS_DIR`.
+
 ## Install locally
 
 Install into the current project only:
@@ -34,7 +41,9 @@ bash scripts/update.sh
 npm run update:pi
 ```
 
-The update script pulls latest git changes when this folder is a git repository, runs validation, and asks pi to refresh this local package entry.
+The update script pulls latest git changes when this checkout is a git repository, refreshes package dependencies, refreshes aliases, and asks pi to update this package entry.
+
+Uninstall removes the selected pi package entry and removes matching `pi-acp` and `pi-screen` aliases.
 
 ## Uninstall globally
 

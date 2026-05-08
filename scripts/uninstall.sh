@@ -16,6 +16,7 @@ Options:
 
 Environment:
   PI_SCOPE=global|local  Alternative way to select scope.
+  PI_ALIAS_DIR=path       Directory for runnable aliases (default: ~/.local/bin).
 USAGE
 }
 
@@ -41,5 +42,19 @@ else
   echo "Removing pi package globally: $ROOT_DIR"
   pi remove "$ROOT_DIR"
 fi
+
+ALIAS_DIR="${PI_ALIAS_DIR:-$HOME/.local/bin}"
+remove_alias() {
+  local name="$1"
+  local link="$ALIAS_DIR/$name"
+  local target="$ROOT_DIR/bin/${name}.mjs"
+
+  if [[ -L "$link" && "$(readlink "$link")" == "$target" ]]; then
+    rm -f "$link"
+  fi
+}
+
+remove_alias "pi-acp"
+remove_alias "pi-screen"
 
 echo "Done. Restart pi or run /reload in an existing session."

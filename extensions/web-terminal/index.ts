@@ -147,7 +147,7 @@ export default function webTerminal(pi: ExtensionAPI) {
 
       if (url.pathname.startsWith("/api/")) {
         if (!authed) return json(res, 401, { error: "Unauthorized" });
-        if (requiresCsrfCheck(req, url) && !hasTrustedCsrfOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
+        if (requiresCsrfCheck(req, url, currentToken) && !hasTrustedCsrfOrigin(req)) return json(res, 403, { error: "Untrusted origin" });
         void safeHandleApi(res, () =>
           handleApi(req, res, url.pathname.slice("/api".length), {
             pi,

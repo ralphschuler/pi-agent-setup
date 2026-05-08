@@ -1,6 +1,10 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
+import { writeOutput } from "../../extensions/subagents/output-writer.ts";
 import { readText } from "../helpers.mjs";
 
 test("subagent orchestration is split into focused internal modules", () => {
@@ -42,4 +46,56 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(renderer, /export function subagentDisplayContract/);
   assert.match(renderer, /renderToolDisplayContract\(subagentDisplayContract/);
+});
+
+test("subagent output writer writes safe relative paths inside cwd", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-output-"));
+
+  const outPath = await writeOutput(cwd, "reports/result-{index}.md", "ok", 1);
+
+  assert.equal(outPath, path.join(cwd, "reports", "result-2.md"));
+  assert.equal(fs.readFileSync(outPath, "utf8"), "ok");
+});
+
+test("subagent output writer rejects absolute and traversal paths", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-output-"));
+  const outside = path.join(os.tmpdir(), `pi-subagent-outside-${process.pid}.md`);
+
+  await assert.rejects(() => writeOutput(cwd, outside, "nope", 0), /Output path must be relative/);
+  await assert.rejects(() => writeOutput(cwd, "../escape.md", "nope", 0), /Output path must stay inside cwd/);
+
+  assert.equal(fs.existsSync(outside), false);
+  assert.equal(fs.existsSync(path.join(path.dirname(cwd), "escape.md")), false);
+});
+
+test("subagent output writer rejects protected secret paths", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-output-"));
+
+  await assert.rejects(() => writeOutput(cwd, ".env", "SECRET=value", 0), /Protected output path denied/);
+  await assert.rejects(() => writeOutput(cwd, "nested/private-key.txt", "SECRET=value", 0), /Protected output path denied/);
+
+  assert.equal(fs.existsSync(path.join(cwd, ".env")), false);
+  assert.equal(fs.existsSync(path.join(cwd, "nested", "private-key.txt")), false);
+});
+
+test("subagent output writer rejects symlink escapes inside cwd", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-output-"));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-outside-"));
+  fs.symlinkSync(outside, path.join(cwd, "link"), "dir");
+
+  await assert.rejects(() => writeOutput(cwd, "link/escaped.md", "nope", 0), /Output path must stay inside cwd/);
+
+  assert.equal(fs.existsSync(path.join(outside, "escaped.md")), false);
+});
+
+test("subagent output writer rejects existing symlink output files", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-output-"));
+  const outside = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-outside-"));
+  const outsideFile = path.join(outside, "target.md");
+  fs.writeFileSync(outsideFile, "original", "utf8");
+  fs.symlinkSync(outsideFile, path.join(cwd, "out.md"));
+
+  await assert.rejects(() => writeOutput(cwd, "out.md", "nope", 0), /Output path must stay inside cwd/);
+
+  assert.equal(fs.readFileSync(outsideFile, "utf8"), "original");
 });

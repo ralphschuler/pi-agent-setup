@@ -159,10 +159,45 @@ function envCategory(name: string) {
 }
 
 function safeRegex(value: string) {
-  if (!value.trim() || value.length > MAX_CONFIG_PATTERN_LENGTH) return undefined;
+  if (!value.trim() || value.length > MAX_CONFIG_PATTERN_LENGTH || isUnsafeRegexPattern(value)) return undefined;
   try {
     return new RegExp(value, "g");
   } catch {
     return undefined;
   }
+}
+
+function isUnsafeRegexPattern(value: string) {
+  const groupStarts: number[] = [];
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (value[index] === "(") {
+      groupStarts.push(index);
+      continue;
+    }
+    if (value[index] !== ")") continue;
+
+    const start = groupStarts.pop();
+    if (start === undefined || !isQuantifierStart(value[index + 1])) continue;
+    if (hasRiskyQuantifiedGroupBody(value.slice(start + 1, index))) return true;
+  }
+  return false;
+}
+
+function hasRiskyQuantifiedGroupBody(value: string) {
+  for (let index = 0; index < value.length; index += 1) {
+    if (value[index] === "\\") {
+      index += 1;
+      continue;
+    }
+    if (value[index] === "+" || value[index] === "*" || value[index] === "{" || value[index] === "|") return true;
+  }
+  return false;
+}
+
+function isQuantifierStart(value: string | undefined) {
+  return value === "+" || value === "*" || value === "{";
 }

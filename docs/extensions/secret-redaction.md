@@ -38,7 +38,8 @@ Keep this file local. Do not commit it.
 ## Security notes
 
 - The inventory stays in memory.
-- Invalid, empty, or overly long config regex entries are ignored without logging raw values.
+- Invalid, empty, overly long, or obviously unsafe config regex entries are ignored without logging raw values.
+- Nested quantified patterns such as `(a+)+$` and quantified alternations such as `(a|aa)+$` or `(?:a|aa)+$` are rejected to reduce catastrophic-backtracking/ReDoS risk.
 - Overly broad patterns may remove useful context; overly narrow values may miss transformed secrets.
 - Rollback: disable the extension by removing `extensions/secret-redaction/` from the installed package or reverting this extension and subagent redaction calls.
 

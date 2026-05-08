@@ -10,15 +10,28 @@ test("repository check script passes", () => {
   assert.match(result.stdout, /Repository checks passed\./);
 });
 
-test("install script validates, installs the repository, and links runnable aliases", () => {
+test("install script validates, installs the repository, links runnable aliases, and updates PATH", () => {
   const fakePi = makeFakePi();
   const aliasDir = path.join(fakePi.dir, "aliases");
+  const shellRc = path.join(fakePi.env.HOME, ".bashrc");
+  const env = { ...fakePi.env, PI_ALIAS_DIR: aliasDir, PI_SETUP_SHELL_RC: shellRc };
 
-  run("bash", ["scripts/install.sh", "--global"], { env: { ...fakePi.env, PI_ALIAS_DIR: aliasDir } });
+  run("bash", ["scripts/install.sh", "--global"], { env });
+  run("bash", ["scripts/install.sh", "--global"], { env });
 
-  assert.deepEqual(fakePi.calls(), [`install ${repoRoot}`]);
+  assert.deepEqual(fakePi.calls(), [`install ${repoRoot}`, `install ${repoRoot}`]);
   assert.equal(fs.readlinkSync(path.join(aliasDir, "pi-acp")), path.join(repoRoot, "bin", "pi-acp.mjs"));
   assert.equal(fs.readlinkSync(path.join(aliasDir, "pi-screen")), path.join(repoRoot, "bin", "pi-screen.mjs"));
+
+  const rc = fs.readFileSync(shellRc, "utf8");
+  assert.match(rc, /pi-agent-setup aliases/);
+  assert.match(rc, new RegExp(aliasDir.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")));
+  assert.equal((rc.match(/>>> pi-agent-setup aliases/g) ?? []).length, 1);
+
+  const commandLookup = run("bash", ["-lc", 'source "$PI_SETUP_SHELL_RC"; command -v pi-acp; command -v pi-screen'], {
+    env,
+  });
+  assert.deepEqual(commandLookup.stdout.trim().split("\n"), [path.join(aliasDir, "pi-acp"), path.join(aliasDir, "pi-screen")]);
 });
 
 test("install script supports project-local installs", () => {
@@ -29,27 +42,49 @@ test("install script supports project-local installs", () => {
   assert.deepEqual(fakePi.calls(), [`install -l ${repoRoot}`]);
 });
 
-test("uninstall script removes package entry and matching aliases", () => {
+test("install script refuses to replace existing aliases that point elsewhere", () => {
   const fakePi = makeFakePi();
   const aliasDir = path.join(fakePi.dir, "aliases");
   fs.mkdirSync(aliasDir, { recursive: true });
-  fs.symlinkSync(path.join(repoRoot, "bin", "pi-acp.mjs"), path.join(aliasDir, "pi-acp"));
-  fs.symlinkSync(path.join(repoRoot, "bin", "pi-screen.mjs"), path.join(aliasDir, "pi-screen"));
+  fs.symlinkSync("/tmp/other-pi-acp", path.join(aliasDir, "pi-acp"));
 
-  run("bash", ["scripts/uninstall.sh", "--global"], { env: { ...fakePi.env, PI_ALIAS_DIR: aliasDir } });
+  const result = run("bash", ["scripts/install.sh", "--global"], {
+    check: false,
+    env: { ...fakePi.env, PI_ALIAS_DIR: aliasDir },
+  });
 
-  assert.deepEqual(fakePi.calls(), [`remove ${repoRoot}`]);
-  assert.equal(fs.existsSync(path.join(aliasDir, "pi-acp")), false);
-  assert.equal(fs.existsSync(path.join(aliasDir, "pi-screen")), false);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /already points to \/tmp\/other-pi-acp/);
+  assert.deepEqual(fakePi.calls(), []);
 });
 
-test("update script can refresh pi and aliases without pulling", () => {
+test("uninstall script removes package entry, matching aliases, and PATH block", () => {
   const fakePi = makeFakePi();
   const aliasDir = path.join(fakePi.dir, "aliases");
+  const shellRc = path.join(fakePi.env.HOME, ".bashrc");
+  const env = { ...fakePi.env, PI_ALIAS_DIR: aliasDir, PI_SETUP_SHELL_RC: shellRc };
 
-  run("bash", ["scripts/update.sh", "--no-pull", "--no-check"], { env: { ...fakePi.env, PI_ALIAS_DIR: aliasDir } });
+  run("bash", ["scripts/install.sh", "--global"], { env });
+  run("bash", ["scripts/uninstall.sh", "--global"], { env });
+
+  const rc = fs.readFileSync(shellRc, "utf8");
+  assert.deepEqual(fakePi.calls(), [`install ${repoRoot}`, `remove ${repoRoot}`]);
+  assert.equal(fs.existsSync(path.join(aliasDir, "pi-acp")), false);
+  assert.equal(fs.existsSync(path.join(aliasDir, "pi-screen")), false);
+  assert.doesNotMatch(rc, /pi-agent-setup aliases/);
+});
+
+test("update script can refresh pi, aliases, and PATH without pulling", () => {
+  const fakePi = makeFakePi();
+  const aliasDir = path.join(fakePi.dir, "aliases");
+  const shellRc = path.join(fakePi.env.HOME, ".bashrc");
+
+  run("bash", ["scripts/update.sh", "--no-pull", "--no-check"], {
+    env: { ...fakePi.env, PI_ALIAS_DIR: aliasDir, PI_SETUP_SHELL_RC: shellRc },
+  });
 
   assert.deepEqual(fakePi.calls(), [`update ${repoRoot}`]);
   assert.equal(fs.readlinkSync(path.join(aliasDir, "pi-acp")), path.join(repoRoot, "bin", "pi-acp.mjs"));
   assert.equal(fs.readlinkSync(path.join(aliasDir, "pi-screen")), path.join(repoRoot, "bin", "pi-screen.mjs"));
+  assert.match(fs.readFileSync(shellRc, "utf8"), /pi-agent-setup aliases/);
 });

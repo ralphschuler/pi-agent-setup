@@ -27,7 +27,7 @@ npm run check
 npm run install:pi
 ```
 
-Optional editor adapter smoke check:
+The installer exposes `pi-acp` and `pi-screen` through managed aliases in `~/.local/bin` and adds that directory to your shell startup file. Open a new shell or source the updated rc file, then smoke check:
 
 ```bash
 pi-acp --help

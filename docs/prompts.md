@@ -20,9 +20,9 @@ The workflow uses the `standup` skill to inspect git state, GitHub issues, and p
 
 A GitHub issue creation workflow. Accepts optional scope, title, or filter via `/to-issue [scope / title / filter]`.
 
-The workflow inspects repo/auth state, reviews conversation and relevant files, checks existing issues and labels with `gh label list --limit 100`, drafts issue bodies with a required section template, proposes labels for each drafted issue, uses `human_in_loop` for issue selection/approval and post-selection missing-label creation, and creates confirmed issues with `gh issue create --label`.
+The workflow inspects repo/auth state, reviews conversation and relevant files, checks existing issues and labels with `gh label list --limit 100`, breaks plans/PRDs into tracer-bullet vertical slices, classifies slices as `AFK` or `HITL`, drafts issue bodies with a required section template, proposes labels for each drafted issue, uses `human_in_loop` for granularity/dependency/selection approval and post-selection missing-label creation, and creates confirmed issues with `gh issue create --label` in dependency order.
 
-Required issue body headings: Summary, Evidence/Context, Decisions, Tasks, Proposed Solution, Acceptance Criteria, Relevant Files/Commands, Validation, Risks/Rollback, and Source Conversation Context.
+Required issue body headings: Parent, Summary, What to build, Slice Type, Blocked by, Evidence/Context, Decisions, Tasks, Proposed Solution, Acceptance Criteria, Relevant Files/Commands, Validation, Risks/Rollback, and Source Conversation Context.
 
 ### `merge.md`
 

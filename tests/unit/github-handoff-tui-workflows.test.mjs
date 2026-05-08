@@ -15,11 +15,17 @@ test("to-issue workflow requires human-in-loop selectable issue review before cr
 
   for (const phrase of [
     "human-in-loop selectable review list",
-    "choose issues to create, confirm, or cancel",
-    "Render a proposed issue list",
+    "choose issues to create, confirm, edit, split/merge, reorder dependencies, or cancel",
+    "Render a proposed vertical-slice breakdown",
     "Do not create issues before this confirmation",
-    "Human-in-loop selection confirmed or canceled",
+    "AFK/HITL and dependency review confirmed or canceled via human_in_loop",
     "gh label list --limit 100",
+    "tracer-bullet vertical-slice issues",
+    "Prefer many thin slices",
+    "AFK",
+    "HITL",
+    "Publish blockers first",
+    "Do not modify or close parent/source issues",
   ]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }
@@ -29,7 +35,11 @@ test("to-issue workflow defines detailed issue bodies and label handling", () =>
   const source = readPrompt("to-issue");
 
   for (const heading of [
+    "## Parent",
     "## Summary",
+    "## What to build",
+    "## Slice Type",
+    "## Blocked by",
     "## Evidence/Context",
     "## Decisions",
     "## Tasks",
@@ -51,8 +61,9 @@ test("to-issue workflow defines detailed issue bodies and label handling", () =>
     "Do not create issues before this confirmation; do not create labels before this confirmation either",
     "After issue selection is confirmed, use `human_in_loop` before creating any missing label needed by a confirmed issue",
     "gh label create",
-    "proposed labels for each drafted issue",
+    "proposed labels",
     "gh issue create --title ... --body-file ... --label ...",
+    "in dependency order",
     "skipped as duplicates/non-actionable",
     "skipped label decisions",
   ]) {

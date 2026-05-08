@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import fs from "node:fs";
 import path from "node:path";
+import { performance } from "node:perf_hooks";
 import test from "node:test";
 
 import secretRedaction, { createSecretRedactor, secretMatchersFromEnv } from "../../extensions/secret-redaction/index.ts";
@@ -48,6 +49,43 @@ test("secret redaction reads optional explicit local config without leaking valu
 
   assert.equal(text, "[REDACTED] and [REDACTED]");
   assert.deepEqual(Object.keys(redactor.report().categories), ["explicit"]);
+});
+
+test("secret redaction ignores unsafe config regex patterns while keeping normal token patterns", () => {
+  const dir = tempDir("secret-redaction-unsafe-regex");
+  const configPath = path.join(dir, "secret-redaction.json");
+  fs.writeFileSync(configPath, JSON.stringify({ patterns: ["(a+)+$", "((a+))+$", "(a|aa)+$", "(?:a|aa)+$", "(?:(?:a)|(?:aa))+$", "gho_[A-Za-z0-9_]+"] }), "utf8");
+
+  const redactor = createSecretRedactor({}, configPath);
+  const nestedQuantifierCandidate = redactor.redactText("aaaaaaaa");
+  const wrappedNestedQuantifierCandidate = redactor.redactText("aaaaaaaaa");
+  const ambiguousAlternationCandidate = redactor.redactText("aaaaaaaaaa");
+  const nonCapturingAlternationCandidate = redactor.redactText("aaaaaaaaaaa");
+  const nestedNonCapturingAlternationCandidate = redactor.redactText("aaaaaaaaaaaa");
+  const text = redactor.redactText("aaaaaaaa and gho_placeholdertoken");
+
+  assert.equal(nestedQuantifierCandidate, "aaaaaaaa");
+  assert.equal(wrappedNestedQuantifierCandidate, "aaaaaaaaa");
+  assert.equal(ambiguousAlternationCandidate, "aaaaaaaaaa");
+  assert.equal(nonCapturingAlternationCandidate, "aaaaaaaaaaa");
+  assert.equal(nestedNonCapturingAlternationCandidate, "aaaaaaaaaaaa");
+  assert.equal(text, "aaaaaaaa and [REDACTED]");
+  assert.deepEqual(redactor.report().sources, { config: 1 });
+});
+
+test("secret redaction keeps invalid overlong and unsafe patterns from slowing long input", () => {
+  const dir = tempDir("secret-redaction-long-input");
+  const configPath = path.join(dir, "secret-redaction.json");
+  fs.writeFileSync(configPath, JSON.stringify({ patterns: ["[", "a".repeat(257), "(a+)+$", "((a+))+$", "(a|aa)+$", "(?:a|aa)+$", "gho_[A-Za-z0-9_]+"] }), "utf8");
+
+  const redactor = createSecretRedactor({}, configPath);
+  const started = performance.now();
+  const text = redactor.redactText(`${"a".repeat(20_000)}! gho_placeholdertoken`);
+  const elapsed = performance.now() - started;
+
+  assert.ok(elapsed < 1_000, `redaction took ${elapsed}ms`);
+  assert.ok(text.includes(`${"a".repeat(20_000)}!`));
+  assert.ok(text.endsWith("[REDACTED]"));
 });
 
 test("secret redaction extension registers context and provider request hooks", async () => {

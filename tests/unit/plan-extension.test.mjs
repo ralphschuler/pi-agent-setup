@@ -19,6 +19,17 @@ test("plan workflow enforces deep drilldown planning before approval", () => {
     "Change the plan",
     "Make PRD.md",
     "Create or update PRD.md only",
+    "Synthesize from the approved plan",
+    "CONTEXT.md",
+    "docs/adr/",
+    "deep modules with small stable testable interfaces",
+    "## Problem Statement",
+    "## User Stories",
+    "## Implementation Decisions",
+    "Avoid volatile file paths",
+    "## Testing Decisions",
+    "Prefer external behavior over implementation details",
+    "PRD-ready summary",
   ]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }

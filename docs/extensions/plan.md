@@ -4,7 +4,7 @@
 
 ## Purpose
 
-The plan workflow enforces deep drilldown planning before implementation for non-trivial tasks. It behaves like a rigorous design interview: resolve each branch of the decision tree, inspect the codebase before asking discoverable questions, and ask one targeted question at a time when user input is required.
+The plan workflow enforces deep drilldown planning before implementation for non-trivial tasks. It behaves like a rigorous design interview: resolve each branch of the decision tree, inspect the codebase before asking discoverable questions, and ask one targeted question at a time when user input is required. Its PRD path synthesizes from the approved plan and existing context instead of re-interviewing the user.
 
 ## Provides
 
@@ -15,6 +15,7 @@ The plan workflow enforces deep drilldown planning before implementation for non
 - Reviewable plan output
 - Write blocking until plan approval
 - Review UI with apply, change, make `PRD.md`, or cancel choices
+- PRD generation with problem statement, solution, user stories, implementation decisions, testing decisions, feature phases, out-of-scope items, and further notes
 
 ## Recommended use
 
@@ -35,5 +36,5 @@ At the review gate, choose one of:
 
 - **Apply the plan** — begin implementation.
 - **Change the plan** — provide feedback and continue planning.
-- **Make PRD.md** — convert the approved plan into `PRD.md` without implementation.
+- **Make PRD.md** — convert the approved plan into `PRD.md` without implementation. The generated PRD uses project vocabulary from context/docs/ADRs when available, identifies deep-module opportunities and behavior-focused test targets, avoids volatile file paths in durable implementation decisions, and keeps feature phases independently and quickly testable.
 - **Cancel planning** — stop the workflow.

@@ -448,3 +448,7 @@ For each item, include the expected effort:
 - Small: less than 1 day
 - Medium: 1–3 days
 - Large: more than 3 days
+
+## Implementation handoff standard
+
+When findings become implementation tasks, recommend `/implement <finding/task>` for execution. Suggested fixes should be behavior-first vertical slices with public-interface tests/checks, minimal code changes, validation commands, and rollback/stop points. Flag plans that require implementation-detail tests or horizontal test/code batches.

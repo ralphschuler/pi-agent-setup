@@ -30,6 +30,12 @@ A safe GitHub rebase merge workflow. Accepts optional PR number, URL, or branch 
 
 The workflow identifies an existing open PR, waits for checks, treats `/merge` invocation as approval for the normal unambiguous safe path, calls `github_rebase_merge`, and verifies final merged state. It uses `human_in_loop` only for clarification or non-standard approval, never auto-creates a PR, and stops on draft, failed checks, non-mergeable, missing PR, or ambiguous target state.
 
+### `implement.md`
+
+A behavior-first implementation workflow. Accepts a task, issue, bug, or feature scope via `/implement <task / issue / bug / feature scope>`.
+
+The workflow uses the `implement` skill to inspect repo state, frame the public interface and acceptance criteria, plan independently and quickly testable vertical slices, run RED/GREEN cycles where practical, refactor only after GREEN, validate, and report files changed, risks, rollback, and follow-ups.
+
 ### `to-pr.md`
 
 A GitHub pull request workflow. Accepts optional PR title or scope via `/to-pr [PR title / scope]`.
@@ -67,6 +73,7 @@ Expected output is a numbered list of deepening opportunities using the vocabula
 /to-issue turn the last review findings into issues
 /to-pr create a PR for the current branch
 /merge current branch PR
+/implement issue #123
 /standup weekly repo status
 /pick-issue implement, test, push, wait for checks, merge
 /review review my current diff

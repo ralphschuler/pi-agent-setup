@@ -3,8 +3,13 @@ import test from "node:test";
 
 import { readText } from "../helpers.mjs";
 
-const promptPaths = ["prompts/research.md", "prompts/review.md", "prompts/refine-codebase.md"];
-const skillPaths = ["skills/code-review/SKILL.md", "skills/pi-subagents/SKILL.md", "skills/project-bootstrap/SKILL.md"];
+const promptPaths = ["prompts/implement.md", "prompts/research.md", "prompts/review.md", "prompts/refine-codebase.md"];
+const skillPaths = [
+  "skills/code-review/SKILL.md",
+  "skills/implement/SKILL.md",
+  "skills/pi-subagents/SKILL.md",
+  "skills/project-bootstrap/SKILL.md",
+];
 
 test("plan workflow requires independently and quickly testable feature phases", () => {
   const source = readText("extensions/plan/index.ts");

@@ -72,7 +72,7 @@ npm run test:docker
 - `bin/pi-acp.mjs` — experimental Agent Client Protocol (ACP) stdio adapter for Zed-style code editor integration via `pi --mode rpc`.
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
   - `extensions/background-processes/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/secret-redaction/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/tamagotchi/`, `extensions/todo/`, `extensions/wait/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
-- `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
+- `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `implement`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
 - `prompts/` — reusable prompt templates such as debug, review, research, refine-codebase, merge, standup, to-issue, to-pr, and pick-issue.
 - `themes/` — custom TUI themes, including synthwave.
 - `scripts/` — install, update, uninstall, validation, and Docker test helpers.
@@ -89,6 +89,7 @@ npm run test:docker
 /research <topic>
 /refine-codebase [scope]
 /merge [PR number / URL / branch]
+/implement <task / issue / bug / feature scope>
 /standup [scope / date / focus]
 /evolve [archive|status|list|compare|restore ...]
 /mutate <path> <goal>

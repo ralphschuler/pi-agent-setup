@@ -13,6 +13,7 @@ Skills are markdown workflows that the agent loads on demand for specialized tas
 | `pi-resource-design`   | Design Pi prompts, skills, extensions, tools, and subagents using the resource ruleset.               |
 | `pi-subagents`         | Delegate bounded work to custom subagents while keeping parent-agent synthesis.                       |
 | `github-merge`         | Safely wait for PR checks and merge an existing GitHub PR with rebase.                                |
+| `implement`            | Implement features/fixes with behavior-first vertical slices, public-interface tests, and validation. |
 | `standup`              | Create read-only repository standup summaries from git state, GitHub issues, and PRs.                 |
 
 ## Usage
@@ -30,6 +31,7 @@ Use skills directly with slash commands such as:
 skills/
 ├── code-review/SKILL.md
 ├── github-merge/SKILL.md
+├── implement/SKILL.md
 ├── pi-processes/SKILL.md
 ├── pi-resource-design/SKILL.md
 ├── pi-subagents/SKILL.md
@@ -47,6 +49,7 @@ skills/
 - Use `pi-resource-design` when creating or changing Pi prompt templates, skills, extensions, tools, or custom subagents.
 - Use `pi-subagents` when independent research, planning, implementation, or review would help; list available specialists first, create a narrow custom specialist when no matching specialist exists, and keep parent-agent synthesis/verification.
 - Use `github-merge` when merging an existing GitHub PR with checks and rebase merge.
+- Use `implement` when building features or fixes with behavior-first, independently and quickly testable vertical slices.
 - Use `standup` when summarizing completed, in-progress, blocked, and upcoming repository work.
 - Ask all user-facing clarification and approval questions through `human_in_loop`; do not ask those questions only in assistant prose.
 - When a skill produces a plan, PRD, roadmap, or rollout sequence, split it into independently and quickly testable feature phases with concrete validation commands.

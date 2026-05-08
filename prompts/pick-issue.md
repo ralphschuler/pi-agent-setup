@@ -49,6 +49,10 @@ Show a compact TUI-style progress checklist throughout discovery, selection, dir
 - [ ] Draft/WIP PR created and linked
 - [ ] Issue context and next steps reported
 
+## Implementation handoff standard
+
+When recommending first implementation steps, point the next work at `/implement <issue number or behavior>`. Proposed steps must be vertical slices: one observable behavior, one public-interface test/check, minimal code, validation, and rollback/stop point.
+
 ## Safety rules
 
 - Do not overwrite or discard local changes.

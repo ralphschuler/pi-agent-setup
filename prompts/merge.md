@@ -40,6 +40,10 @@ Operate only on an existing open PR for the current repository/branch or for the
 - [ ] Rebase merge executed
 - [ ] Final merged state verified
 
+## Workflow quality standard
+
+Keep this command narrowly scoped to merge execution. If checks reveal implementation failures, do not patch in the merge workflow; report the failing check and recommend `/implement <failing behavior>` so fixes happen through behavior-first validation.
+
 ## Safety rules
 
 - Do not auto-create a PR.

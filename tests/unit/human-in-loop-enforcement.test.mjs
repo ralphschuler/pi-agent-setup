@@ -5,6 +5,7 @@ import { readText } from "../helpers.mjs";
 import { listPromptTemplatePaths } from "../prompt-template-helpers.mjs";
 
 const enforcedPromptPaths = [
+  "prompts/implement.md",
   "prompts/research.md",
   "prompts/review.md",
   "prompts/refine-codebase.md",
@@ -14,6 +15,7 @@ const enforcedPromptPaths = [
 ];
 const enforcedSkillPaths = [
   "skills/code-review/SKILL.md",
+  "skills/implement/SKILL.md",
   "skills/pi-processes/SKILL.md",
   "skills/pi-subagents/SKILL.md",
   "skills/project-bootstrap/SKILL.md",

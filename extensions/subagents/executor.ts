@@ -1,5 +1,6 @@
 // @ts-nocheck
 import { spawn } from "node:child_process";
+import { READ_ONLY_SUBAGENT_TOOLS } from "./plan-mode.ts";
 import { textResult } from "./result.ts";
 
 export function execSubagentProcess(
@@ -10,11 +11,13 @@ export function execSubagentProcess(
   index: number,
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
+  readOnly = false,
   spawnFn = spawn,
   redactText: (text: string) => string = (text) => text,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawnFn("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
+    const toolsArg = readOnly ? ` --tools ${READ_ONLY_SUBAGENT_TOOLS}` : "";
+    const child = spawnFn("bash", ["-lc", `pi -p${toolsArg} < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
     const stdout: string[] = [];
     const stderr: string[] = [];
     const killTimer = setTimeout(() => child.kill("SIGTERM"), 10 * 60 * 1000);

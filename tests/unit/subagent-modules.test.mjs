@@ -1,9 +1,11 @@
 import assert from "node:assert/strict";
+import { EventEmitter } from "node:events";
 import fs from "node:fs";
 import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { execSubagentProcess } from "../../extensions/subagents/executor.ts";
 import { writeOutput } from "../../extensions/subagents/output-writer.ts";
 import { readText } from "../helpers.mjs";
 
@@ -20,6 +22,8 @@ test("subagent orchestration is split into focused internal modules", () => {
   assert.match(entry, /renderResult: renderSubagentResult/);
   assert.match(entry, /runParallel\(pi, ctx\.cwd/);
   assert.match(entry, /runAgentRecord\(pi, ctx\.cwd/);
+  assert.match(entry, /isSubagentPlanModeActive\(\)/);
+  assert.match(entry, /\{ readOnly \}/);
 
   assert.match(catalog, /export const BUILTIN_AGENTS/);
   assert.match(catalog, /export async function allAgents/);
@@ -35,8 +39,11 @@ test("subagent orchestration is split into focused internal modules", () => {
   assert.match(runner, /createSecretRedactor/);
   assert.match(runner, /redactor\.redactText\(task\)/);
   assert.match(runner, /execSubagentProcess\(\s*agent\.runtimeName/);
+  assert.match(runner, /READ_ONLY_SUBAGENT_INSTRUCTIONS/);
+  assert.match(runner, /options\.readOnly/);
 
-  assert.match(executor, /spawnFn\("bash", \["-lc", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
+  assert.match(executor, /READ_ONLY_SUBAGENT_TOOLS/);
+  assert.match(executor, /`pi -p\$\{toolsArg\} < \$\{shellQuote\(promptFile\)\}`/);
   assert.match(executor, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate, redactText\)/);
   assert.match(executor, /redactText\(tailText\(stdout\.join\(""\), 6, 2000\)\)/);
   assert.match(executor, /setTimeout\(emit, 500\)/);
@@ -46,6 +53,41 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(renderer, /export function subagentDisplayContract/);
   assert.match(renderer, /renderToolDisplayContract\(subagentDisplayContract/);
+});
+
+test("subagent executor constrains child tools in read-only mode", async () => {
+  const calls = [];
+  const spawnFn = (command, args, options) => {
+    calls.push({ command, args, options });
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = () => {};
+    process.nextTick(() => child.emit("exit", 0));
+    return child;
+  };
+
+  await execSubagentProcess("scout", "inspect", "/tmp/prompt.md", "/repo", 0, undefined, undefined, true, spawnFn);
+
+  assert.equal(calls[0].command, "bash");
+  assert.deepEqual(calls[0].args, ["-lc", "pi -p --tools read,grep,find,ls < '/tmp/prompt.md'"]);
+});
+
+test("subagent executor keeps normal child tool access outside read-only mode", async () => {
+  const calls = [];
+  const spawnFn = (command, args, options) => {
+    calls.push({ command, args, options });
+    const child = new EventEmitter();
+    child.stdout = new EventEmitter();
+    child.stderr = new EventEmitter();
+    child.kill = () => {};
+    process.nextTick(() => child.emit("exit", 0));
+    return child;
+  };
+
+  await execSubagentProcess("worker", "implement", "/tmp/prompt.md", "/repo", 0, undefined, undefined, false, spawnFn);
+
+  assert.deepEqual(calls[0].args, ["-lc", "pi -p < '/tmp/prompt.md'"]);
 });
 
 test("subagent output writer writes safe relative paths inside cwd", async () => {

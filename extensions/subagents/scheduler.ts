@@ -11,6 +11,7 @@ export async function runParallel(
   concurrency?: number,
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
+  options: { readOnly?: boolean } = {},
 ) {
   const expanded = expandTasks(tasks);
   if (expanded.length === 0) throw new Error("subagent parallel requires at least one task.");
@@ -25,7 +26,7 @@ export async function runParallel(
       const task = expanded[index];
       onUpdate?.({ content: [{ type: "text", text: `Running subagent ${index + 1}/${expanded.length}: ${task.agent}` }] });
       try {
-        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal, onUpdate);
+        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal, onUpdate, options);
       } catch (error) {
         records[index] = {
           agent: task.agent,

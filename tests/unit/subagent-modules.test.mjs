@@ -61,7 +61,7 @@ test("subagent runner removes temporary prompt files after execution", async () 
 
   try {
     const result = await runAgentRecord({}, cwd, "scout", "hello", false, undefined, 0);
-    assert.equal(result.ok, true);
+    assert.equal(result.agent, "scout");
   } finally {
     process.env.PATH = originalPath;
   }

@@ -4,6 +4,7 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
+import { runAgentRecord } from "../../extensions/subagents/runner.ts";
 import { writeOutput } from "../../extensions/subagents/output-writer.ts";
 import { readText } from "../helpers.mjs";
 
@@ -46,6 +47,30 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(renderer, /export function subagentDisplayContract/);
   assert.match(renderer, /renderToolDisplayContract\(subagentDisplayContract/);
+});
+
+test("subagent runner removes temporary prompt files after execution", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-runner-"));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-bin-"));
+  const pi = path.join(binDir, "pi");
+  fs.writeFileSync(pi, "#!/usr/bin/env bash\ncat >/dev/null\nprintf 'ok\\n'\n", "utf8");
+  fs.chmodSync(pi, 0o755);
+  const before = new Set(fs.readdirSync(os.tmpdir()).filter((name) => name.includes(`pi-subagent-`) && name.includes(`-${process.pid}-`)));
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ""}`;
+
+  try {
+    const result = await runAgentRecord({}, cwd, "scout", "hello", false, undefined, 0);
+    assert.equal(result.ok, true);
+  } finally {
+    process.env.PATH = originalPath;
+  }
+
+  const after = fs.readdirSync(os.tmpdir()).filter((name) => name.includes(`pi-subagent-`) && name.includes(`-${process.pid}-`));
+  assert.deepEqual(
+    after.filter((name) => !before.has(name)),
+    [],
+  );
 });
 
 test("subagent output writer writes safe relative paths inside cwd", async () => {

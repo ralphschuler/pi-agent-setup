@@ -57,6 +57,34 @@ test("human_in_loop compacts select options to one bounded line", async () => {
   assert.match(capturedOptions[0], /…$/);
 });
 
+test("human_in_loop select enforces documented 2 to 6 option bounds", async () => {
+  const tool = registerTool();
+  const one = await tool.execute("hil-one", { mode: "select", title: "Pick", options: [{ label: "A" }] }, undefined, undefined, {
+    hasUI: true,
+    ui: { select: async () => "A" },
+  });
+  const seven = await tool.execute(
+    "hil-seven",
+    { mode: "select", title: "Pick", options: Array.from({ length: 7 }, (_, index) => ({ label: `Option ${index + 1}` })) },
+    undefined,
+    undefined,
+    { hasUI: true, ui: { select: async () => "Option 1" } },
+  );
+  const six = await tool.execute(
+    "hil-six",
+    { mode: "select", title: "Pick", options: Array.from({ length: 6 }, (_, index) => ({ label: `Option ${index + 1}` })) },
+    undefined,
+    undefined,
+    { hasUI: true, ui: { select: async (_prompt, options) => options[0] } },
+  );
+
+  assert.equal(one.isError, true);
+  assert.match(one.content[0].text, /2 to 6 options/);
+  assert.equal(seven.isError, true);
+  assert.match(seven.content[0].text, /2 to 6 options/);
+  assert.equal(six.isError, undefined);
+});
+
 test("human_in_loop sends compacted prompts to UI primitives", async () => {
   const tool = registerTool();
   const longContext = Array.from({ length: 80 }, (_, index) => `line ${index + 1}`).join("\n");

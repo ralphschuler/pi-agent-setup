@@ -170,6 +170,7 @@ export function handleTerminalUpgrade(options: {
   });
 
   let buffered = Buffer.alloc(0);
+  let lastResizeNotice = "";
   socket.on("data", (chunk: Buffer) => {
     buffered = Buffer.concat([buffered, chunk]);
     const parsed = parseFrames(buffered);
@@ -180,11 +181,16 @@ export function handleTerminalUpgrade(options: {
       try {
         const payload = JSON.parse(message);
         if (payload.type === "input" && typeof payload.data === "string") client.child?.stdin.write(payload.data);
-        if (payload.type === "resize")
-          sendFrame(socket, {
-            type: "status",
-            text: `\r\n[resize ${payload.cols}x${payload.rows}; restart tab to apply terminal geometry]\r\n`,
-          });
+        if (payload.type === "resize") {
+          const size = `${Number(payload.cols) || 0}x${Number(payload.rows) || 0}`;
+          if (size !== lastResizeNotice) {
+            lastResizeNotice = size;
+            sendFrame(socket, {
+              type: "status",
+              text: `\r\n[resize ${size}; terminal geometry changes require opening a new tab]\r\n`,
+            });
+          }
+        }
         if (payload.type === "kill") client.child?.kill("SIGTERM");
       } catch {
         // Ignore malformed client messages.

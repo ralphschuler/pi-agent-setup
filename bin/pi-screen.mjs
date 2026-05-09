@@ -148,10 +148,14 @@ function findSession(sessions, name) {
   return sessions.find((session) => session.name === name || session.full.endsWith(`.${name}`));
 }
 
+function attachTarget(session) {
+  return session.full || session.name;
+}
+
 function attach(session, opts) {
   if (opts.piArgs.length > 0)
     process.stderr.write("pi-screen: existing session found; pi args ignored while attaching. Use --new or --name for another session.\n");
-  return run("screen", ["-r", session.name], opts);
+  return run("screen", ["-r", attachTarget(session)], opts);
 }
 
 function start(name, opts) {
@@ -167,6 +171,14 @@ async function promptNewName(cwd) {
   return answer.trim() || fallback;
 }
 
+function pickerKeyAction(selected, itemCount, key = {}) {
+  if (key.name === "down") return { type: "move", selected: Math.min(selected + 1, itemCount - 1) };
+  if (key.name === "up") return { type: "move", selected: Math.max(selected - 1, 0) };
+  if (key.name === "return") return { type: "choose", selected };
+  if (key.name === "escape" || key.name === "q" || (key.ctrl && key.name === "c")) return { type: "quit", selected };
+  return { type: "noop", selected };
+}
+
 async function picker(sessions, cwd, opts) {
   if (!process.stdin.isTTY || !process.stdout.isTTY) {
     printSessions(sessions);
@@ -175,7 +187,9 @@ async function picker(sessions, cwd, opts) {
   }
 
   readline.emitKeypressEvents(process.stdin);
-  if (process.stdin.isRaw) process.stdin.setRawMode(true);
+  const wasRaw = Boolean(process.stdin.isRaw);
+  if (typeof process.stdin.setRawMode === "function") process.stdin.setRawMode(true);
+  process.stdin.resume();
   let selected = 0;
   const items = [...sessions.map((session) => ({ type: "session", session })), { type: "new" }];
 
@@ -188,24 +202,24 @@ async function picker(sessions, cwd, opts) {
       const text = item.type === "new" ? "Create new session" : `${item.session.name} (${item.session.status})`;
       process.stdout.write(`${cursor} ${text}\n`);
     });
-    process.stdout.write("\n↑/↓ select  Enter choose  q quit\n");
+    process.stdout.write("\n↑/↓ select  Enter choose  Esc quit\n");
   };
 
   render();
   return await new Promise((resolve) => {
     const cleanup = () => {
       process.stdin.off("keypress", onKey);
-      if (process.stdin.isRaw) process.stdin.setRawMode(false);
+      if (typeof process.stdin.setRawMode === "function") process.stdin.setRawMode(wasRaw);
       process.stdout.write("\x1b[2J\x1b[H");
     };
     const onKey = async (_str, key = {}) => {
-      if (key.name === "down") selected = Math.min(selected + 1, items.length - 1);
-      else if (key.name === "up") selected = Math.max(selected - 1, 0);
-      else if (key.name === "q" || (key.ctrl && key.name === "c")) {
+      const action = pickerKeyAction(selected, items.length, key);
+      selected = action.selected;
+      if (action.type === "quit") {
         cleanup();
         resolve({ status: 0 });
         return;
-      } else if (key.name === "return") {
+      } else if (action.type === "choose") {
         const item = items[selected];
         cleanup();
         if (item.type === "session") resolve(attach(item.session, opts));
@@ -276,4 +290,4 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   process.exit(status);
 }
 
-export { defaultName, managedName, namedSession, parseArgs, parseScreenList, slugify, uniqueManagedName };
+export { attachTarget, defaultName, managedName, namedSession, parseArgs, parseScreenList, pickerKeyAction, slugify, uniqueManagedName };

@@ -56,9 +56,9 @@ export default function humanInLoop(pi: ExtensionAPI) {
 
       if (params.mode === "select") {
         const options = params.options || [];
-        if (options.length < 2) {
+        if (options.length < 2 || options.length > 6) {
           return {
-            content: [{ type: "text", text: "human_in_loop select mode requires at least 2 options." }],
+            content: [{ type: "text", text: "human_in_loop select mode requires 2 to 6 options." }],
             isError: true,
             details: { mode: params.mode, options },
           };

@@ -16,7 +16,7 @@ Options:
 
 Environment:
   PI_SCOPE=global|local   Alternative way to select scope.
-  PI_ALIAS_DIR=path       Directory for runnable aliases (default: ~/.local/bin).
+  PI_ALIAS_DIR=path       Directory for executable command wrappers (default: ~/.local/bin).
   PI_SETUP_SHELL_RC=path  Shell startup file to update (default: detected rc file).
 USAGE
 }
@@ -88,6 +88,8 @@ remove_alias() {
   local target="$ROOT_DIR/bin/${name}.mjs"
 
   if [[ -L "$link" && "$(readlink "$link")" == "$target" ]]; then
+    rm -f "$link"
+  elif [[ -f "$link" ]] && grep -Fq "# pi-agent-setup managed wrapper: $name" "$link"; then
     rm -f "$link"
   fi
 }

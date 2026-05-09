@@ -23,7 +23,7 @@ The `package.json` `pi` block points pi at top-level resource directories. Exten
 Extensions can register:
 
 - Agent-facing tools, such as `process`, `search`, `cronjob`, `todo`, and `graph_memory`.
-- Slash commands, such as `/plan`, `/ps`, `/research`, `/welcome`, and `/pet`.
+- Slash commands, such as `/plan`, `/ps`, `/research`, `/welcome`, and `/analyze`.
 - TUI widgets/status entries.
 - Prompt/system-context guidance for the agent.
 - Runtime event handlers for safety, workflow, or UI behavior.
@@ -35,7 +35,6 @@ Several extensions store durable agent state outside the repository:
 - Cronjobs: `~/.pi/agent/cronjobs.md`
 - Graph memory: `~/.pi/agent/graph-memory.md`
 - Todo list: `~/.pi/agent/todo.md`
-- Tamagotchi pet: `~/.pi/agent/tamagotchi-pet.json`
 
 ## Documentation site
 

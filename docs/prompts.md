@@ -6,9 +6,9 @@ Workflow prompts must keep user-facing clarification and approval questions in `
 
 ## Included prompts
 
-### `debug.md`
+### `analyze.md`
 
-A strategic evidence-first debugging prompt that guides a diagnosis loop: build a fast feedback loop, reproduce and minimize, rank falsifiable hypotheses, instrument with tagged probes, fix at the root cause, add regression coverage at the correct seam, cleanup, validate, and report. Accepts a symptom, failing command, or bug report via `/debug <symptom / failing command / bug report>`.
+A strategic evidence-first debugging prompt that guides a diagnosis loop: build a fast feedback loop, reproduce and minimize, rank falsifiable hypotheses, instrument with tagged probes, fix at the root cause, add regression coverage at the correct seam, cleanup, validate, and report. Accepts a symptom, failing command, or bug report via `/analyze <symptom / failing command / bug report>`.
 
 ### `standup.md`
 
@@ -69,7 +69,7 @@ Expected output is a numbered list of deepening opportunities using the vocabula
 ## Usage examples
 
 ```text
-/debug npm test is failing with a timeout
+/analyze npm test is failing with a timeout
 /to-issue turn the last review findings into issues
 /to-pr create a PR for the current branch
 /merge current branch PR

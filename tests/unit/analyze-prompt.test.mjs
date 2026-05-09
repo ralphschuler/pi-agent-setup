@@ -6,8 +6,8 @@ import { assertDocsMentionSlashCommand, parsePromptTemplate } from "../prompt-te
 
 const docsPaths = ["docs/prompts.md", "docs/extensions/index.md", "README.md"];
 
-test("debug prompt defines strategic evidence-first workflow", () => {
-  const { content, frontmatter } = parsePromptTemplate("prompts/debug.md");
+test("analyze prompt defines strategic evidence-first workflow", () => {
+  const { content, frontmatter } = parsePromptTemplate("prompts/analyze.md");
 
   assert.equal(frontmatter.description, "Start a strategic evidence-first debugging session");
   assert.equal(frontmatter["argument-hint"], "<symptom / failing command / bug report>");
@@ -55,6 +55,6 @@ test("systematic debugging skill requires diagnosis loop discipline", () => {
   }
 });
 
-test("debug prompt is documented as slash command", () => {
-  assertDocsMentionSlashCommand("prompts/debug.md", docsPaths);
+test("analyze prompt is documented as slash command", () => {
+  assertDocsMentionSlashCommand("prompts/analyze.md", docsPaths);
 });

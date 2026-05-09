@@ -50,7 +50,7 @@ if command -v node >/dev/null 2>&1; then
   done < <(find extensions themes -name '*.json' -type f | sort)
   while IFS= read -r source_file; do
     node --check "$source_file"
-  done < <(find extensions tests -type f \( -name '*.ts' -o -name '*.js' -o -name '*.mjs' \) | sort)
+  done < <(find extensions tests bin lib -type f \( -name '*.ts' -o -name '*.js' -o -name '*.mjs' \) | sort)
 fi
 
 if command -v npm >/dev/null 2>&1 && [[ -d node_modules ]]; then

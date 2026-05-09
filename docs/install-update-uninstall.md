@@ -10,12 +10,12 @@ bash scripts/install.sh
 npm run install:pi
 ```
 
-Pi can install the repository directly. This helper script installs the current checkout with `pi install`, links runnable aliases, and adds the alias directory to your shell startup file:
+Pi can install the repository directly. This helper script installs the current checkout with `pi install`, writes executable command wrappers, and adds the wrapper directory to your shell startup file:
 
-- `~/.local/bin/pi-acp` -> `./bin/pi-acp.mjs`
-- `~/.local/bin/pi-screen` -> `./bin/pi-screen.mjs`
+- `~/.local/bin/pi-acp` -> `node ./bin/pi-acp.mjs "$@"`
+- `~/.local/bin/pi-screen` -> `node ./bin/pi-screen.mjs "$@"`
 
-Override the alias directory with `PI_ALIAS_DIR`. Override the shell startup file with `PI_SETUP_SHELL_RC`; otherwise the script chooses `~/.zshrc`, `~/.bashrc`, or `~/.profile`. Open a new shell or source the updated file before running `pi-acp` or `pi-screen` by name.
+Override the wrapper directory with `PI_ALIAS_DIR`. Override the shell startup file with `PI_SETUP_SHELL_RC`; otherwise the script chooses `~/.zshrc`, `~/.bashrc`, or `~/.profile`. Open a new shell or source the updated file before running `pi-acp` or `pi-screen` by name.
 
 ## Install locally
 
@@ -41,9 +41,9 @@ bash scripts/update.sh
 npm run update:pi
 ```
 
-The update script pulls latest git changes when this checkout is a git repository, refreshes package dependencies, refreshes aliases and PATH setup, and asks pi to update this package entry.
+The update script pulls latest git changes when this checkout is a git repository, refreshes package dependencies, refreshes executable wrappers and PATH setup, and asks pi to update this package entry.
 
-Uninstall removes the selected pi package entry, matching `pi-acp` and `pi-screen` aliases, and the managed PATH block.
+Uninstall removes the selected pi package entry, matching managed `pi-acp` and `pi-screen` wrappers, and the managed PATH block.
 
 ## Uninstall globally
 

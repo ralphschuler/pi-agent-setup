@@ -16,6 +16,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | `human_in_loop`       | Human in loop  | Ask for clarification/approval in the TUI.   |
 | `package_scout`       | Package scout  | Audit npm package metadata without install.  |
 | `process`             | Processes      | Manage long-running commands.                |
+| `random_file`         | Random file    | Sample unbiased Git-tracked safe text files. |
 | `search`              | SearXNG search | Search the web through SearXNG.              |
 | `searxng_status`      | SearXNG status | Check SearXNG health and setup steps.        |
 | `subagent`            | Subagents      | Run bounded specialist agents.               |
@@ -29,6 +30,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | ------------------- | ------------------------------------------------------ |
 | `/agent`            | Manage custom subagent definitions.                    |
 | `/browser-bridge`   | Start/show browser bridge setup.                       |
+| `/bootstrap`        | Create `CONTEXT.md` and `docs/adr/` starter files.     |
 | `/caveman`          | Toggle terse English caveman language mode.            |
 | `/analyze`          | Prompt-template strategic analysis/debugging workflow. |
 | `/darwin`           | Queue bounded evolve iteration workflow.               |

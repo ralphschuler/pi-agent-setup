@@ -1,6 +1,8 @@
 import assert from "node:assert/strict";
 import test from "node:test";
 
+import prettyOutput from "../../extensions/pretty-output/index.ts";
+import { renderPrettyToolResult } from "../../extensions/shared/pretty-render.ts";
 import { readText } from "../helpers.mjs";
 
 test("pretty-output registers rich assistant guidance and command", () => {
@@ -62,3 +64,128 @@ test("pretty-output exposes a shared structured tool display contract", () => {
   assert.match(processes, /renderToolDisplayContract\(processDisplayContract/);
   assert.match(subagents, /renderToolDisplayContract\(subagentDisplayContract/);
 });
+
+test("pretty-output docs specify toggle semantics and rendered tools", () => {
+  const docs = readText("docs/extensions/pretty-output.md");
+
+  assert.match(docs, /`\/pretty-output off` disables assistant guidance and pretty tool renderers/);
+  for (const tool of ["bash", "read", "edit", "write", "grep", "find", "ls"]) {
+    assert.ok(docs.includes(`- \`${tool}\``), `missing documented tool: ${tool}`);
+  }
+});
+
+test("pretty-output command toggles assistant prompt injection", async () => {
+  const harness = installPrettyOutput();
+  const { events, commands, statuses, notifications, ui } = harness;
+  const command = commands.get("pretty-output");
+  assert.ok(command);
+
+  await events.get("session_start")({}, { ui });
+  assert.deepEqual(statuses.at(-1), { name: "pretty-output", value: "pretty output: on" });
+
+  const enabledPrompt = await events.get("before_agent_start")({ systemPrompt: "base" });
+  assert.match(enabledPrompt.systemPrompt, /<pretty-output>/);
+  assert.match(enabledPrompt.systemPrompt, /Rich output mode is enabled/);
+
+  await command.handler("off", { ui });
+  assert.deepEqual(statuses.at(-1), { name: "pretty-output", value: undefined });
+  assert.deepEqual(notifications.at(-1), { message: "pretty-output: off", level: "info" });
+  assert.equal(await events.get("before_agent_start")({ systemPrompt: "base" }), undefined);
+
+  await command.handler("on", { ui });
+  assert.deepEqual(statuses.at(-1), { name: "pretty-output", value: "pretty output: on" });
+  assert.deepEqual(notifications.at(-1), { message: "pretty-output: on", level: "info" });
+  const restoredPrompt = await events.get("before_agent_start")({ systemPrompt: "base" });
+  assert.match(restoredPrompt.systemPrompt, /<pretty-output>/);
+});
+
+test("pretty-output preview reports current enabled state", async () => {
+  const { commands, messages, ui } = installPrettyOutput();
+  const command = commands.get("pretty-output");
+
+  await command.handler("off", { ui });
+  await command.handler("preview", { ui });
+
+  assert.equal(messages.length, 1);
+  assert.equal(messages[0].customType, "pretty-output");
+  assert.equal(messages[0].display, true);
+  assert.equal(messages[0].details.enabled, false);
+  assert.match(messages[0].content, /Pretty output preview/);
+});
+
+test("pretty-output off disables registered fallback tool renderers", async () => {
+  const { commands, tools, ui } = installPrettyOutput();
+  const customTool = tools.get("custom-tool");
+  assert.ok(customTool.renderResult);
+
+  const rendered = customTool.renderResult(textResult("hello"), {}, undefined, { args: { name: "demo" } });
+  assert.ok(rendered);
+
+  await commands.get("pretty-output").handler("off", { ui });
+  assert.equal(customTool.renderResult(textResult("hello"), {}, undefined, { args: { name: "demo" } }), undefined);
+
+  await commands.get("pretty-output").handler("on", { ui });
+  assert.ok(customTool.renderResult(textResult("hello"), {}, undefined, { args: { name: "demo" } }));
+});
+
+test("pretty-output off disables built-in tool markdown renderers", async () => {
+  const { commands, tools, ui } = installPrettyOutput();
+  const bashTool = tools.get("bash");
+  assert.ok(bashTool.renderResult);
+  assert.ok(bashTool.renderResult(textResult("hello"), {}, undefined, { args: { command: "echo hello" } }));
+
+  await commands.get("pretty-output").handler("off", { ui });
+
+  assert.equal(bashTool.renderResult(textResult("hello"), {}, undefined, { args: { command: "echo hello" } }), undefined);
+});
+
+test("pretty-output off disables shared pretty tool renderers", async () => {
+  const { commands, ui } = installPrettyOutput();
+  const renderer = renderPrettyToolResult("graph_memory");
+  assert.ok(renderer(textResult("remembered"), {}, undefined, { args: { action: "list" } }));
+
+  await commands.get("pretty-output").handler("off", { ui });
+
+  assert.equal(renderer(textResult("remembered"), {}, undefined, { args: { action: "list" } }), undefined);
+});
+
+function installPrettyOutput() {
+  const events = new Map();
+  const commands = new Map();
+  const tools = new Map();
+  const messages = [];
+  const statuses = [];
+  const notifications = [];
+  const ui = {
+    setStatus(name, value) {
+      statuses.push({ name, value });
+    },
+    notify(message, level) {
+      notifications.push({ message, level });
+    },
+  };
+  const pi = {
+    registerTool(definition) {
+      tools.set(definition.name, definition);
+    },
+    registerCommand(name, command) {
+      commands.set(name, command);
+    },
+    registerMessageRenderer() {},
+    sendMessage(message) {
+      messages.push(message);
+    },
+    on(name, handler) {
+      events.set(name, handler);
+    },
+  };
+
+  prettyOutput(pi);
+  pi.registerTool({ name: "custom-tool", description: "custom", inputSchema: {}, execute: async () => textResult("custom") });
+
+  return { events, commands, tools, messages, statuses, notifications, ui };
+}
+
+function textResult(text) {
+  return { content: [{ type: "text", text }] };
+}

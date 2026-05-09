@@ -9,7 +9,7 @@ import {
   createReadTool,
   createWriteTool,
 } from "@mariozechner/pi-coding-agent";
-import { createPrettyMarkdown, formatPrettyToolMarkdown } from "../shared/pretty-render.ts";
+import { createPrettyMarkdown, formatPrettyToolMarkdown, setPrettyToolRenderingEnabled } from "../shared/pretty-render.ts";
 
 const PRETTY_MESSAGE_TYPE = "pretty-output";
 const RICH_OUTPUT_PROMPT = [
@@ -31,6 +31,7 @@ const TOOL_FACTORIES = {
 
 export default function prettyOutput(pi: ExtensionAPI) {
   let enabled = true;
+  setPrettyToolRenderingEnabled(enabled);
   const registerTool = pi.registerTool.bind(pi);
 
   pi.registerTool = (definition) => registerTool(withPrettyRenderer(definition, () => enabled));
@@ -56,6 +57,7 @@ export default function prettyOutput(pi: ExtensionAPI) {
       const action = args.trim().toLowerCase();
       if (action === "off") enabled = false;
       if (action === "on") enabled = true;
+      setPrettyToolRenderingEnabled(enabled);
       if (action === "preview") {
         pi.sendMessage({
           customType: PRETTY_MESSAGE_TYPE,
@@ -71,7 +73,7 @@ export default function prettyOutput(pi: ExtensionAPI) {
   });
 }
 
-function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: string) => any, _isEnabled: () => boolean) {
+function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: string) => any, isEnabled: () => boolean) {
   const base = factory(process.cwd());
   pi.registerTool({
     ...base,
@@ -80,16 +82,18 @@ function registerPrettyTool(pi: ExtensionAPI, name: string, factory: (cwd: strin
       return tool.execute(toolCallId, params, signal, onUpdate, ctx);
     },
     renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, _theme: unknown, context: { args?: unknown }) {
+      if (!isEnabled()) return undefined;
       return createPrettyMarkdown(formatPrettyToolMarkdown(name, result, options, context.args));
     },
   });
 }
 
-function withPrettyRenderer(definition: any, _isEnabled: () => boolean) {
+function withPrettyRenderer(definition: any, isEnabled: () => boolean) {
   if (definition.renderResult) return definition;
   return {
     ...definition,
     renderResult(result: unknown, options: { expanded?: boolean; isPartial?: boolean }, _theme: unknown, context: { args?: unknown }) {
+      if (!isEnabled()) return undefined;
       return createPrettyMarkdown(formatPrettyToolMarkdown(definition.name, result, options, context.args));
     },
   };

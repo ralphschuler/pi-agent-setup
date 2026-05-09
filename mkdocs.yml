@@ -49,6 +49,7 @@ nav:
   - Extensions:
       - Overview: extensions/index.md
       - Background processes guidance: extensions/background-processes.md
+      - Bootstrap command: extensions/bootstrap.md
       - Browser bridge: extensions/browser-bridge.md
       - Caveman: extensions/caveman.md
       - Compact footer: extensions/compact-footer.md
@@ -64,6 +65,7 @@ nav:
       - Plan workflow: extensions/plan.md
       - Pretty output: extensions/pretty-output.md
       - Processes: extensions/processes.md
+      - Random file: extensions/random-file.md
       - Safety guard: extensions/safety-guard.md
       - SearXNG search: extensions/searxng.md
       - Secret redaction: extensions/secret-redaction.md

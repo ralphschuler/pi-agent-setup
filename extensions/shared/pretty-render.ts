@@ -2,6 +2,12 @@
 import { getMarkdownTheme } from "@mariozechner/pi-coding-agent";
 import { Markdown, Text } from "@mariozechner/pi-tui";
 
+let prettyToolRenderingEnabled = true;
+
+export function setPrettyToolRenderingEnabled(enabled: boolean) {
+  prettyToolRenderingEnabled = enabled;
+}
+
 export function createPrettyMarkdown(markdown: string) {
   return new Markdown(markdown, 0, 0, getMarkdownTheme());
 }
@@ -34,6 +40,7 @@ export function renderPrettyToolResult(toolName: string) {
     _theme?: unknown,
     context: { args?: unknown } = {},
   ) => {
+    if (!prettyToolRenderingEnabled) return undefined;
     return createPrettyMarkdown(formatPrettyToolMarkdown(toolName, result, options, context.args));
   };
 }

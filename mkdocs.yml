@@ -53,6 +53,7 @@ nav:
       - Caveman: extensions/caveman.md
       - Compact footer: extensions/compact-footer.md
       - Cronjobs: extensions/cronjobs.md
+      - Cross-agent discovery: extensions/cross-agent.md
       - Custom agents: extensions/custom-agents.md
       - Evolve: extensions/evolve.md
       - GitHub handoff: extensions/github-handoff.md
@@ -68,7 +69,6 @@ nav:
       - Secret redaction: extensions/secret-redaction.md
       - Subagent orchestrator: extensions/subagent-orchestrator.md
       - Subagents: extensions/subagents.md
-      - Tamagotchi: extensions/tamagotchi.md
       - Todo: extensions/todo.md
       - Wait: extensions/wait.md
       - Web terminal: extensions/web-terminal.md

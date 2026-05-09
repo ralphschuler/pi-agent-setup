@@ -18,7 +18,7 @@ Options:
 Environment:
   PI_SETUP_PULL=0      Same as --no-pull
   PI_SETUP_CHECK=0     Same as --no-check
-  PI_ALIAS_DIR=path    Directory for runnable aliases (default: ~/.local/bin).
+  PI_ALIAS_DIR=path    Directory for executable command wrappers (default: ~/.local/bin).
   PI_SETUP_SHELL_RC=path  Shell startup file to update (default: detected rc file).
 USAGE
 }
@@ -53,14 +53,19 @@ preflight_aliases() {
   for name in pi-acp pi-screen; do
     link="$ALIAS_DIR/$name"
     target="$(alias_target "$name")"
-    if [[ -L "$link" ]]; then
-      current_target="$(readlink "$link")"
-      if [[ "$current_target" != "$target" ]]; then
-        echo "Error: cannot link $link because it already points to $current_target." >&2
-        exit 1
+    if [[ -e "$link" || -L "$link" ]]; then
+      if grep -Fq "# pi-agent-setup managed wrapper: $name" "$link" 2>/dev/null; then
+        continue
       fi
-    elif [[ -e "$link" ]]; then
-      echo "Error: cannot link $link because it already exists and is not a symlink." >&2
+      if [[ -L "$link" ]]; then
+        current_target="$(readlink "$link")"
+        if [[ "$current_target" == "$target" ]]; then
+          continue
+        fi
+        echo "Error: cannot install $link because it already points to $current_target." >&2
+      else
+        echo "Error: cannot install $link because it already exists and is not a managed wrapper." >&2
+      fi
       exit 1
     fi
   done
@@ -129,21 +134,25 @@ if [[ "$RUN_CHECK" == "1" ]]; then
   bash "$ROOT_DIR/scripts/check.sh"
 fi
 
-link_alias() {
+write_wrapper() {
   local name="$1"
   local target link
   target="$(alias_target "$name")"
   link="$ALIAS_DIR/$name"
 
-  if [[ ! -e "$link" && ! -L "$link" ]]; then
-    ln -s "$target" "$link"
-  fi
+  rm -f "$link"
+  cat >"$link" <<EOF
+#!/usr/bin/env bash
+# pi-agent-setup managed wrapper: $name
+exec node $(shell_quote "$target") "\$@"
+EOF
+  chmod 755 "$link"
 }
 
-echo "Linking runnable aliases in $ALIAS_DIR"
+echo "Writing executable command wrappers in $ALIAS_DIR"
 mkdir -p "$ALIAS_DIR"
-link_alias "pi-acp"
-link_alias "pi-screen"
+write_wrapper "pi-acp"
+write_wrapper "pi-screen"
 install_alias_path
 
 if command -v pi >/dev/null 2>&1; then

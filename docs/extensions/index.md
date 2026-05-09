@@ -1,6 +1,6 @@
 # Extensions
 
-Extensions are TypeScript modules that customize pi. This package includes extensions for workflow planning, browser integration, background processes, persistent memory, todo tracking, search, subagents, UI improvements, secret redaction, and safety. The package also ships the experimental [`pi-acp` adapter](../acp-adapter.md) for Agent Client Protocol editor integration via `pi --mode rpc`. Use [`Resource rules`](../resource-rules.md) when creating or changing extension commands, tools, or custom subagents.
+Extensions are TypeScript modules that customize pi. This package includes extensions for workflow planning, browser integration, cross-agent resource discovery, background processes, persistent memory, todo tracking, search, subagents, UI improvements, secret redaction, and safety. The package also ships the experimental [`pi-acp` adapter](../acp-adapter.md) for Agent Client Protocol editor integration via `pi --mode rpc`. Use [`Resource rules`](../resource-rules.md) when creating or changing extension commands, tools, or custom subagents.
 
 Workflow slash commands are documented here for discoverability and in [`Prompts`](../prompts.md) for prompt-template behavior. GitHub handoff commands also have compatibility notes in [`GitHub handoff`](github-handoff.md), and the rebase merge workflow is detailed in [`GitHub merge`](github-merge.md).
 
@@ -25,32 +25,31 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 
 ## Common slash commands
 
-| Command             | Purpose                                        |
-| ------------------- | ---------------------------------------------- |
-| `/agent`            | Manage custom subagent definitions.            |
-| `/browser-bridge`   | Start/show browser bridge setup.               |
-| `/caveman`          | Toggle terse English caveman language mode.    |
-| `/debug`            | Prompt-template strategic debugging workflow.  |
-| `/darwin`           | Queue bounded evolve iteration workflow.       |
-| `/evolve`           | Manage local file variant archive workflows.   |
-| `/merge`            | Prompt-template safe PR rebase merge flow.     |
-| `/implement`        | Prompt-template behavior-first implementation. |
-| `/mutate`           | Queue safe file variant generation workflow.   |
-| `/package-scout`    | Audit npm package metadata without install.    |
-| `/pet`              | Show or manage the Tamagotchi pet.             |
-| `/pick-issue`       | Prompt-template issue pickup and WIP PR flow.  |
-| `/plan <task>`      | Clarification-first planning workflow.         |
-| `/pretty-output`    | Toggle/preview pretty output rendering.        |
-| `/refine-codebase`  | Prompt-template architecture refinement.       |
-| `/review [scope]`   | Prompt-template project/code review workflow.  |
-| `/standup`          | Prompt-template repo standup summary flow.     |
-| `/ps`               | Process dashboard.                             |
-| `/research <topic>` | Prompt-template research workflow.             |
-| `/searxng`          | Show SearXNG status/setup help.                |
-| `/to-issue`         | Prompt-template GitHub issue creation flow.    |
-| `/to-pr`            | Prompt-template GitHub PR creation flow.       |
-| `/web-terminal`     | Start/show authenticated web terminal setup.   |
-| `/welcome`          | Show the welcome screen.                       |
+| Command             | Purpose                                                |
+| ------------------- | ------------------------------------------------------ |
+| `/agent`            | Manage custom subagent definitions.                    |
+| `/browser-bridge`   | Start/show browser bridge setup.                       |
+| `/caveman`          | Toggle terse English caveman language mode.            |
+| `/analyze`          | Prompt-template strategic analysis/debugging workflow. |
+| `/darwin`           | Queue bounded evolve iteration workflow.               |
+| `/evolve`           | Manage local file variant archive workflows.           |
+| `/merge`            | Prompt-template safe PR rebase merge flow.             |
+| `/implement`        | Prompt-template behavior-first implementation.         |
+| `/mutate`           | Queue safe file variant generation workflow.           |
+| `/package-scout`    | Audit npm package metadata without install.            |
+| `/pick-issue`       | Prompt-template issue pickup and WIP PR flow.          |
+| `/plan <task>`      | Clarification-first planning workflow.                 |
+| `/pretty-output`    | Toggle/preview pretty output rendering.                |
+| `/refine-codebase`  | Prompt-template architecture refinement.               |
+| `/review [scope]`   | Prompt-template project/code review workflow.          |
+| `/standup`          | Prompt-template repo standup summary flow.             |
+| `/ps`               | Process dashboard.                                     |
+| `/research <topic>` | Prompt-template research workflow.                     |
+| `/searxng`          | Show SearXNG status/setup help.                        |
+| `/to-issue`         | Prompt-template GitHub issue creation flow.            |
+| `/to-pr`            | Prompt-template GitHub PR creation flow.               |
+| `/web-terminal`     | Start/show authenticated web terminal setup.           |
+| `/welcome`          | Show the welcome screen.                               |
 
 ## Reloading
 

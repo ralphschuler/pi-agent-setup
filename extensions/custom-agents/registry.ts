@@ -2,6 +2,7 @@
 import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
+import { discoverCrossAgentResources } from "../cross-agent/discovery.ts";
 
 export type AgentScope = "user" | "project";
 
@@ -9,6 +10,7 @@ type AgentRoot = {
   scope: AgentScope;
   path: string;
   preferred: boolean;
+  origin?: string;
 };
 
 export type CustomAgentInfo = {
@@ -18,6 +20,7 @@ export type CustomAgentInfo = {
   description?: string;
   scope: AgentScope;
   path: string;
+  origin?: string;
   model?: string;
   thinking?: string;
   defaultContext?: string;
@@ -133,7 +136,12 @@ async function walkMarkdown(dir: string): Promise<string[]> {
 export async function readCustomAgents(cwd: string): Promise<CustomAgentInfo[]> {
   const all: CustomAgentInfo[] = [];
   const seen = new Set<string>();
-  for (const root of await agentRoots(cwd)) {
+  const crossAgent = await discoverCrossAgentResources(cwd);
+  const roots = [
+    ...(await agentRoots(cwd)),
+    ...crossAgent.agentRoots.map((agentRoot) => ({ scope: "project" as const, path: agentRoot, preferred: false, origin: "cross-agent" })),
+  ];
+  for (const root of roots) {
     for (const file of await walkMarkdown(root.path)) {
       const key = path.resolve(file);
       if (seen.has(key)) continue;
@@ -149,6 +157,7 @@ export async function readCustomAgents(cwd: string): Promise<CustomAgentInfo[]> 
         description: frontmatter.description,
         scope: root.scope,
         path: file,
+        origin: root.origin,
         model: frontmatter.model,
         thinking: frontmatter.thinking,
         defaultContext: frontmatter.defaultContext,
@@ -223,6 +232,7 @@ export function formatAgentCatalog(agents: CustomAgentInfo[]) {
       if (agent.defaultContext) bits.push(`context=${agent.defaultContext}`);
       if (agent.model) bits.push(`model=${agent.model}`);
       if (agent.tools) bits.push(`tools=${agent.tools}`);
+      if (agent.origin) bits.push(agent.origin);
       return `- ${agent.runtimeName} (${bits.join(", ")}) — ${agent.description || "No description"}`;
     })
     .join("\n");

@@ -29,11 +29,10 @@ Restart pi or run `/reload` in an existing session after installing.
 - `/plan <task>` — start a clarification-first planning workflow with quickly testable feature phases.
 - `/research <topic>` — run the research prompt with typed arguments passed into the Markdown template.
 - `/review <scope>` — review a diff, PR, or plan with structured findings.
-- `/debug <problem>` — run evidence-first debugging before changing code.
+- `/analyze <problem>` — run evidence-first debugging before changing code.
 - `/refine-codebase <scope>` — deepen architecture and maintainability planning.
 - `/package-scout <package-or-query>` — audit npm package metadata without installing packages.
 - `/searxng` — inspect SearXNG backend health and setup remediation.
-- `/pet` — inspect the Tamagotchi widget state.
 - `/web-terminal` — start/show the browser terminal setup.
 - `/browser-bridge` — start/show browser bridge setup details.
 - `/agent` — manage custom subagent definitions and reusable templates.

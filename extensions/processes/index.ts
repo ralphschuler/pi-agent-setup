@@ -37,8 +37,6 @@ const actionSchema = Type.Union([
 class ProcessListComponent {
   private theme: Theme;
   private onClose: () => void;
-  private cachedWidth?: number;
-  private cachedLines?: string[];
 
   constructor(theme: Theme, onClose: () => void) {
     this.theme = theme;
@@ -50,7 +48,6 @@ class ProcessListComponent {
   }
 
   render(width: number): string[] {
-    if (this.cachedLines && this.cachedWidth === width) return this.cachedLines;
     const th = this.theme;
     const all = [...processes.values()];
     const running = all.filter((proc) => proc.status === "running").length;
@@ -78,14 +75,11 @@ class ProcessListComponent {
     }
     lines.push("");
     lines.push(truncateToWidth(`  ${th.fg("dim", "Press Escape to close")}`, width));
-    this.cachedWidth = width;
-    this.cachedLines = lines;
     return lines;
   }
 
   invalidate(): void {
-    this.cachedWidth = undefined;
-    this.cachedLines = undefined;
+    // No render cache: process output/status changes should be visible on the next render.
   }
 }
 

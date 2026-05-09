@@ -5,7 +5,7 @@ import path from "node:path";
 import test from "node:test";
 
 import { repoRoot, tempDir } from "../helpers.mjs";
-import { defaultName, managedName, namedSession, parseScreenList } from "../../bin/pi-screen.mjs";
+import { attachTarget, defaultName, managedName, namedSession, parseScreenList, pickerKeyAction } from "../../bin/pi-screen.mjs";
 
 function fakeBin() {
   const dir = tempDir("pi-screen-bin");
@@ -95,7 +95,7 @@ test("inside a repository attaches existing session and warns when pi args are i
 
   assert.equal(result.status, 0);
   assert.match(result.stderr, /pi args ignored/);
-  assert.equal(fs.readFileSync(fake.logPath, "utf8").trim(), `-r ${name}`);
+  assert.equal(fs.readFileSync(fake.logPath, "utf8").trim(), `-r 1234.${name}`);
 });
 
 test("--detach creates a detached named pi-screen session", () => {
@@ -120,7 +120,7 @@ test("--name can attach an exact listed pi-screen session name", () => {
   });
 
   assert.equal(result.status, 0);
-  assert.equal(fs.readFileSync(fake.logPath, "utf8").trim(), `-r ${existing}`);
+  assert.equal(fs.readFileSync(fake.logPath, "utf8").trim(), `-r 1234.${existing}`);
 });
 
 test("--new avoids duplicate screen names when a managed session exists", () => {
@@ -143,6 +143,20 @@ test("namedSession preserves exact managed names from the screen list", () => {
   const sessions = [{ full: "1234.pi-alpha-aaaaaaaa", name: "pi-alpha-aaaaaaaa", status: "Detached" }];
 
   assert.equal(namedSession("pi-alpha-aaaaaaaa", "ignored", sessions), "pi-alpha-aaaaaaaa");
+});
+
+test("attachTarget uses the full screen id when screen -ls prefixes a pid", () => {
+  assert.equal(attachTarget({ full: "1234.pi-alpha-aaaaaaaa", name: "pi-alpha-aaaaaaaa" }), "1234.pi-alpha-aaaaaaaa");
+  assert.equal(attachTarget({ name: "pi-alpha-aaaaaaaa" }), "pi-alpha-aaaaaaaa");
+});
+
+test("picker key handling uses arrows, escape, and enter without line confirmation", () => {
+  assert.deepEqual(pickerKeyAction(0, 3, { name: "down" }), { type: "move", selected: 1 });
+  assert.deepEqual(pickerKeyAction(1, 3, { name: "up" }), { type: "move", selected: 0 });
+  assert.deepEqual(pickerKeyAction(0, 3, { name: "up" }), { type: "move", selected: 0 });
+  assert.deepEqual(pickerKeyAction(2, 3, { name: "down" }), { type: "move", selected: 2 });
+  assert.deepEqual(pickerKeyAction(1, 3, { name: "escape" }), { type: "quit", selected: 1 });
+  assert.deepEqual(pickerKeyAction(1, 3, { name: "return" }), { type: "choose", selected: 1 });
 });
 
 test("outside a repository non-TTY fallback lists only pi-screen sessions", () => {

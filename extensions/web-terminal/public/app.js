@@ -102,9 +102,13 @@ term.onData((data) => {
   if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "input", data }));
 });
 
+let resizeTimer;
 function resize() {
-  fitAddon.fit();
-  if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => {
+    fitAddon.fit();
+    if (socket?.readyState === WebSocket.OPEN) socket.send(JSON.stringify({ type: "resize", cols: term.cols, rows: term.rows }));
+  }, 100);
 }
 
 window.addEventListener("resize", resize);

@@ -86,7 +86,7 @@ npm run test:docker
 ```text
 pi-screen
 /bootstrap
-/welcome
+/welcome [compact|full]
 /plan <task>
 /analyze <symptom / failing command / bug report>
 /review [scope]

@@ -103,13 +103,30 @@ test("pick-issue workflow includes TUI-style progress checklist", () => {
   const source = readPrompt("pick-issue");
 
   for (const phrase of [
-    "TUI-style progress checklist throughout discovery, selection, dirty-tree handling, branch creation, PR creation, and summary",
+    "TUI-style progress checklist throughout discovery, selection, dirty-tree handling, default-branch sync, branch creation, PR creation, and summary",
     "Open issues loaded and scored",
     "Dirty tree checked and resolved via human_in_loop when needed",
+    "Default branch updated from remote",
     "Empty starter commit created and branch pushed",
     'git commit --allow-empty -m "chore: start issue #<number>"',
     "Draft/WIP PR created and linked",
     "completed/skipped/blocked states",
+  ]) {
+    assert.ok(source.includes(phrase), `missing ${phrase}`);
+  }
+});
+
+test("pick-issue workflow syncs latest default branch before issue branch creation", () => {
+  const source = readPrompt("pick-issue");
+
+  for (const phrase of [
+    "Before creating the issue branch, switch to the default branch and update it from the remote with `git pull --ff-only origin <default-branch>`",
+    "Use `git fetch origin <default-branch>` first",
+    "Stop if the default branch cannot fast-forward cleanly",
+    "if checkout would overwrite local changes",
+    "if the remote/default branch is ambiguous",
+    "Do not create issue branches from a stale default branch or unrelated feature branch",
+    "Create the issue branch from the freshly updated default branch",
   ]) {
     assert.ok(source.includes(phrase), `missing ${phrase}`);
   }

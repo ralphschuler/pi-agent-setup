@@ -59,8 +59,9 @@ The workflow:
 3. Selects the highest-priority actionable issue, or asks the user with `human_in_loop` when ambiguous.
 4. Outputs the issue details into the session.
 5. Requires a clean working tree before branching, or asks how to proceed with `human_in_loop`.
-6. Creates and pushes `issue-<number>-<short-slug>`.
-7. Creates a draft PR linked to the issue.
+6. Fetches the remote default branch, switches to it, and updates it with `git pull --ff-only` so the issue branch starts from latest main/default branch changes; stops on non-fast-forward, checkout-overwrite, or ambiguous default-branch state.
+7. Creates and pushes `issue-<number>-<short-slug>` from that fresh base, not from a stale default branch or unrelated feature branch.
+8. Creates a draft PR linked to the issue.
 
 ## Requirements
 

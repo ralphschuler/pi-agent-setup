@@ -1,0 +1,26 @@
+name: Question
+description: Ask for clarification before work is actionable.
+title: "Question: "
+labels: ["question"]
+body:
+  - type: textarea
+    id: question
+    attributes:
+      label: Question
+      description: What needs clarification?
+    validations:
+      required: true
+  - type: textarea
+    id: context
+    attributes:
+      label: Context
+      description: What led to this question?
+    validations:
+      required: false
+  - type: textarea
+    id: decision
+    attributes:
+      label: Decision needed
+      description: What decision would make this actionable?
+    validations:
+      required: false

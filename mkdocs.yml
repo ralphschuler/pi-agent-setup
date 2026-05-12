@@ -72,6 +72,7 @@ nav:
       - Subagent orchestrator: extensions/subagent-orchestrator.md
       - Subagents: extensions/subagents.md
       - Todo: extensions/todo.md
+      - Triage: extensions/triage.md
       - Wait: extensions/wait.md
       - Web terminal: extensions/web-terminal.md
       - Welcome screen: extensions/welcome-screen.md

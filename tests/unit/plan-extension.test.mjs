@@ -18,6 +18,8 @@ test("plan workflow enforces deep drilldown planning before approval", () => {
     "Apply the plan",
     "Change the plan",
     "Make PRD.md",
+    "plan:start",
+    "startPlanning(task",
     "Create or update PRD.md only",
     "Synthesize from the approved plan",
     "CONTEXT.md",

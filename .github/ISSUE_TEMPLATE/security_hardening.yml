@@ -1,0 +1,30 @@
+name: Security / hardening
+description: Request defensive security, privacy, or safety work.
+title: "Security: "
+labels: ["security"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Do not post secrets, exploit payloads, private tokens, or vulnerability details that should be disclosed privately.
+  - type: textarea
+    id: risk
+    attributes:
+      label: Risk or hardening need
+      description: What risk should be reduced?
+    validations:
+      required: true
+  - type: textarea
+    id: scope
+    attributes:
+      label: Scope
+      description: Affected files, systems, data, or workflows.
+    validations:
+      required: false
+  - type: textarea
+    id: acceptance
+    attributes:
+      label: Acceptance criteria
+      description: What confirms the risk is mitigated?
+    validations:
+      required: false

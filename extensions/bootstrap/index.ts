@@ -5,7 +5,7 @@ import { execFileSync } from "node:child_process";
 
 export default function bootstrap(pi: ExtensionAPI) {
   pi.registerCommand("bootstrap", {
-    description: "Create pi-ready repository context files (CONTEXT.md and docs/adr)",
+    description: "Create pi-ready repository context files (CONTEXT.md, docs/adr, and GitHub issue templates)",
     handler: async (args, ctx) => {
       runBootstrap(args || "", ctx);
     },
@@ -13,6 +13,7 @@ export default function bootstrap(pi: ExtensionAPI) {
 }
 
 type BootstrapOptions = { target: string; force: boolean; dryRun: boolean };
+type TemplateFile = { filePath: string; content: string };
 
 function parseArgs(args: string, cwd: string): BootstrapOptions {
   const opts = { target: cwd, force: false, dryRun: false };
@@ -33,14 +34,16 @@ function parseArgs(args: string, cwd: string): BootstrapOptions {
   return opts;
 }
 
-function runBootstrap(args: string, ctx: any) {
+export function runBootstrap(args: string, ctx: any) {
   const cwd = ctx.cwd || process.cwd();
   const opts = parseArgs(args, cwd);
   const root = gitRoot(opts.target);
   if (!root) throw new Error(`${opts.target} is not inside a Git repository. Run git init first.`);
 
+  const includeIssueTemplates = shouldBootstrapIssueTemplates(root);
   const lines = [`${opts.dryRun ? "Planning" : "Bootstrapping"} pi repository context in ${root}`];
-  for (const file of templates(today())) lines.push(writeStarter(root, file, opts));
+  for (const file of templates(today(), includeIssueTemplates)) lines.push(writeStarter(root, file, opts));
+  if (!includeIssueTemplates) lines.push("Skipped .github/ISSUE_TEMPLATE/ (no GitHub remote or existing .github directory)");
   lines.push("Done. Next: fill TODOs, then ask pi to inspect CONTEXT.md and docs/adr/ before planning.");
   const text = lines.join("\n");
   ctx.ui.notify(text, "info");
@@ -62,7 +65,27 @@ function today() {
   return new Date().toISOString().slice(0, 10);
 }
 
-function templates(date: string) {
+export function shouldBootstrapIssueTemplates(repoRoot: string) {
+  return fs.existsSync(path.join(repoRoot, ".github")) || hasGitHubRemote(repoRoot);
+}
+
+export function hasGitHubRemote(repoRoot: string) {
+  try {
+    const output = execFileSync("git", ["-C", repoRoot, "remote", "-v"], {
+      encoding: "utf8",
+      stdio: ["ignore", "pipe", "ignore"],
+    });
+    return /github\.com[:/]/.test(output);
+  } catch {
+    return false;
+  }
+}
+
+function templates(date: string, includeIssueTemplates = false): TemplateFile[] {
+  return [...contextTemplates(date), ...(includeIssueTemplates ? issueTemplateFiles() : [])];
+}
+
+function contextTemplates(date: string): TemplateFile[] {
   return [
     {
       filePath: "CONTEXT.md",
@@ -79,7 +102,40 @@ function templates(date: string) {
   ];
 }
 
-function writeStarter(repoRoot: string, file: { filePath: string; content: string }, opts: { force: boolean; dryRun: boolean }) {
+export function issueTemplateFiles(): TemplateFile[] {
+  return [
+    {
+      filePath: ".github/ISSUE_TEMPLATE/config.yml",
+      content: `blank_issues_enabled: true\ncontact_links: []\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/bug_report.yml",
+      content: `name: Bug report\ndescription: Report something that is not working.\ntitle: "Bug: "\nlabels: ["bug"]\nbody:\n  - type: markdown\n    attributes:\n      value: |\n        Thanks for reporting a bug. Include only public, non-secret details.\n  - type: textarea\n    id: summary\n    attributes:\n      label: Summary\n      description: What happened?\n      placeholder: Describe the broken behavior.\n    validations:\n      required: true\n  - type: textarea\n    id: expected\n    attributes:\n      label: Expected behavior\n      description: What should have happened?\n    validations:\n      required: true\n  - type: textarea\n    id: reproduce\n    attributes:\n      label: Reproduction steps\n      description: List the smallest steps, commands, or inputs that reproduce the bug.\n      placeholder: |\n        1. ...\n        2. ...\n        3. ...\n    validations:\n      required: true\n  - type: textarea\n    id: validation\n    attributes:\n      label: Validation or logs\n      description: Paste relevant public logs, screenshots, or command output. Do not include secrets.\n    validations:\n      required: false\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/feature_request.yml",
+      content: `name: Feature request\ndescription: Propose a new capability or enhancement.\ntitle: "Feature: "\nlabels: ["enhancement"]\nbody:\n  - type: textarea\n    id: problem\n    attributes:\n      label: Problem\n      description: What user problem should this solve?\n    validations:\n      required: true\n  - type: textarea\n    id: solution\n    attributes:\n      label: Proposed solution\n      description: What should change?\n    validations:\n      required: true\n  - type: textarea\n    id: acceptance\n    attributes:\n      label: Acceptance criteria\n      description: What observable behavior proves this is done?\n      placeholder: |\n        - [ ] ...\n        - [ ] ...\n    validations:\n      required: false\n  - type: textarea\n    id: context\n    attributes:\n      label: Context\n      description: Links, examples, constraints, or alternatives.\n    validations:\n      required: false\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/documentation.yml",
+      content: `name: Documentation\ndescription: Request or improve documentation.\ntitle: "Docs: "\nlabels: ["documentation"]\nbody:\n  - type: textarea\n    id: gap\n    attributes:\n      label: Documentation gap\n      description: What is missing, wrong, or unclear?\n    validations:\n      required: true\n  - type: textarea\n    id: audience\n    attributes:\n      label: Audience\n      description: Who needs this information?\n    validations:\n      required: false\n  - type: textarea\n    id: suggested\n    attributes:\n      label: Suggested change\n      description: What should the docs say or link to?\n    validations:\n      required: false\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/security_hardening.yml",
+      content: `name: Security / hardening\ndescription: Request defensive security, privacy, or safety work.\ntitle: "Security: "\nlabels: ["security"]\nbody:\n  - type: markdown\n    attributes:\n      value: |\n        Do not post secrets, exploit payloads, private tokens, or vulnerability details that should be disclosed privately.\n  - type: textarea\n    id: risk\n    attributes:\n      label: Risk or hardening need\n      description: What risk should be reduced?\n    validations:\n      required: true\n  - type: textarea\n    id: scope\n    attributes:\n      label: Scope\n      description: Affected files, systems, data, or workflows.\n    validations:\n      required: false\n  - type: textarea\n    id: acceptance\n    attributes:\n      label: Acceptance criteria\n      description: What confirms the risk is mitigated?\n    validations:\n      required: false\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/architecture_refactor.yml",
+      content: `name: Architecture / refactor\ndescription: Propose architecture, module-boundary, or behavior-preserving refactor work.\ntitle: "Refactor: "\nlabels: ["architecture", "refactor"]\nbody:\n  - type: textarea\n    id: problem\n    attributes:\n      label: Design problem\n      description: What is hard to change, test, reason about, or maintain?\n    validations:\n      required: true\n  - type: textarea\n    id: proposal\n    attributes:\n      label: Proposed direction\n      description: What boundary, module, interface, or refactor should be considered?\n    validations:\n      required: false\n  - type: textarea\n    id: validation\n    attributes:\n      label: Validation\n      description: What tests or checks should prove behavior stayed correct?\n    validations:\n      required: false\n`,
+    },
+    {
+      filePath: ".github/ISSUE_TEMPLATE/question.yml",
+      content: `name: Question\ndescription: Ask for clarification before work is actionable.\ntitle: "Question: "\nlabels: ["question"]\nbody:\n  - type: textarea\n    id: question\n    attributes:\n      label: Question\n      description: What needs clarification?\n    validations:\n      required: true\n  - type: textarea\n    id: context\n    attributes:\n      label: Context\n      description: What led to this question?\n    validations:\n      required: false\n  - type: textarea\n    id: decision\n    attributes:\n      label: Decision needed\n      description: What decision would make this actionable?\n    validations:\n      required: false\n`,
+    },
+  ];
+}
+
+function writeStarter(repoRoot: string, file: TemplateFile, opts: { force: boolean; dryRun: boolean }) {
   const target = path.join(repoRoot, file.filePath);
   const exists = fs.existsSync(target);
   if (opts.dryRun) return `${exists && !opts.force ? "Would skip" : exists ? "Would overwrite" : "Would create"} ${file.filePath}`;

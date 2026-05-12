@@ -1,0 +1,26 @@
+name: Architecture / refactor
+description: Propose architecture, module-boundary, or behavior-preserving refactor work.
+title: "Refactor: "
+labels: ["architecture", "refactor"]
+body:
+  - type: textarea
+    id: problem
+    attributes:
+      label: Design problem
+      description: What is hard to change, test, reason about, or maintain?
+    validations:
+      required: true
+  - type: textarea
+    id: proposal
+    attributes:
+      label: Proposed direction
+      description: What boundary, module, interface, or refactor should be considered?
+    validations:
+      required: false
+  - type: textarea
+    id: validation
+    attributes:
+      label: Validation
+      description: What tests or checks should prove behavior stayed correct?
+    validations:
+      required: false

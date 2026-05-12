@@ -24,10 +24,11 @@ Restart pi or run `/reload` in an existing session after installing.
 ## Important runtime commands
 
 - `pi-screen` — start pi through GNU screen for unattended, resumable sessions. Inside a Git repository it auto attaches/creates the repo session; outside a repository it shows a picker for `pi-screen` sessions only.
-- `/bootstrap` — create `CONTEXT.md` and `docs/adr/` starter files in the current Git repository.
+- `/bootstrap` — create `CONTEXT.md`, `docs/adr/`, and GitHub issue-template starter files in the current Git repository.
 - `/welcome` — show the startup welcome card.
 - `/ps` — inspect managed background processes.
 - `/plan <task>` — start a clarification-first planning workflow with quickly testable feature phases.
+- `/triage` — select an unlabeled/question GitHub issue and start a label-focused `/plan` session.
 - `/research <topic>` — run the research prompt with typed arguments passed into the Markdown template.
 - `/review <scope>` — review a diff, PR, or plan with structured findings.
 - `/analyze <problem>` — run evidence-first debugging before changing code.

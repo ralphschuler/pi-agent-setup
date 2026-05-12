@@ -46,7 +46,7 @@ The workflow inspects repo state and diffs, records validation, uses `human_in_l
 
 A GitHub issue pickup workflow. Accepts optional priority/filter via `/pick-issue [priority / filter]`.
 
-The workflow inspects open issues with `gh issue list`/`gh issue view`, selects the highest-priority actionable issue, uses `human_in_loop` for ambiguous selection or dirty-tree handling, creates an issue branch, pushes it, and opens a draft/WIP PR linked to the issue.
+The workflow inspects open issues with `gh issue list`/`gh issue view`, selects the highest-priority actionable issue, uses `human_in_loop` for ambiguous selection or dirty-tree handling, updates the default branch from the remote with `git pull --ff-only`, stops on non-fast-forward, checkout-overwrite, or ambiguous default-branch state, creates an issue branch from that fresh base, pushes it, and opens a draft/WIP PR linked to the issue.
 
 ### `review.md`
 

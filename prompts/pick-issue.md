@@ -22,7 +22,7 @@ Use GitHub CLI commands against the current repository only.
 ## Goal
 
 Select the next most important actionable GitHub issue, create a dedicated working branch, create a WIP/draft PR linked to the issue, and bring the full issue context into this session so implementation can begin.
-Show a compact TUI-style progress checklist throughout discovery, selection, dirty-tree handling, branch creation, PR creation, and summary.
+Show a compact TUI-style progress checklist throughout discovery, selection, dirty-tree handling, default-branch sync, branch creation, PR creation, and summary.
 
 ## Required process
 
@@ -31,12 +31,13 @@ Show a compact TUI-style progress checklist throughout discovery, selection, dir
 3. Select the highest-priority issue that is actionable now. If selection is ambiguous, use `human_in_loop` select to ask the user to choose among 2-5 candidates.
 4. Output the selected issue into the session, including title, URL, labels, body summary, acceptance criteria, and relevant files/commands.
 5. Ensure the working tree is clean before creating a branch. If dirty, stop and use `human_in_loop` to ask the user how to proceed.
-6. Create a branch named like `issue-<number>-<short-slug>` from the default branch or current base after confirming it is safe.
-7. Create an empty starter commit before PR creation, e.g. `git commit --allow-empty -m "chore: start issue #<number>"`, so GitHub can create the PR even before implementation changes.
-8. Push the branch and create a draft/WIP PR with `gh pr create --draft` (or title prefixed with `WIP:` if draft PRs are unavailable).
-9. Link the PR to the issue using closing/linking text in the PR body, e.g. `Closes #<number>` or `Refs #<number>` depending on whether the PR is intended to close it.
-10. Report the issue URL, branch, PR URL, and recommended first implementation steps.
-11. Keep the TUI-style checklist updated in the final report with completed/skipped/blocked states.
+6. Before creating the issue branch, switch to the default branch and update it from the remote with `git pull --ff-only origin <default-branch>`. Use `git fetch origin <default-branch>` first. Stop if the default branch cannot fast-forward cleanly, if checkout would overwrite local changes, or if the remote/default branch is ambiguous.
+7. Create the issue branch from the freshly updated default branch, named like `issue-<number>-<short-slug>`. Do not create issue branches from a stale default branch or unrelated feature branch.
+8. Create an empty starter commit before PR creation, e.g. `git commit --allow-empty -m "chore: start issue #<number>"`, so GitHub can create the PR even before implementation changes.
+9. Push the branch and create a draft/WIP PR with `gh pr create --draft` (or title prefixed with `WIP:` if draft PRs are unavailable).
+10. Link the PR to the issue using closing/linking text in the PR body, e.g. `Closes #<number>` or `Refs #<number>` depending on whether the PR is intended to close it.
+11. Report the issue URL, branch, PR URL, and recommended first implementation steps.
+12. Keep the TUI-style checklist updated in the final report with completed/skipped/blocked states.
 
 ## TUI-style progress checklist
 
@@ -44,6 +45,7 @@ Show a compact TUI-style progress checklist throughout discovery, selection, dir
 - [ ] Open issues loaded and scored
 - [ ] Issue selected or human-in-loop choice confirmed
 - [ ] Dirty tree checked and resolved via human_in_loop when needed
+- [ ] Default branch updated from remote
 - [ ] Branch created
 - [ ] Empty starter commit created and branch pushed
 - [ ] Draft/WIP PR created and linked
@@ -59,4 +61,4 @@ When recommending first implementation steps, point the next work at `/implement
 - Do not pick issues from another repository unless the user explicitly asks.
 - Do not fake issue or PR creation if `gh` is unavailable or unauthenticated; report exact setup steps.
 - Do not start implementation after creating the WIP PR unless the user asks.
-- Use `human_in_loop` for every user-facing clarification or approval question, including ambiguous issue selection, dirty-tree handling, target repo, base branch, or whether to close vs reference an issue.
+- Use `human_in_loop` for every user-facing clarification or approval question, including ambiguous issue selection, dirty-tree handling, target repo, base branch/default branch sync, or whether to close vs reference an issue.

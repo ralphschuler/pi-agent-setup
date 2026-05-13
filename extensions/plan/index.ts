@@ -1,6 +1,8 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import fs from "node:fs";
+import path from "node:path";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
 const PLANNING_TOOLS = new Set([
@@ -94,7 +96,9 @@ export default function planCommand(pi: ExtensionAPI) {
     if (!text.includes(PLAN_REVIEW_MARKER)) return;
 
     approvedPlan = text;
-    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Change the plan", "Make PRD.md", "Cancel planning"]);
+    const prdExists = fs.existsSync(path.join(ctx.cwd || process.cwd(), "PRD.md"));
+    const prdChoice = prdExists ? "Update PRD.md" : "Write PRD.md";
+    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Change the plan", prdChoice, "Cancel planning"]);
 
     if (choice === "Apply the plan") {
       planningActive = false;
@@ -115,7 +119,7 @@ export default function planCommand(pi: ExtensionAPI) {
       return;
     }
 
-    if (choice === "Make PRD.md") {
+    if (choice === prdChoice) {
       planningActive = false;
       ctx.ui.setStatus("plan", "writing PRD.md");
       pi.sendUserMessage(

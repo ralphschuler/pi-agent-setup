@@ -14,7 +14,7 @@ The plan workflow enforces deep drilldown planning before implementation for non
 - Decision-tree and risk-sweep coverage
 - Reviewable plan output
 - Write blocking until plan approval
-- Review UI with apply, change, make `PRD.md`, or cancel choices
+- Review UI with apply, change, dynamic write/update `PRD.md`, or cancel choices
 - PRD generation with problem statement, solution, user stories, implementation decisions, testing decisions, feature phases, out-of-scope items, and further notes
 
 ## Recommended use
@@ -36,5 +36,5 @@ At the review gate, choose one of:
 
 - **Apply the plan** — begin implementation.
 - **Change the plan** — provide feedback and continue planning.
-- **Make PRD.md** — convert the approved plan into `PRD.md` without implementation. The generated PRD uses project vocabulary from context/docs/ADRs when available, identifies deep-module opportunities and behavior-focused test targets, avoids volatile file paths in durable implementation decisions, and keeps feature phases independently and quickly testable.
+- **Write PRD.md** / **Update PRD.md** — convert the approved plan into `PRD.md` without implementation. The review UI says **Write PRD.md** when no `PRD.md` file exists and **Update PRD.md** when `PRD.md` already exists. The generated PRD uses project vocabulary from context/docs/ADRs when available, identifies deep-module opportunities and behavior-focused test targets, avoids volatile file paths in durable implementation decisions, and keeps feature phases independently and quickly testable.
 - **Cancel planning** — stop the workflow.

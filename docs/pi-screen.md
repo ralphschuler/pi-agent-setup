@@ -10,7 +10,7 @@
 ## Behavior
 
 - Inside a Git repository, `pi-screen` attaches to the existing live repo-scoped session or creates one.
-- outside a Git repository, `pi-screen` opens a small TUI picker that shows only live pi-screen sessions and a create-new option.
+- outside a Git repository, `pi-screen` opens a small TUI picker that shows only pi-screen sessions that are live and a create-new option.
 - If a session already exists and Pi args are supplied, `pi-screen` attaches and warns that the new args were not applied. Use `--new` or another `--name` for a separate session.
 - Non-TTY outside a repository prints the managed session list and example commands instead of opening the picker.
 - Each run reads `screen -ls` fresh; dead screen sockets are ignored so a vanished repo session creates a new session instead of trying to resume the dead one.

@@ -68,8 +68,8 @@ test("pi-screen --help documents repo and outside-repo behavior", () => {
   const result = runPiScreen(["--help"]);
 
   assert.equal(result.status, 0);
-  assert.match(result.stdout, /inside a Git repository: attach existing repo session or create one/);
-  assert.match(result.stdout, /outside a Git repository: show a picker for pi-screen sessions only/);
+  assert.match(result.stdout, /inside a Git repository: attach existing live repo session or create one/);
+  assert.match(result.stdout, /outside a Git repository: show a picker for live pi-screen sessions only/);
 });
 
 test("inside a repository starts the default repo session when none exists", () => {
@@ -96,6 +96,38 @@ test("inside a repository attaches existing session and warns when pi args are i
   assert.equal(result.status, 0);
   assert.match(result.stderr, /pi args ignored/);
   assert.equal(fs.readFileSync(fake.logPath, "utf8").trim(), `-r 1234.${name}`);
+});
+
+test("inside a repository ignores a dead repo session and starts a fresh one", () => {
+  const fake = fakeBin();
+  const name = defaultName(repoRoot, repoRoot);
+  const result = runPiScreen(["--dry-run"], {
+    env: {
+      PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`,
+      PI_FAKE_GIT_ROOT: repoRoot,
+      PI_FAKE_SCREEN_LS: `There are screens on:\n\t1234.${name}\t(Dead ???)\n`,
+    },
+  });
+
+  assert.equal(result.status, 0);
+  assert.equal(result.stdout.trim(), `screen -S ${name} pi`);
+});
+
+test("--list omits dead pi-screen sessions even when names contain status words", () => {
+  const fake = fakeBin();
+  const result = runPiScreen(["--list"], {
+    env: {
+      PATH: `${fake.dir}${path.delimiter}${process.env.PATH}`,
+      PI_FAKE_SCREEN_LS:
+        "There are screens on:\n\t1234.pi-alpha-aaaaaaaa\t(Dead ???)\n\t2345.pi-attached-aaaaaaaa\t(Dead ???)\n\t3456.pi-detached-aaaaaaaa\t(Dead ???)\n\t5678.pi-beta-bbbbbbbb\t(Detached)\n",
+    },
+  });
+
+  assert.equal(result.status, 0);
+  assert.doesNotMatch(result.stdout, /pi-alpha-aaaaaaaa/);
+  assert.doesNotMatch(result.stdout, /pi-attached-aaaaaaaa/);
+  assert.doesNotMatch(result.stdout, /pi-detached-aaaaaaaa/);
+  assert.match(result.stdout, /pi-beta-bbbbbbbb/);
 });
 
 test("--detach creates a detached named pi-screen session", () => {

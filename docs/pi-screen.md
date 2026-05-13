@@ -9,12 +9,13 @@
 
 ## Behavior
 
-- Inside a Git repository, `pi-screen` attaches to the existing repo-scoped session or creates one.
-- outside a Git repository, `pi-screen` opens a small TUI picker that shows only pi-screen sessions and a create-new option.
+- Inside a Git repository, `pi-screen` attaches to the existing live repo-scoped session or creates one.
+- outside a Git repository, `pi-screen` opens a small TUI picker that shows only live pi-screen sessions and a create-new option.
 - If a session already exists and Pi args are supplied, `pi-screen` attaches and warns that the new args were not applied. Use `--new` or another `--name` for a separate session.
 - Non-TTY outside a repository prints the managed session list and example commands instead of opening the picker.
+- Each run reads `screen -ls` fresh; dead screen sockets are ignored so a vanished repo session creates a new session instead of trying to resume the dead one.
 
-Managed sessions use names like `pi-<slug>-<hash>` so unrelated screen sessions are not shown in the picker.
+Managed sessions use names like `pi-<slug>-<hash>` so unrelated and dead screen sessions are not shown in the picker.
 
 ## Common commands
 
@@ -41,7 +42,7 @@ Detach from an attached screen session with `Ctrl-a d`.
 | `--name NAME` | Use a specific pi-screen session name/slug.         |
 | `--new`       | Create a new session even if one exists.            |
 | `--detach`    | Start a new session detached for unattended work.   |
-| `--list`      | List only `pi-screen`-managed sessions.             |
+| `--list`      | List only live `pi-screen`-managed sessions.        |
 | `--dry-run`   | Print the GNU screen command instead of running it. |
 | `--help`      | Show CLI help.                                      |
 

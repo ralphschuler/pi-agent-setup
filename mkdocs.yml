@@ -61,6 +61,7 @@ nav:
       - GitHub merge: extensions/github-merge.md
       - Graph memory: extensions/graph-memory.md
       - Human in loop: extensions/human-in-loop.md
+      - Loop command: extensions/loop.md
       - Package scout: extensions/package-scout.md
       - Plan workflow: extensions/plan.md
       - Pretty output: extensions/pretty-output.md
@@ -72,6 +73,7 @@ nav:
       - Subagent orchestrator: extensions/subagent-orchestrator.md
       - Subagents: extensions/subagents.md
       - Todo: extensions/todo.md
+      - Triage: extensions/triage.md
       - Wait: extensions/wait.md
       - Web terminal: extensions/web-terminal.md
       - Welcome screen: extensions/welcome-screen.md

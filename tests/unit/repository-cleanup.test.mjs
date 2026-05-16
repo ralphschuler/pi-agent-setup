@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import fs from "node:fs";
 import test from "node:test";
 
 import { readJson, readText } from "../helpers.mjs";
@@ -28,9 +29,40 @@ test("safety guard covers bash and process shell execution", () => {
   assert.match(source, /Blocked dangerous shell command/);
 });
 
-test("critical process, browser bridge, and welcome extensions are typechecked", () => {
+test("critical process, browser bridge, welcome, and subagent renderer extensions are typechecked", () => {
   assert.doesNotMatch(readText("extensions/processes/index.ts"), /@ts-nocheck/);
   assert.doesNotMatch(readText("extensions/welcome-screen/index.ts"), /@ts-nocheck/);
+  assert.doesNotMatch(readText("extensions/subagents/renderer.ts"), /@ts-nocheck/);
+});
+
+test("new extension ts-nocheck usage must be explicit in the migration allowlist", () => {
+  const allowed = new Set([
+    "extensions/caveman/index.ts",
+    "extensions/compact-footer/index.ts",
+    "extensions/cross-agent/discovery.ts",
+    "extensions/custom-agents/index.ts",
+    "extensions/custom-agents/registry.ts",
+    "extensions/pretty-output/index.ts",
+    "extensions/shared/pretty-render.ts",
+    "extensions/subagents/catalog.ts",
+    "extensions/subagents/executor.ts",
+    "extensions/subagents/index.ts",
+    "extensions/subagents/runner.ts",
+    "extensions/subagents/scheduler.ts",
+    "extensions/web-terminal/chat-routes.ts",
+    "extensions/web-terminal/cli-routes.ts",
+    "extensions/web-terminal/file-routes.ts",
+    "extensions/web-terminal/index.ts",
+    "extensions/web-terminal/log-routes.ts",
+    "extensions/web-terminal/resource-routes.ts",
+    "extensions/web-terminal/routes.ts",
+    "extensions/web-terminal/system-routes.ts",
+    "extensions/web-terminal/terminal-session.ts",
+  ]);
+
+  const actual = findTsFilesWithNoCheck("extensions");
+
+  assert.deepEqual(actual, [...allowed].sort());
 });
 
 test("browser bridge is typechecked", () => {
@@ -153,3 +185,24 @@ test("repository has type and lint hygiene scripts", () => {
   assert.ok(pkg.devDependencies.typescript);
   assert.ok(pkg.devDependencies.eslint);
 });
+
+function findTsFilesWithNoCheck(relativeDir) {
+  const repo = new URL("../../", import.meta.url);
+  const root = new URL(`${relativeDir}/`, repo);
+  const files = [];
+
+  function walk(dirUrl) {
+    for (const entry of fs.readdirSync(dirUrl, { withFileTypes: true })) {
+      const child = new URL(entry.name, `${dirUrl.href}/`);
+      if (entry.isDirectory()) {
+        walk(child);
+      } else if (entry.isFile() && entry.name.endsWith(".ts")) {
+        const relative = child.pathname.slice(repo.pathname.length).replace(/\/+/g, "/");
+        if (readText(relative).includes("@ts-nocheck")) files.push(relative);
+      }
+    }
+  }
+
+  walk(root);
+  return files.sort();
+}

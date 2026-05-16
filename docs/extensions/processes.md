@@ -7,7 +7,7 @@
 - Agent-facing `process` tool
 - `/ps` themed process dashboard
 - Custom tool result rendering
-- Compact live stdout/stderr tails while a started process emits output
+- Detached stdout/stderr capture after start
 - Completion alerts
 - Log watches with unsafe-regex rejection
 
@@ -39,4 +39,4 @@ For finite commands that may take a short time to finish, start them with `proce
 
 ## Output limits
 
-Live process updates are throttled and show only the last few stdout/stderr lines. Full in-memory output remains available through `process output`; log file paths remain available through `process logs`.
+Process output after `start` is captured in memory and bounded log files, but it is not streamed through stale tool updates after the tool call returns. Use `process output` for the in-memory tail; use `process logs` for log file paths.

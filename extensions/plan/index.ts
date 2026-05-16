@@ -1,6 +1,8 @@
 import type { AgentMessage } from "@mariozechner/pi-agent-core";
 import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
-import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import fs from "node:fs";
+import path from "node:path";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
 const PLANNING_TOOLS = new Set([
@@ -20,6 +22,29 @@ const PLANNING_TOOLS = new Set([
 export default function planCommand(pi: ExtensionAPI) {
   let planningActive = false;
   let approvedPlan = "";
+  let currentCtx: ExtensionContext | undefined;
+
+  function startPlanning(task: string, ctx?: ExtensionContext) {
+    planningActive = true;
+    approvedPlan = "";
+    ctx?.ui.setStatus("plan", "planning");
+    const prompt = buildKickoffPrompt(task);
+    if (ctx?.isIdle?.() === false) pi.sendUserMessage(prompt, { deliverAs: "followUp" });
+    else pi.sendUserMessage(prompt);
+  }
+
+  pi.on("session_start", async (_event, ctx) => {
+    currentCtx = ctx;
+  });
+
+  pi.events.on("plan:start", (data) => {
+    const task = typeof data === "string" ? data : (data as { task?: string } | undefined)?.task;
+    if (!task?.trim()) {
+      currentCtx?.ui.notify("plan:start ignored: missing task", "warning");
+      return;
+    }
+    startPlanning(task.trim(), currentCtx);
+  });
 
   pi.registerCommand("plan", {
     description: "<task> — clarify a task, create a reviewed plan, then apply it after approval",
@@ -33,10 +58,7 @@ export default function planCommand(pi: ExtensionAPI) {
         return;
       }
 
-      planningActive = true;
-      approvedPlan = "";
-      ctx.ui.setStatus("plan", "planning");
-      pi.sendUserMessage(buildKickoffPrompt(task));
+      startPlanning(task, ctx);
     },
   });
 
@@ -74,7 +96,9 @@ export default function planCommand(pi: ExtensionAPI) {
     if (!text.includes(PLAN_REVIEW_MARKER)) return;
 
     approvedPlan = text;
-    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Change the plan", "Make PRD.md", "Cancel planning"]);
+    const prdExists = fs.existsSync(path.join(ctx.cwd || process.cwd(), "PRD.md"));
+    const prdChoice = prdExists ? "Update PRD.md" : "Write PRD.md";
+    const choice = await ctx.ui.select("Plan ready - what next?", ["Apply the plan", "Change the plan", prdChoice, "Cancel planning"]);
 
     if (choice === "Apply the plan") {
       planningActive = false;
@@ -95,7 +119,7 @@ export default function planCommand(pi: ExtensionAPI) {
       return;
     }
 
-    if (choice === "Make PRD.md") {
+    if (choice === prdChoice) {
       planningActive = false;
       ctx.ui.setStatus("plan", "writing PRD.md");
       pi.sendUserMessage(

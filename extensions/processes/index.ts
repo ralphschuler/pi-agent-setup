@@ -192,26 +192,21 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
   });
   processes.set(id, proc);
 
-  const liveUpdate = createThrottledLiveUpdate(proc, onUpdate);
   child.stdout.on("data", (data) => {
     appendOutput(proc, "stdout", data, { ui, logFileLimit: LOG_FILE_LIMIT });
-    liveUpdate("stdout");
   });
   child.stderr.on("data", (data) => {
     appendOutput(proc, "stderr", data, { ui, logFileLimit: LOG_FILE_LIMIT });
-    liveUpdate("stderr");
   });
   child.on("exit", (code, signal) => {
     proc.status = signal ? "killed" : "exited";
     proc.exitCode = code;
     proc.signal = signal;
-    liveUpdate("exit", true);
     notifyProcessExit(proc, ui);
     updateProcessStatus(ui);
   });
   child.on("error", (error) => {
     appendOutput(proc, "stderr", Buffer.from(`${error.message}\n`), { ui, logFileLimit: LOG_FILE_LIMIT });
-    liveUpdate("stderr", true);
   });
 
   updateProcessStatus(ui);
@@ -291,25 +286,6 @@ function serializeAll() {
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {
   return { content: [{ type: "text" as const, text }], details, isError };
-}
-
-function createThrottledLiveUpdate(proc: ManagedProcess, onUpdate?: (update: any) => void) {
-  let timer: NodeJS.Timeout | undefined;
-  let lastStream: "stdout" | "stderr" | "start" | "exit" = "start";
-  const emit = () => {
-    timer = undefined;
-    onUpdate?.(processLiveResult(proc, lastStream));
-  };
-  return (stream: "stdout" | "stderr" | "exit", immediate = false) => {
-    lastStream = stream;
-    if (!onUpdate) return;
-    if (immediate) {
-      if (timer) clearTimeout(timer);
-      emit();
-      return;
-    }
-    if (!timer) timer = setTimeout(emit, 250);
-  };
 }
 
 function processLiveResult(proc: ManagedProcess, stream: "stdout" | "stderr" | "start" | "exit") {

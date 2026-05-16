@@ -3,15 +3,14 @@ import test from "node:test";
 
 import { readText } from "../helpers.mjs";
 
-test("process tool streams throttled compact live output", () => {
+test("process tool avoids deferred updates after detached start returns", () => {
   const source = readText("extensions/processes/index.ts");
 
-  assert.match(source, /createThrottledLiveUpdate\(proc, onUpdate\)/);
-  assert.match(source, /setTimeout\(emit, 250\)/);
-  assert.match(source, /processLiveResult\(proc, lastStream\)/);
-  assert.match(source, /stdout \(live\):/);
-  assert.match(source, /stderr \(live\):/);
-  assert.match(source, /stdout\.slice\(-4\)/);
+  assert.match(source, /onUpdate\?\.\(processLiveResult\(proc, "start"\)\)/);
+  assert.match(source, /appendOutput\(proc, "stdout"/);
+  assert.match(source, /appendOutput\(proc, "stderr"/);
+  assert.doesNotMatch(source, /createThrottledLiveUpdate\(proc, onUpdate\)/);
+  assert.doesNotMatch(source, /setTimeout\(emit, 250\)/);
 });
 
 test("subagent tool streams child stdout and stderr with throttling", () => {

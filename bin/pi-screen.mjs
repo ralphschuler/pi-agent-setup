@@ -13,14 +13,14 @@ function usage() {
     "Run pi inside GNU screen for unattended, resumable sessions.",
     "",
     "Behavior:",
-    "  inside a Git repository: attach existing repo session or create one",
-    "  outside a Git repository: show a picker for pi-screen sessions only",
+    "  inside a Git repository: attach existing live repo session or create one",
+    "  outside a Git repository: show a picker for live pi-screen sessions only",
     "",
     "Options:",
     "  --name <name>   Use a specific pi-screen session name/slug",
     "  --new           Create a new session even when one exists",
     "  --detach        Start a new session detached",
-    "  --list          List pi-screen-managed sessions",
+    "  --list          List live pi-screen-managed sessions",
     "  --dry-run       Print the screen command instead of running it",
     "  --help, -h      Show this help",
     "",
@@ -119,7 +119,7 @@ function defaultName(cwd, repoRoot) {
 function listSessions() {
   const result = spawnSync("screen", ["-ls"], { encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
   const output = `${result.stdout || ""}${result.stderr || ""}`;
-  return parseScreenList(output).filter((session) => session.name.startsWith(PREFIX));
+  return parseScreenList(output).filter((session) => session.name.startsWith(PREFIX) && isLiveSession(session));
 }
 
 function parseScreenList(output) {
@@ -130,9 +130,20 @@ function parseScreenList(output) {
     const full = match[1];
     const name = match[2] || match[3];
     if (!name || name === "No" || name === "There") continue;
-    sessions.push({ full, name, status: line.includes("(Attached)") ? "Attached" : line.includes("(Detached)") ? "Detached" : "Unknown" });
+    sessions.push({ full, name, status: screenStatus(match[4] || "") });
   }
   return sessions;
+}
+
+function screenStatus(line) {
+  if (/\bAttached\b/i.test(line)) return "Attached";
+  if (/\bDetached\b/i.test(line)) return "Detached";
+  if (/\bDead\b/i.test(line)) return "Dead";
+  return "Unknown";
+}
+
+function isLiveSession(session) {
+  return session.status === "Attached" || session.status === "Detached";
 }
 
 function printSessions(sessions) {

@@ -73,7 +73,7 @@ npm run test:docker
 - `bin/pi-acp.mjs` — experimental Agent Client Protocol (ACP) stdio adapter for Zed-style code editor integration via `pi --mode rpc`.
 - `bin/pi-screen.mjs` — GNU screen wrapper for unattended, resumable pi sessions. Inside a Git repository it auto attaches/creates the repo session; outside a repository it shows a picker for `pi-screen` sessions only.
 - `extensions/` — custom pi extensions, tools, commands, TUI widgets, workflows, search, memory, todos, subagents, browser tools, and process management:
-  - `extensions/background-processes/`, `extensions/bootstrap/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/cross-agent/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/random-file/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/secret-redaction/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/todo/`, `extensions/wait/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
+  - `extensions/background-processes/`, `extensions/bootstrap/`, `extensions/browser-bridge/`, `extensions/caveman/`, `extensions/compact-footer/`, `extensions/cronjobs/`, `extensions/cross-agent/`, `extensions/custom-agents/`, `extensions/evolve/`, `extensions/github-handoff/`, `extensions/github-merge/`, `extensions/graph-memory/`, `extensions/human-in-loop/`, `extensions/loop/`, `extensions/package-scout/`, `extensions/plan/`, `extensions/pretty-output/`, `extensions/random-file/`, `extensions/processes/`, `extensions/safety-guard/`, `extensions/searxng/`, `extensions/secret-redaction/`, `extensions/subagent-orchestrator/`, `extensions/subagents/`, `extensions/todo/`, `extensions/triage/`, `extensions/wait/`, `extensions/web-terminal/`, `extensions/welcome-screen/`
 - `skills/` — on-demand workflows for `project-bootstrap`, `code-review`, `systematic-debugging`, `github-merge`, `implement`, `standup`, `pi-processes`, `pi-subagents`, and `pi-resource-design`.
 - `prompts/` — reusable prompt templates such as analyze, review, research, refine-codebase, merge, standup, to-issue, to-pr, and pick-issue.
 - `themes/` — custom TUI themes, including synthwave.
@@ -86,8 +86,9 @@ npm run test:docker
 ```text
 pi-screen
 /bootstrap
-/welcome
+/welcome [compact|full]
 /plan <task>
+/loop <freeform instructions>
 /analyze <symptom / failing command / bug report>
 /review [scope]
 /research <topic>
@@ -101,6 +102,7 @@ pi-screen
 /to-issue [scope]
 /to-pr [title or scope]
 /pick-issue [priority/filter]
+/triage
 /package-scout <package names or query>
 /searxng
 /ps
@@ -114,6 +116,7 @@ pi-screen
 ```text
 .
 ├── .github/workflows/  # CI and docs deployment
+├── .github/ISSUE_TEMPLATE/ # GitHub issue forms for triage labels
 ├── bin/                # Executable adapters such as pi-acp
 ├── docs/               # MkDocs wiki source
 ├── extensions/         # TypeScript pi extensions

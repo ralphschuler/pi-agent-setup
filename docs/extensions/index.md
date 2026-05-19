@@ -14,6 +14,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | `graph_memory`        | Graph memory   | Persist durable knowledge across sessions.   |
 | `github_rebase_merge` | GitHub merge   | Wait for checks and rebase-merge PRs.        |
 | `human_in_loop`       | Human in loop  | Ask for clarification/approval in the TUI.   |
+| `mcp`                 | MCP bridge     | Call configured MCP servers safely.          |
 | `package_scout`       | Package scout  | Audit npm package metadata without install.  |
 | `process`             | Processes      | Manage long-running commands.                |
 | `random_file`         | Random file    | Sample unbiased Git-tracked safe text files. |
@@ -36,6 +37,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | `/darwin`           | Queue bounded evolve iteration workflow.                                    |
 | `/evolve`           | Manage local file variant archive workflows.                                |
 | `/merge`            | Prompt-template safe PR rebase merge flow.                                  |
+| `/mcp`              | List configured MCP servers and trust status.                               |
 | `/implement`        | Prompt-template behavior-first implementation.                              |
 | `/mutate`           | Queue safe file variant generation workflow.                                |
 | `/package-scout`    | Audit npm package metadata without install.                                 |

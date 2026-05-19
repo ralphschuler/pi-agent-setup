@@ -84,5 +84,8 @@
   "bin": {
     "pi-acp": "./bin/pi-acp.mjs",
     "pi-screen": "./bin/pi-screen.mjs"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.29.0"
   }
 }

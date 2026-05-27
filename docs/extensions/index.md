@@ -37,6 +37,7 @@ Workflow slash commands are documented here for discoverability and in [`Prompts
 | `/darwin`           | Queue bounded evolve iteration workflow.                                    |
 | `/evolve`           | Manage local file variant archive workflows.                                |
 | `/merge`            | Prompt-template safe PR rebase merge flow.                                  |
+| `/loop <prompt>`    | Repeat an explicit prompt whenever the agent returns to idle.               |
 | `/mcp`              | List configured MCP servers and trust status.                               |
 | `/implement`        | Prompt-template behavior-first implementation.                              |
 | `/mutate`           | Queue safe file variant generation workflow.                                |

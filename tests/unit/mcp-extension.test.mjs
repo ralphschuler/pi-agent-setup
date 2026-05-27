@@ -4,7 +4,15 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import mcpExtension, { handleMcpCommand, loadMcpConfig, runMcpAction } from "../../extensions/mcp/index.ts";
+import mcpExtension, {
+  createMcpOAuthProvider,
+  handleMcpCommand,
+  loadMcpConfig,
+  mcpOAuthStateKey,
+  oauthStatePath,
+  readMcpOAuthState,
+  runMcpAction,
+} from "../../extensions/mcp/index.ts";
 
 function tempRepo() {
   const root = fs.mkdtempSync(path.join(os.tmpdir(), "pi-mcp-test-"));
@@ -147,6 +155,108 @@ test("mcp gateway fails closed when untrusted server has no interactive UI", asy
     runMcpAction({ action: "list_tools", server: "local" }, repo, new Set(), { hasUI: false }, async () => assert.fail("must not connect")),
     /requires interactive trust confirmation/,
   );
+});
+
+test("oauth HTTP config is listed and exposes auth status without secrets", async (t) => {
+  const repo = tempRepo();
+  const home = withHome(t);
+  fs.writeFileSync(
+    path.join(home, ".pi", "mcp.json"),
+    JSON.stringify({
+      mcpServers: {
+        flora: {
+          transport: "http",
+          url: "https://mcp.flora.ai/mcp",
+          auth: "oauth",
+          trusted: true,
+          headers: { Authorization: "Bearer secret" },
+        },
+      },
+    }),
+  );
+
+  const state = loadMcpConfig(repo);
+  assert.equal(state.servers[0].auth, "oauth");
+  const list = await handleMcpCommand("", repo, new Set());
+  assert.match(list, /flora: http, user, trust=trusted-config, auth=oauth:missing/);
+  assert.doesNotMatch(list, /secret/);
+});
+
+test("/mcp auth-clear removes persisted OAuth state for a server", async (t) => {
+  const repo = tempRepo();
+  const home = withHome(t);
+  fs.writeFileSync(
+    path.join(home, ".pi", "mcp.json"),
+    JSON.stringify({ mcpServers: { flora: { url: "https://mcp.flora.ai/mcp", auth: "oauth" } } }),
+  );
+  const server = loadMcpConfig(repo).servers[0];
+  const file = oauthStatePath();
+  fs.writeFileSync(file, JSON.stringify({ servers: { [mcpOAuthStateKey(server)]: { tokens: { access_token: "token" } } } }));
+
+  const text = await handleMcpCommand("auth-clear flora", repo, new Set());
+  assert.match(text, /Cleared MCP OAuth state for flora/);
+  assert.deepEqual(readMcpOAuthState().servers, {});
+});
+
+test("OAuth provider keys credentials by server source and URL", async (t) => {
+  const repo = tempRepo();
+  const home = withHome(t);
+  fs.writeFileSync(
+    path.join(home, ".pi", "mcp.json"),
+    JSON.stringify({ mcpServers: { flora: { url: "https://mcp.flora.ai/mcp", auth: "oauth" } } }),
+  );
+  const server = loadMcpConfig(repo).servers[0];
+  const provider = createMcpOAuthProvider(server, { hasUI: true, ui: { notify() {} } }, "http://127.0.0.1:17777/callback");
+
+  await provider.saveTokens({ access_token: "access", token_type: "Bearer" });
+
+  assert.deepEqual(await provider.tokens(), { access_token: "access", token_type: "Bearer" });
+  assert.equal(readMcpOAuthState().servers.flora, undefined, "legacy name-only key must not be used");
+
+  fs.writeFileSync(
+    path.join(repo, ".mcp.json"),
+    JSON.stringify({ mcpServers: { flora: { url: "https://evil.example.test/mcp", auth: "oauth" } } }),
+  );
+  const projectServer = loadMcpConfig(repo).servers[0];
+  const projectProvider = createMcpOAuthProvider(projectServer, { hasUI: true, ui: { notify() {} } }, "http://127.0.0.1:17778/callback");
+
+  assert.notEqual(mcpOAuthStateKey(server), mcpOAuthStateKey(projectServer));
+  assert.equal(await projectProvider.tokens(), undefined);
+});
+
+test("OAuth provider persists tokens and client registration with private file mode", async (t) => {
+  const repo = tempRepo();
+  const home = withHome(t);
+  fs.writeFileSync(
+    path.join(home, ".pi", "mcp.json"),
+    JSON.stringify({ mcpServers: { flora: { url: "https://mcp.flora.ai/mcp", auth: "oauth" } } }),
+  );
+  const server = loadMcpConfig(repo).servers[0];
+  let redirect = "";
+  const provider = createMcpOAuthProvider(
+    server,
+    {
+      hasUI: true,
+      ui: {
+        notify(text) {
+          redirect = text;
+        },
+      },
+    },
+    "http://127.0.0.1:17777/callback",
+  );
+
+  await provider.saveClientInformation({ client_id: "client-1" });
+  await provider.saveTokens({ access_token: "access", token_type: "Bearer" });
+  await provider.saveCodeVerifier("verifier");
+  await provider.redirectToAuthorization(new URL("https://accounts.flora.ai/oauth?code=secret"));
+
+  assert.deepEqual(await provider.clientInformation(), { client_id: "client-1" });
+  assert.deepEqual(await provider.tokens(), { access_token: "access", token_type: "Bearer" });
+  assert.equal(await provider.codeVerifier(), "verifier");
+  assert.match(redirect, /Open MCP OAuth authorization URL for flora/);
+  assert.match(redirect, /accounts\.flora\.ai/);
+  assert.equal((fs.statSync(oauthStatePath()).mode & 0o777).toString(8), "600");
 });
 
 test("trusted user server can call tool without prompt and redacts secret output", async (t) => {

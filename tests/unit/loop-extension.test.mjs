@@ -2,13 +2,15 @@ import assert from "node:assert/strict";
 import test from "node:test";
 
 import loopExtension, {
-  LOOP_IDLE_RETRY_MS,
+  LOOP_NEXT_ITERATION_DELAY_MS,
   LOOP_USAGE,
   MAX_LOOP_SENDS,
   parseLoopArgs,
   validateLoopPrompt,
 } from "../../extensions/loop/index.ts";
 import { readText } from "../helpers.mjs";
+
+const TEST_LOOP_NEXT_ITERATION_DELAY_MS = 20;
 
 test("loop argument parser treats commands and explicit prompt separator correctly", () => {
   assert.deepEqual(parseLoopArgs(""), { action: "start" });
@@ -18,6 +20,10 @@ test("loop argument parser treats commands and explicit prompt separator correct
   assert.deepEqual(parseLoopArgs("start do work"), { action: "start", prompt: "do work" });
   assert.deepEqual(parseLoopArgs("-- stop"), { action: "start", prompt: "stop" });
   assert.deepEqual(parseLoopArgs("/plan docs"), { action: "start", prompt: "/plan docs" });
+});
+
+test("loop timing constants keep production delay explicit", () => {
+  assert.equal(LOOP_NEXT_ITERATION_DELAY_MS, 5000);
 });
 
 test("loop validation blocks recursive /loop prompts but allows other slash prompts", () => {
@@ -96,6 +102,7 @@ test("/loop waits for idle after agent_end instead of queuing a follow-up", asyn
 
   harness.setIdle(true);
   await waitForIdleRetry();
+  await waitForNextIterationDelay();
   assert.equal(harness.sent.length, 2);
   assert.deepEqual(harness.sent[1], { message: "repeat me", options: undefined });
   assert.deepEqual(
@@ -105,11 +112,34 @@ test("/loop waits for idle after agent_end instead of queuing a follow-up", asyn
   assert.deepEqual(harness.sendIdleStates, [true, true]);
 });
 
+test("/loop starts each repeat in a new session after a delay", async () => {
+  const harness = installLoop({ idle: true });
+
+  await harness.command.handler("new session repeat", harness.ctx);
+  assert.equal(harness.sent.length, 1);
+  assert.equal(harness.newSessions.length, 0);
+
+  await harness.emitAgentEndAndBecomeIdle();
+  assert.equal(harness.sent.length, 1, "next iteration must not start before the configured delay");
+  assert.equal(harness.newSessions.length, 0);
+
+  await waitForNextIterationDelay();
+  assert.equal(harness.newSessions.length, 1);
+  assert.equal(harness.newSessions[0].parentSession, "session-0.jsonl");
+  assert.deepEqual(harness.sessionShutdowns, [{ reason: "new", targetSessionFile: "session-1.jsonl" }]);
+  assert.deepEqual(
+    harness.sent.map((item) => item.message),
+    ["new session repeat", "new session repeat"],
+  );
+  assert.equal(harness.sendSessionFiles[1], "session-1.jsonl");
+});
+
 test("/loop replaces an active loop and resets the counter", async () => {
   const harness = installLoop({ idle: true });
 
   await harness.command.handler("first", harness.ctx);
   await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
   assert.deepEqual(
     harness.sent.map((item) => item.message),
     ["first", "first"],
@@ -121,6 +151,7 @@ test("/loop replaces an active loop and resets the counter", async () => {
   assert.match(harness.notifications.at(-1).message, /Loop replaced/);
 
   await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
   assert.deepEqual(
     harness.sent.map((item) => item.message),
     ["first", "first", "second", "second"],
@@ -133,11 +164,13 @@ test("/loop enforces the emergency cap and stops", async () => {
   await harness.command.handler("bounded", harness.ctx);
   for (let index = 1; index < MAX_LOOP_SENDS; index++) {
     await harness.emitAgentEndAndBecomeIdle();
+    await waitForNextIterationDelay();
   }
   assert.equal(harness.sent.length, MAX_LOOP_SENDS);
   assert.deepEqual(harness.statuses.at(-1), { name: "loop", value: `loop: ${MAX_LOOP_SENDS}/${MAX_LOOP_SENDS}` });
 
   await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
   assert.equal(harness.sent.length, MAX_LOOP_SENDS);
   assert.match(harness.notifications.at(-1).message, /emergency cap/);
   assert.deepEqual(harness.statuses.at(-1), { name: "loop", value: undefined });
@@ -155,13 +188,26 @@ test("/loop blocks recursive prompt text and handles bare non-UI usage", async (
   assert.equal(nonUi.notifications.at(-1).message, LOOP_USAGE);
 });
 
+test("/loop resets on manual new-session shutdown after a loop-created session starts", async () => {
+  const harness = installLoop({ idle: true, blockReplacementSend: true });
+
+  await harness.command.handler("manual shutdown", harness.ctx);
+  await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
+  assert.equal(harness.newSessions.length, 1);
+  assert.equal(harness.sent.length, 1, "replacement send is intentionally still pending");
+
+  await harness.emit("session_shutdown", { reason: "new", targetSessionFile: "manual-session.jsonl" });
+  assert.deepEqual(harness.statuses.at(-1), { name: "loop", value: undefined });
+});
+
 test("/loop clears scheduled in-memory sends on stop and session shutdown", async () => {
   const stopped = installLoop({ idle: true });
   await stopped.command.handler("temporary", stopped.ctx);
   await stopped.emit("agent_end");
   await stopped.command.handler("stop", stopped.ctx);
   stopped.setIdle(true);
-  await waitForScheduledSend();
+  await waitForNextIterationDelay();
   assert.equal(stopped.sent.length, 1);
   assert.deepEqual(stopped.statuses.at(-1), { name: "loop", value: undefined });
 
@@ -170,7 +216,7 @@ test("/loop clears scheduled in-memory sends on stop and session shutdown", asyn
   await shutdown.emit("agent_end");
   await shutdown.emit("session_shutdown");
   shutdown.setIdle(true);
-  await waitForScheduledSend();
+  await waitForNextIterationDelay();
   assert.equal(shutdown.sent.length, 1);
   assert.deepEqual(shutdown.statuses.at(-1), { name: "loop", value: undefined });
 });
@@ -182,12 +228,28 @@ test("loop extension is documented and discoverable", () => {
   const readme = readText("README.md");
   const mkdocs = readText("mkdocs.yml");
 
-  for (const phrase of ['pi.registerCommand("loop"', "MAX_LOOP_SENDS", "agent_end", "session_shutdown", "sendUserMessage"]) {
+  for (const phrase of [
+    'pi.registerCommand("loop"',
+    "MAX_LOOP_SENDS",
+    "LOOP_NEXT_ITERATION_DELAY_MS",
+    "agent_end",
+    "session_shutdown",
+    "sendUserMessage",
+    "newSession",
+  ]) {
     assert.ok(source.includes(phrase), `source missing ${phrase}`);
   }
   assert.equal(source.includes('deliverAs: "followUp"'), false, "loop must not queue follow-up/steering prompts");
 
-  for (const phrase of ["/loop <prompt>", "/loop stop", "emergency cap", "in-memory", "Slash-looking prompts"]) {
+  for (const phrase of [
+    "/loop <prompt>",
+    "/loop stop",
+    "new session",
+    "5 seconds",
+    "emergency cap",
+    "in-memory",
+    "Slash-looking prompts",
+  ]) {
     assert.ok(docs.includes(phrase), `docs missing ${phrase}`);
   }
 
@@ -197,33 +259,47 @@ test("loop extension is documented and discoverable", () => {
   assert.ok(mkdocs.includes("extensions/loop.md"));
 });
 
-function installLoop({ idle = true, editorText = "editor prompt", hasUI = true } = {}) {
+function installLoop({ idle = true, editorText = "editor prompt", hasUI = true, blockReplacementSend = false } = {}) {
   const commands = new Map();
   const handlers = new Map();
   const sent = [];
   const sendIdleStates = [];
+  const sendSessionFiles = [];
   const statuses = [];
   const notifications = [];
   const editorPrompts = [];
+  const newSessions = [];
+  const sessionShutdowns = [];
   let currentIdle = idle;
+  let sessionIndex = 0;
+  let sessionFile = "session-0.jsonl";
 
-  const pi = {
-    registerCommand(name, command) {
-      commands.set(name, command);
-    },
-    on(name, handler) {
-      if (!handlers.has(name)) handlers.set(name, []);
-      handlers.get(name).push(handler);
-    },
-    sendUserMessage(message, options) {
-      sent.push({ message, options });
-      sendIdleStates.push(currentIdle);
-    },
+  const sendUserMessage = async (message, options) => {
+    if (blockReplacementSend && sessionFile !== "session-0.jsonl") return new Promise(() => {});
+    sent.push({ message, options });
+    sendIdleStates.push(currentIdle);
+    sendSessionFiles.push(sessionFile);
   };
 
-  const ctx = {
+  const makeCtx = () => ({
     hasUI,
     isIdle: () => currentIdle,
+    sessionManager: {
+      getSessionFile: () => sessionFile,
+    },
+    async newSession(options = {}) {
+      const targetSessionFile = `session-${sessionIndex + 1}.jsonl`;
+      newSessions.push({ parentSession: options.parentSession, targetSessionFile });
+      await emitWithContext("session_shutdown", { reason: "new", targetSessionFile }, ctx);
+      sessionShutdowns.push({ reason: "new", targetSessionFile });
+      sessionIndex += 1;
+      sessionFile = targetSessionFile;
+      const replacementCtx = makeCtx();
+      await emitWithContext("session_start", { reason: "new", previousSessionFile: options.parentSession }, replacementCtx);
+      await options.withSession?.(replacementCtx);
+      return { cancelled: false };
+    },
+    sendUserMessage,
     ui: {
       editor: async (prompt) => {
         editorPrompts.push(prompt);
@@ -236,25 +312,47 @@ function installLoop({ idle = true, editorText = "editor prompt", hasUI = true }
         statuses.push({ name, value });
       },
     },
+  });
+
+  const pi = {
+    registerCommand(name, command) {
+      commands.set(name, command);
+    },
+    on(name, handler) {
+      if (!handlers.has(name)) handlers.set(name, []);
+      handlers.get(name).push(handler);
+    },
+    sendUserMessage(message, options) {
+      void sendUserMessage(message, options);
+    },
   };
 
-  loopExtension(pi);
+  const ctx = makeCtx();
+
+  loopExtension(pi, { idleRetryMs: 1, nextIterationDelayMs: TEST_LOOP_NEXT_ITERATION_DELAY_MS });
   const command = commands.get("loop");
   assert.ok(command, "loop command registered");
+
+  async function emitWithContext(name, event = {}, eventCtx = ctx) {
+    for (const handler of handlers.get(name) || []) await handler(event, eventCtx);
+  }
 
   return {
     command,
     ctx,
     sent,
     sendIdleStates,
+    sendSessionFiles,
     statuses,
     notifications,
     editorPrompts,
+    newSessions,
+    sessionShutdowns,
     setIdle(value) {
       currentIdle = value;
     },
     async emit(name, event = {}) {
-      for (const handler of handlers.get(name) || []) await handler(event, ctx);
+      await emitWithContext(name, event, ctx);
     },
     async emitAgentEndAndBecomeIdle() {
       currentIdle = false;
@@ -270,5 +368,9 @@ function waitForScheduledSend() {
 }
 
 function waitForIdleRetry() {
-  return new Promise((resolve) => setTimeout(resolve, LOOP_IDLE_RETRY_MS + 5));
+  return new Promise((resolve) => setTimeout(resolve, 5));
+}
+
+function waitForNextIterationDelay() {
+  return new Promise((resolve) => setTimeout(resolve, TEST_LOOP_NEXT_ITERATION_DELAY_MS + 5));
 }

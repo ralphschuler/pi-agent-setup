@@ -7,9 +7,10 @@ The MCP extension adds a trust-gated Model Context Protocol client bridge for Pi
 ```text
 /mcp
 /mcp status <server>
+/mcp auth-clear <server>
 ```
 
-`/mcp` lists configured servers, config paths, transport, source, and trust status. It does not connect to servers or call tools.
+`/mcp` lists configured servers, config paths, transport, source, trust status, and OAuth status. It does not connect to servers or call tools. `/mcp auth-clear <server>` removes saved OAuth client/token state for that server.
 
 ## Agent tool
 
@@ -64,6 +65,25 @@ Project server names override user server names. Project servers always require 
 }
 ```
 
+### Flora OAuth example
+
+Flora documents its MCP endpoint at `https://docs.flora.ai/more/mcp` and uses OAuth discovery/sign-in at `https://mcp.flora.ai/mcp`.
+
+```json
+{
+  "mcpServers": {
+    "flora": {
+      "transport": "http",
+      "url": "https://mcp.flora.ai/mcp",
+      "auth": "oauth",
+      "trusted": true
+    }
+  }
+}
+```
+
+When a Flora tool/resource action first needs authorization, Pi starts a localhost-only callback server, shows the authorization URL in the TUI, waits for the browser callback, stores the OAuth token/client state under `~/.pi/mcp-oauth.json`, then retries the MCP connection.
+
 ### SSE example
 
 ```json
@@ -102,6 +122,9 @@ User config can mark a server trusted:
 - Tool output is redacted for common secret key names and truncated.
 - Requests use bounded timeouts and abort signals.
 - Stdio server stderr is piped instead of inherited.
+- OAuth callback servers bind to `127.0.0.1` on a random available port and close after authorization, abort, timeout, or failure.
+- OAuth client registrations, verifier state, discovery state, and tokens are stored in `~/.pi/mcp-oauth.json` with mode `0600`, keyed by server source/name/URL so a different project cannot reuse another server's token by choosing the same name.
+- Use `/mcp auth-clear <server>` to remove persisted OAuth state for a server.
 
 ## Validation
 

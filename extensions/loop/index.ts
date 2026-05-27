@@ -1,7 +1,8 @@
-import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
+import type { ExtensionAPI, ExtensionCommandContext, ExtensionContext } from "@mariozechner/pi-coding-agent";
 
 export const MAX_LOOP_SENDS = 50;
 export const LOOP_IDLE_RETRY_MS = 25;
+export const LOOP_NEXT_ITERATION_DELAY_MS = 5_000;
 export const LOOP_USAGE = "Usage: /loop [prompt] | /loop start [prompt] | /loop stop | /loop status | /loop help";
 
 export type LoopParsedArgs = { action: "start"; prompt?: string } | { action: "stop" } | { action: "status" } | { action: "help" };
@@ -11,6 +12,11 @@ type LoopState = {
   prompt: string;
   sent: number;
   pendingSend: boolean;
+};
+
+export type LoopExtensionOptions = {
+  idleRetryMs?: number;
+  nextIterationDelayMs?: number;
 };
 
 type LoopCtx = Partial<ExtensionContext> & {
@@ -23,9 +29,26 @@ type LoopCtx = Partial<ExtensionContext> & {
   };
 };
 
-export default function loopExtension(pi: ExtensionAPI) {
+type LoopReplacementCtx = LoopCtx & {
+  sendUserMessage?: (content: string, options?: { deliverAs?: "steer" | "followUp" }) => Promise<void>;
+};
+
+type LoopControlCtx = LoopCtx &
+  Partial<Omit<ExtensionCommandContext, "newSession">> & {
+    newSession?: (options?: {
+      parentSession?: string;
+      withSession?: (ctx: LoopReplacementCtx & LoopControlCtx) => Promise<void>;
+    }) => Promise<{ cancelled: boolean }>;
+    sendUserMessage?: (content: string, options?: { deliverAs?: "steer" | "followUp" }) => Promise<void>;
+  };
+
+export default function loopExtension(pi: ExtensionAPI, options: LoopExtensionOptions = {}) {
+  const idleRetryMs = options.idleRetryMs ?? LOOP_IDLE_RETRY_MS;
+  const nextIterationDelayMs = options.nextIterationDelayMs ?? LOOP_NEXT_ITERATION_DELAY_MS;
   let state = createInactiveState();
+  let controlCtx: LoopControlCtx | undefined;
   let scheduledSend: ReturnType<typeof setTimeout> | undefined;
+  let ignoreNextLoopSessionShutdown = false;
 
   function notify(ctx: LoopCtx | undefined, message: string, level: "info" | "warning" | "error" = "info") {
     ctx?.ui?.notify?.(message, level);
@@ -47,16 +70,16 @@ export default function loopExtension(pi: ExtensionAPI) {
     updateStatus(ctx);
   }
 
-  function stopLoop(ctx: LoopCtx | undefined, message?: string) {
+  function stopLoop(ctx: LoopCtx | undefined, message?: string, level: "info" | "warning" | "error" = "info") {
     reset(ctx);
-    if (message) notify(ctx, message, "info");
+    if (message) notify(ctx, message, level);
   }
 
   function sendNextWhenIdle(ctx: LoopCtx | undefined) {
     if (!state.active || scheduledSend) return;
     state.pendingSend = true;
     updateStatus(ctx);
-    scheduleSendWhenIdle(ctx, 0);
+    scheduleSendWhenIdle(ctx, state.sent > 0 ? nextIterationDelayMs : 0);
   }
 
   function scheduleSendWhenIdle(ctx: LoopCtx | undefined, delayMs: number) {
@@ -64,25 +87,65 @@ export default function loopExtension(pi: ExtensionAPI) {
       scheduledSend = undefined;
       if (!state.active) return;
       if (ctx?.isIdle?.() === false) {
-        scheduleSendWhenIdle(ctx, LOOP_IDLE_RETRY_MS);
+        scheduleSendWhenIdle(ctx, idleRetryMs);
         return;
       }
-      sendNext(ctx);
+      void sendNext(ctx).catch((error: unknown) => {
+        stopLoop(ctx, `Loop stopped after failing to start the next iteration: ${errorMessage(error)}`, "error");
+      });
     }, delayMs);
   }
 
-  function sendNext(ctx: LoopCtx | undefined) {
+  async function sendNext(ctx: LoopCtx | undefined) {
     if (!state.active) return false;
     if (state.sent >= MAX_LOOP_SENDS) {
       stopLoop(ctx, `Loop stopped after reaching the emergency cap of ${MAX_LOOP_SENDS} prompts.`);
       return false;
     }
 
+    if (state.sent === 0) return sendInCurrentSession(ctx);
+    return sendInNewSession(ctx);
+  }
+
+  function sendInCurrentSession(ctx: LoopCtx | undefined) {
     state.pendingSend = false;
     state.sent += 1;
     updateStatus(ctx);
     pi.sendUserMessage(state.prompt);
     return true;
+  }
+
+  async function sendInNewSession(ctx: LoopCtx | undefined) {
+    const nextCtx = controlCtx;
+    if (typeof nextCtx?.newSession !== "function") {
+      stopLoop(ctx, "Loop stopped because a new session cannot be started from this context.", "error");
+      return false;
+    }
+
+    const prompt = state.prompt;
+    const nextSent = state.sent + 1;
+    const parentSession = nextCtx.sessionManager?.getSessionFile?.();
+    ignoreNextLoopSessionShutdown = true;
+    try {
+      const result = await nextCtx.newSession({
+        parentSession,
+        withSession: async (replacementCtx) => {
+          controlCtx = replacementCtx;
+          if (!state.active) return;
+          state.pendingSend = false;
+          state.sent = nextSent;
+          updateStatus(replacementCtx);
+          await replacementCtx.sendUserMessage(prompt);
+        },
+      });
+      if (result.cancelled) {
+        stopLoop(ctx, "Loop stopped because new session creation was cancelled.", "warning");
+        return false;
+      }
+      return true;
+    } finally {
+      ignoreNextLoopSessionShutdown = false;
+    }
   }
 
   async function resolvePrompt(parsed: { prompt?: string }, ctx: LoopCtx) {
@@ -98,7 +161,7 @@ export default function loopExtension(pi: ExtensionAPI) {
     return edited?.trim() || "";
   }
 
-  async function startLoop(parsed: { prompt?: string }, ctx: LoopCtx) {
+  async function startLoop(parsed: { prompt?: string }, ctx: LoopControlCtx) {
     const prompt = await resolvePrompt(parsed, ctx);
     if (prompt === undefined) return;
     const validationError = validateLoopPrompt(prompt);
@@ -109,6 +172,7 @@ export default function loopExtension(pi: ExtensionAPI) {
 
     const replacing = state.active;
     clearScheduledSend();
+    controlCtx = ctx;
     state = {
       active: true,
       prompt,
@@ -166,7 +230,11 @@ export default function loopExtension(pi: ExtensionAPI) {
     sendNextWhenIdle(ctx);
   });
 
-  pi.on("session_shutdown", async (_event, ctx) => {
+  pi.on("session_shutdown", async (event, ctx) => {
+    if (ignoreNextLoopSessionShutdown && event.reason === "new") {
+      ignoreNextLoopSessionShutdown = false;
+      return;
+    }
     reset(ctx);
   });
 }
@@ -211,4 +279,8 @@ function formatLoopStatus(state: LoopState) {
 
 function previewPrompt(prompt: string) {
   return prompt.length <= 120 ? prompt : `${prompt.slice(0, 117)}...`;
+}
+
+function errorMessage(error: unknown) {
+  return error instanceof Error ? error.message : String(error);
 }

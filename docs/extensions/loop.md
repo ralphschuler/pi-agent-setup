@@ -25,7 +25,8 @@ Starting `/loop <prompt>` while a loop is active replaces the current loop and r
 - Each later repeat is scheduled after `agent_end`, waits 5 seconds, starts a new session linked to the previous session as parent, then sends only after the runtime is idle/awaiting user input.
 - Repeats are sent as fresh user prompts in the new session, not as steering or follow-up queue messages.
 - There is no overlapping send loop.
-- Loop state is in-memory only and is cleared on reload, manual session switch, or shutdown. Loop-created new sessions keep the loop active.
+- Loop state is in-memory only and is cleared on ordinary `/reload`, manual session switch, or shutdown.
+- Loop-created new sessions keep the process-local loop active across pi's replacement-session extension reload.
 - The loop runs until `/loop stop`, but an emergency cap stops it after 50 sent prompts.
 
 ## Safety notes

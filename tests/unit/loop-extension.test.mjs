@@ -134,6 +134,53 @@ test("/loop starts each repeat in a new session after a delay", async () => {
   assert.equal(harness.sendSessionFiles[1], "session-1.jsonl");
 });
 
+test("/loop keeps running after loop-created new sessions reload extensions", async () => {
+  const harness = installLoop({ idle: true, reloadExtensionOnNewSession: true });
+
+  await harness.command.handler("survive extension reload", harness.ctx);
+  assert.equal(harness.sent.length, 1);
+
+  await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
+  assert.equal(harness.sent.length, 2);
+  assert.equal(harness.newSessions.length, 1);
+
+  await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
+  assert.equal(harness.sent.length, 3, "fresh extension instance must inherit the active loop");
+  assert.equal(harness.newSessions.length, 2);
+  assert.deepEqual(
+    harness.sent.map((item) => item.message),
+    ["survive extension reload", "survive extension reload", "survive extension reload"],
+  );
+  assert.deepEqual(harness.sendSessionFiles, ["session-0.jsonl", "session-1.jsonl", "session-2.jsonl"]);
+
+  await harness.command.handler("status", harness.ctx);
+  assert.match(harness.notifications.at(-1).message, /Loop active/);
+  await harness.command.handler("stop", harness.ctx);
+  assert.deepEqual(harness.statuses.at(-1), { name: "loop", value: undefined });
+});
+
+test("duplicate /loop extension instances do not double-send repeats", async () => {
+  const harness = installLoop({ idle: true, duplicateExtensionInstances: true, useDefaultStateKey: true });
+
+  await harness.command.handler("single repeat", harness.ctx);
+  assert.deepEqual(
+    harness.sent.map((item) => item.message),
+    ["single repeat"],
+  );
+
+  await harness.emitAgentEndAndBecomeIdle();
+  await waitForNextIterationDelay();
+  assert.deepEqual(
+    harness.sent.map((item) => item.message),
+    ["single repeat", "single repeat"],
+  );
+  assert.equal(harness.newSessions.length, 1);
+
+  await harness.command.handler("stop", harness.ctx);
+});
+
 test("/loop replaces an active loop and resets the counter", async () => {
   const harness = installLoop({ idle: true });
 
@@ -259,9 +306,18 @@ test("loop extension is documented and discoverable", () => {
   assert.ok(mkdocs.includes("extensions/loop.md"));
 });
 
-function installLoop({ idle = true, editorText = "editor prompt", hasUI = true, blockReplacementSend = false } = {}) {
-  const commands = new Map();
-  const handlers = new Map();
+function installLoop({
+  idle = true,
+  editorText = "editor prompt",
+  hasUI = true,
+  blockReplacementSend = false,
+  reloadExtensionOnNewSession = false,
+  duplicateExtensionInstances = false,
+  useDefaultStateKey = false,
+} = {}) {
+  let commands = new Map();
+  let handlers = new Map();
+  const stateKey = useDefaultStateKey ? undefined : Symbol("loop-test");
   const sent = [];
   const sendIdleStates = [];
   const sendSessionFiles = [];
@@ -273,6 +329,8 @@ function installLoop({ idle = true, editorText = "editor prompt", hasUI = true, 
   let currentIdle = idle;
   let sessionIndex = 0;
   let sessionFile = "session-0.jsonl";
+  let command;
+  let ctx;
 
   const sendUserMessage = async (message, options) => {
     if (blockReplacementSend && sessionFile !== "session-0.jsonl") return new Promise(() => {});
@@ -295,6 +353,10 @@ function installLoop({ idle = true, editorText = "editor prompt", hasUI = true, 
       sessionIndex += 1;
       sessionFile = targetSessionFile;
       const replacementCtx = makeCtx();
+      ctx = replacementCtx;
+      if (reloadExtensionOnNewSession) {
+        command = registerLoopInstance();
+      }
       await emitWithContext("session_start", { reason: "new", previousSessionFile: options.parentSession }, replacementCtx);
       await options.withSession?.(replacementCtx);
       return { cancelled: false };
@@ -314,32 +376,47 @@ function installLoop({ idle = true, editorText = "editor prompt", hasUI = true, 
     },
   });
 
-  const pi = {
-    registerCommand(name, command) {
-      commands.set(name, command);
-    },
-    on(name, handler) {
-      if (!handlers.has(name)) handlers.set(name, []);
-      handlers.get(name).push(handler);
-    },
-    sendUserMessage(message, options) {
-      void sendUserMessage(message, options);
-    },
-  };
+  function registerLoopInstance({ reset = true } = {}) {
+    if (reset) {
+      commands = new Map();
+      handlers = new Map();
+    }
+    const pi = {
+      registerCommand(name, registeredCommand) {
+        commands.set(name, registeredCommand);
+      },
+      on(name, handler) {
+        if (!handlers.has(name)) handlers.set(name, []);
+        handlers.get(name).push(handler);
+      },
+      sendUserMessage(message, options) {
+        void sendUserMessage(message, options);
+      },
+    };
 
-  const ctx = makeCtx();
+    loopExtension(pi, { idleRetryMs: 1, nextIterationDelayMs: TEST_LOOP_NEXT_ITERATION_DELAY_MS, stateKey });
+    const registeredCommand = commands.get("loop");
+    assert.ok(registeredCommand, "loop command registered");
+    return registeredCommand;
+  }
 
-  loopExtension(pi, { idleRetryMs: 1, nextIterationDelayMs: TEST_LOOP_NEXT_ITERATION_DELAY_MS });
-  const command = commands.get("loop");
-  assert.ok(command, "loop command registered");
+  ctx = makeCtx();
+  command = registerLoopInstance();
+  if (duplicateExtensionInstances) {
+    command = registerLoopInstance({ reset: false });
+  }
 
   async function emitWithContext(name, event = {}, eventCtx = ctx) {
     for (const handler of handlers.get(name) || []) await handler(event, eventCtx);
   }
 
   return {
-    command,
-    ctx,
+    get command() {
+      return command;
+    },
+    get ctx() {
+      return ctx;
+    },
     sent,
     sendIdleStates,
     sendSessionFiles,

@@ -69,26 +69,14 @@ export function statusLine(state) {
 }
 
 const LEVEL_INSTRUCTIONS = {
-  lite: [
-    "Remove filler, hedging, pleasantries, and corporate wording.",
-    "Keep normal grammar and articles when they aid clarity.",
-    "Prefer compact professional sentences over caveman fragments.",
-  ],
-  full: [
-    "Drop articles and helper words when meaning stays clear.",
-    "Use fragments, short synonyms, and direct cause/effect wording.",
-    "Pattern: `[thing] [action] [reason]. [next step].`",
-  ],
-  ultra: [
-    "Use telegraphic style: arrows, abbreviations, fragments, one-line answers when enough.",
-    "Abbreviate prose words like DB/auth/config/req/res/fn/impl when obvious.",
-    "Never abbreviate code symbols, API names, function names, file paths, or exact errors.",
-  ],
+  lite: "Trim filler; keep normal grammar when useful.",
+  full: "Use fragments + short cause/effect. Drop articles when clear.",
+  ultra: "Telegraphic: arrows, abbrev prose, fragments, one-line answers when enough.",
 };
 
 const LEVEL_EXAMPLES = {
-  lite: '"Your component re-renders because each render creates a new object reference. Wrap it in `useMemo`."',
-  full: '"New object ref each render. Inline object prop = new ref = re-render. Wrap in `useMemo`."',
+  lite: '"Component re-renders because each render creates a new object ref. Use `useMemo`."',
+  full: '"New object ref each render → re-render. Use `useMemo`."',
   ultra: '"Inline obj prop → new ref → re-render. `useMemo`."',
 };
 
@@ -97,31 +85,16 @@ export function buildCavemanPrompt(level) {
   const instructions = LEVEL_INSTRUCTIONS[normalizedLevel];
   const example = LEVEL_EXAMPLES[normalizedLevel];
 
-  return `
-
-<caveman-mode active level="${normalizedLevel}">
-Caveman mode ON. Goal: fewer output tokens, same technical accuracy. Custom pi implementation, guided by caveman-style compression principles.
-
-Persistence:
-- ACTIVE EVERY RESPONSE until user uses /caveman off.
-- Natural language requests like "stop caveman" or "normal mode" affect only the current answer; use /caveman off to disable future turns.
-- Do not drift verbose after long conversations.
-- If user requests brief/terse/less tokens, stay in current caveman level.
-
-Core rules:
-- Preserve technical accuracy. Do not dumb down code, commands, file paths, diffs, commit messages, API names, or quoted user text.
-- Drop filler: sure, certainly, happy to, just, really, basically, actually, simply, I think, likely when evidence is clear.
-- Prefer fewer words. Short. Direct. No corporate speak.
-- Use exact commands, code blocks, errors, and logs unchanged.
-- User still boss. Be helpful, precise, and safe.
-- Use English only. Never switch to any other language.
-- If safety warning, irreversible action confirmation, legal/security detail, or complex step order could be misunderstood, use normal clear English for that part, then resume caveman style.
-- If user asks to clarify, repeats question, asks for "normal mode", or asks for normal/professional wording, answer normally for that response.
-
-Intensity ${normalizedLevel}:
-- ${instructions.join("\n- ")}
-
-Example style:
-${example}
+  return `<caveman-mode active level="${normalizedLevel}">
+Caveman ON: fewer output tokens, same accuracy. ACTIVE EVERY RESPONSE; use /caveman off to disable future turns.
+Core:
+- Preserve technical accuracy. Do not dumb down code, commands, diffs, commit msgs, APIs, quotes.
+- Use English only. Keep exact code/paths/errors/logs unchanged.
+- Do not drift verbose. Drop filler/hedging/pleasantries. Short. Direct.
+- Keep required templates/checklists, commands, and safety details; compress prose around them.
+- For safety warning, irreversible action confirmation, legal/security detail, or complex ordering, use clear normal English.
+- If user asks "normal mode" or pro wording, answer normally for that response.
+Intensity ${normalizedLevel}: ${instructions}
+Example: ${example}
 </caveman-mode>`;
 }

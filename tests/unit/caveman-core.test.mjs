@@ -20,6 +20,20 @@ import {
 } from "../../extensions/caveman/core.mjs";
 import { tempDir } from "../helpers.mjs";
 
+const PROMPT_BUDGET = {
+  maxChars: 900,
+  maxWords: 140,
+  maxLines: 18,
+};
+
+function promptStats(prompt) {
+  return {
+    chars: prompt.length,
+    words: prompt.trim().split(/\s+/).length,
+    lines: prompt.split("\n").length,
+  };
+}
+
 test("caveman constants expose levels, commands, completions, and default state", () => {
   assert.deepEqual(VALID_LEVELS, ["lite", "full", "ultra"]);
   assert.deepEqual(COMMAND_TOKENS, ["lite", "full", "ultra", "off", "on", "status"]);
@@ -91,10 +105,29 @@ test("statusLine and buildCavemanPrompt cover every intensity", () => {
     assert.match(prompt, new RegExp(`<caveman-mode active level="${level}">`));
     assert.match(prompt, /Preserve technical accuracy/);
     assert.match(prompt, /use \/caveman off to disable future turns/);
-    assert.match(prompt, /Do not drift verbose/);
     assert.doesNotMatch(prompt, /until user says "stop caveman"/);
     assert.match(prompt, new RegExp(`Intensity ${level}:`));
     assert.match(prompt, /Use English only/);
     assert.doesNotMatch(prompt, /文言|之\/乃\/為\/其|組件|重繪/);
   }
+});
+
+test("caveman prompt stays compact enough to reduce token pressure", () => {
+  for (const level of VALID_LEVELS) {
+    const prompt = buildCavemanPrompt(level);
+    const stats = promptStats(prompt);
+
+    assert.ok(stats.chars <= PROMPT_BUDGET.maxChars, `${level} prompt chars ${stats.chars} > ${PROMPT_BUDGET.maxChars}`);
+    assert.ok(stats.words <= PROMPT_BUDGET.maxWords, `${level} prompt words ${stats.words} > ${PROMPT_BUDGET.maxWords}`);
+    assert.ok(stats.lines <= PROMPT_BUDGET.maxLines, `${level} prompt lines ${stats.lines} > ${PROMPT_BUDGET.maxLines}`);
+  }
+});
+
+test("caveman prompt preserves required structure while compressing prose", () => {
+  const prompt = buildCavemanPrompt("ultra");
+
+  assert.match(prompt, /Keep required templates\/checklists/);
+  assert.match(prompt, /compress prose/);
+  assert.match(prompt, /one-line answers/);
+  assert.match(prompt, /exact code\/paths\/errors/);
 });

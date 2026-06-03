@@ -18,6 +18,46 @@ test("plan review labels the PRD action from current file state", async () => {
   assert.match(existingPrd.sent.at(-1)?.message, /Create or update PRD\.md only/);
 });
 
+test("plan review defers selected follow-up until agent_end leaves the busy runtime", async () => {
+  const harness = createPlanHarness({ throwWhenBusy: true });
+  let idle = true;
+  const ctx = {
+    cwd: tempDir("pi-plan-busy-agent-end"),
+    hasUI: true,
+    isIdle: () => idle,
+    ui: {
+      editor: async () => "",
+      notify() {},
+      setStatus() {},
+      select: async (_prompt, choices) => choices[0],
+    },
+  };
+
+  await harness.commands.get("plan").handler("apply after review", ctx);
+  assert.equal(harness.sent.length, 1, "kickoff prompt sends while idle");
+
+  idle = false;
+  await harness.emit(
+    "agent_end",
+    {
+      messages: [
+        {
+          role: "assistant",
+          content: [{ type: "text", text: "READY FOR REVIEW\nCoverage: 100%\nPlan:\nPhase 1: apply after review" }],
+        },
+      ],
+    },
+    ctx,
+  );
+  assert.equal(harness.sent.length, 1, "selected follow-up must not send while agent_end is still streaming");
+
+  idle = true;
+  await new Promise((resolve) => setTimeout(resolve, 30));
+  assert.equal(harness.sent.length, 2);
+  assert.match(harness.sent[1].message, /Apply this approved plan now/);
+  assert.equal(harness.sent[1].options, undefined, "deferred send starts a fresh turn after idle");
+});
+
 test("plan workflow enforces deep drilldown planning before approval", () => {
   const source = readText("extensions/plan/index.ts");
 
@@ -89,10 +129,11 @@ async function prdReviewResult(cwd) {
   return { choices, sent: harness.sent };
 }
 
-function createPlanHarness() {
+function createPlanHarness({ throwWhenBusy = false } = {}) {
   const commands = new Map();
   const handlers = new Map();
   const sent = [];
+  let activeCtx;
   const pi = {
     events: { on() {} },
     registerCommand(name, command) {
@@ -103,6 +144,9 @@ function createPlanHarness() {
       handlers.get(name).push(handler);
     },
     sendUserMessage(message, options) {
+      if (throwWhenBusy && activeCtx?.isIdle?.() === false && !options?.deliverAs) {
+        throw new Error("Agent is already processing. Specify streamingBehavior ('steer' or 'followUp') to queue the message.");
+      }
       sent.push({ message, options });
     },
   };
@@ -113,7 +157,12 @@ function createPlanHarness() {
     commands,
     sent,
     async emit(name, event, ctx) {
-      for (const handler of handlers.get(name) || []) await handler(event, ctx);
+      activeCtx = ctx;
+      try {
+        for (const handler of handlers.get(name) || []) await handler(event, ctx);
+      } finally {
+        activeCtx = undefined;
+      }
     },
   };
 }

@@ -5,6 +5,7 @@ import fs from "node:fs";
 import path from "node:path";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
+const PLAN_IDLE_RETRY_MS = 25;
 const PLANNING_TOOLS = new Set([
   "read",
   "bash",
@@ -23,6 +24,24 @@ export default function planCommand(pi: ExtensionAPI) {
   let planningActive = false;
   let approvedPlan = "";
   let currentCtx: ExtensionContext | undefined;
+  let pendingIdleSend: ReturnType<typeof setTimeout> | undefined;
+
+  function clearPendingIdleSend() {
+    if (pendingIdleSend) clearTimeout(pendingIdleSend);
+    pendingIdleSend = undefined;
+  }
+
+  function sendUserMessageWhenIdle(prompt: string, ctx: ExtensionContext) {
+    if (ctx?.isIdle?.() === false) {
+      clearPendingIdleSend();
+      pendingIdleSend = setTimeout(() => {
+        pendingIdleSend = undefined;
+        sendUserMessageWhenIdle(prompt, ctx);
+      }, PLAN_IDLE_RETRY_MS);
+      return;
+    }
+    pi.sendUserMessage(prompt);
+  }
 
   function startPlanning(task: string, ctx?: ExtensionContext) {
     planningActive = true;
@@ -35,6 +54,10 @@ export default function planCommand(pi: ExtensionAPI) {
 
   pi.on("session_start", async (_event, ctx) => {
     currentCtx = ctx;
+  });
+
+  pi.on("session_shutdown", async () => {
+    clearPendingIdleSend();
   });
 
   pi.events.on("plan:start", (data) => {
@@ -103,8 +126,9 @@ export default function planCommand(pi: ExtensionAPI) {
     if (choice === "Apply the plan") {
       planningActive = false;
       ctx.ui.setStatus("plan", "applying");
-      pi.sendUserMessage(
+      sendUserMessageWhenIdle(
         `Apply this approved plan now. Follow it step by step, update todo/graph_memory when useful, and report progress.\n\n${approvedPlan}`,
+        ctx,
       );
       return;
     }
@@ -112,8 +136,9 @@ export default function planCommand(pi: ExtensionAPI) {
     if (choice === "Change the plan") {
       const refinement = await ctx.ui.editor("What should be changed?", "");
       if (refinement?.trim()) {
-        pi.sendUserMessage(
+        sendUserMessageWhenIdle(
           `Refine the current plan with this feedback, ask more clarifying questions if coverage is no longer complete, then present an updated plan with ${PLAN_REVIEW_MARKER}.\n\nFeedback:\n${refinement.trim()}`,
+          ctx,
         );
       }
       return;
@@ -122,8 +147,9 @@ export default function planCommand(pi: ExtensionAPI) {
     if (choice === prdChoice) {
       planningActive = false;
       ctx.ui.setStatus("plan", "writing PRD.md");
-      pi.sendUserMessage(
+      sendUserMessageWhenIdle(
         `Convert this approved plan into a clear product requirements document at PRD.md. Do not implement the plan. Create or update PRD.md only. Synthesize from the approved plan and already-known conversation/codebase context; do not re-interview the user unless a blocking contradiction makes the PRD unsafe. If needed, inspect CONTEXT.md, docs/adr/, repo docs, and current code first so the PRD uses project domain vocabulary and respects existing decisions. Actively identify major modules to build or modify, opportunities for deep modules with small stable testable interfaces, and which modules need behavior-focused tests.\n\nUse this PRD structure exactly:\n\n## Problem Statement\n\nState the user-facing problem from the user's perspective.\n\n## Solution\n\nState the user-facing solution.\n\n## User Stories\n\nProvide an extensive numbered list in the form: As an <actor>, I want a <feature>, so that <benefit>.\n\n## Implementation Decisions\n\nList durable decisions: modules to build/modify, interface changes, technical clarifications, architecture, schema/API contracts, and specific interactions. Avoid volatile file paths and code snippets unless a prototype snippet captures a decision more precisely than prose; if included, trim it to decision-rich parts and label it prototype-derived.\n\n## Testing Decisions\n\nDescribe behavior-focused testing standards, which modules/interfaces need tests, and prior-art tests or patterns in the codebase. Prefer external behavior over implementation details.\n\n## Feature Phases\n\nStructure the PRD into small feature phases. Each phase must be independently and quickly testable with concrete validation commands/checks, acceptance criteria, and rollback/stop points where practical.\n\n## Out of Scope\n\nList explicit non-goals.\n\n## Further Notes\n\nCapture open questions, risks, rollout notes, issue-tracker follow-up, and anything useful for future agents.\n\n${approvedPlan}`,
+        ctx,
       );
       return;
     }

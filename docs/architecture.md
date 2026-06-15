@@ -33,7 +33,7 @@ Extensions can register:
 Several extensions store durable agent state outside the repository:
 
 - Cronjobs: `~/.pi/agent/cronjobs.md`
-- Graph memory: `~/.pi/agent/graph-memory.md`
+- Graph memory: `~/.pi/agent/graph-memory.sqlite`
 - Todo list: `~/.pi/agent/todo.md`
 
 ## Documentation site

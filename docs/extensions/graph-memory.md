@@ -1,20 +1,21 @@
 # Graph memory
 
-`extensions/graph-memory/` gives the agent a durable private knowledge graph.
+`extensions/graph-memory/` gives the agent a primary durable private knowledge graph.
 
 ## Provides
 
 - Agent-facing `graph_memory` tool
 - Relevant-memory injection into the system prompt
-- Persistent markdown store at `~/.pi/agent/graph-memory.md`
-- Base64-encoded notes to prevent Markdown structure injection
+- Persistent SQLite store at `~/.pi/agent/graph-memory.sqlite`
+- One-time legacy Markdown import from `~/.pi/agent/graph-memory.md`
+- Base64-encoded notes for legacy Markdown import/export compatibility
 
 ## Use cases
 
 - Stable user preferences
-- Project decisions
 - Durable facts and relationships
 - Important resources and entities
+- Project decisions
 
 ## Agent guidance
 

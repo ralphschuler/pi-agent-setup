@@ -1,20 +1,23 @@
 // @ts-nocheck
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { textResult } from "./result.ts";
-import { runAgentRecord } from "./runner.ts";
-import type { ParallelTask, RunRecord } from "./types.ts";
+import { buildParentContextHandoff, runAgentRecord } from "./runner.ts";
+import type { ContextMode, ParallelTask, RunRecord } from "./types.ts";
 
 export async function runParallel(
   pi: ExtensionAPI,
+  ctx: any,
   cwd: string,
   tasks: ParallelTask[],
   concurrency?: number,
+  defaultContextMode?: ContextMode,
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
 ) {
   const expanded = expandTasks(tasks);
   if (expanded.length === 0) throw new Error("subagent parallel requires at least one task.");
   const limit = Math.max(1, Math.min(Number(concurrency) || 4, expanded.length));
+  const parentContext = buildParentContextHandoff(ctx);
   const records: RunRecord[] = new Array(expanded.length);
   let next = 0;
   let completed = 0;
@@ -25,7 +28,10 @@ export async function runParallel(
       const task = expanded[index];
       onUpdate?.({ content: [{ type: "text", text: `Running subagent ${index + 1}/${expanded.length}: ${task.agent}` }] });
       try {
-        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal, onUpdate);
+        records[index] = await runAgentRecord(pi, cwd, task.agent, task.task, task.output, task.cwd, index, signal, onUpdate, {
+          contextMode: task.contextMode || defaultContextMode,
+          parentContext,
+        });
       } catch (error) {
         records[index] = {
           agent: task.agent,

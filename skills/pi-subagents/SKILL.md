@@ -17,8 +17,11 @@ Use `human_in_loop` for every user-facing clarification or approval question. Do
 2. Pick an existing built-in or custom agent whose description matches the task.
 3. If no matching specialist exists, create a narrow custom specialist with `subagent action=create` before running it.
 4. Give each subagent a concrete, scoped task with expected output.
-5. For independent work, pass `tasks` plus optional `concurrency` to run agents in parallel.
-6. Use the result as input; verify important claims directly before finalizing.
+5. Prefer `contextMode: "fresh"`; use `contextMode: "recent"` only when the child needs a bounded redacted parent-context handoff.
+6. For custom agents, treat `defaultContext: fork` as a request for `recent` handoff, not a true session fork.
+7. Keep only the child agent's synthesized summary/result in parent context instead of copying raw conversation history.
+8. For independent work, pass `tasks` plus optional `concurrency` to run agents in parallel.
+9. Use the result as input; verify important claims directly before finalizing.
 
 ## Built-in agents
 

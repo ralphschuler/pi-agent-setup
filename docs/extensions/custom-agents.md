@@ -45,6 +45,15 @@ Install a user template:
 
 Each template defines role, scope, success criteria, escalation rules, and output contract.
 
+## Context defaults
+
+Custom-agent frontmatter may set `defaultContext`:
+
+- `fresh` — default isolated subagent run.
+- `fork` — requests `contextMode: "recent"`, which sends a bounded redacted parent-context handoff to the child prompt. This is not a true session fork.
+
+Parent agents should use the child agent's synthesized summary/result instead of copying raw conversation history into the parent context.
+
 ## Search paths
 
 The catalog uses standard custom-agent folders:

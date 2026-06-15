@@ -33,7 +33,13 @@ export const BUILTIN_AGENTS = [
 ];
 
 export async function allAgents(cwd: string): Promise<AgentDef[]> {
-  const builtins = BUILTIN_AGENTS.map((agent) => ({ ...agent, runtimeName: agent.name, body: agent.prompt, source: "built-in" as const }));
+  const builtins = BUILTIN_AGENTS.map((agent) => ({
+    ...agent,
+    runtimeName: agent.name,
+    body: agent.prompt,
+    source: "built-in" as const,
+    defaultContext: "fresh",
+  }));
   const custom = (await readCustomAgents(cwd)).map((agent) => ({
     name: agent.name,
     runtimeName: agent.runtimeName,
@@ -41,6 +47,7 @@ export async function allAgents(cwd: string): Promise<AgentDef[]> {
     body: agent.body,
     source: "custom" as const,
     scope: agent.scope,
+    defaultContext: agent.defaultContext,
   }));
   return [...builtins, ...custom].sort((a, b) => a.runtimeName.localeCompare(b.runtimeName));
 }

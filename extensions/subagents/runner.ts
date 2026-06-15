@@ -7,7 +7,79 @@ import { createSecretRedactor } from "../secret-redaction/index.ts";
 import { allAgents } from "./catalog.ts";
 import { execSubagentProcess } from "./executor.ts";
 import { writeOutput } from "./output-writer.ts";
-import type { RunRecord } from "./types.ts";
+import type { AgentDef, ContextMode, RunRecord, SubagentRunOptions } from "./types.ts";
+
+export const DEFAULT_PARENT_CONTEXT_LIMIT = 12_000;
+
+export function buildSubagentPrompt(agentBody: string, task: string, parentContext = "") {
+  const parts = [agentBody, "", "Parent task:", task, ""];
+  if (parentContext.trim()) {
+    parts.push("Parent context handoff (bounded, redacted; use only if relevant):", parentContext.trim(), "");
+  }
+  parts.push("Output concise findings, changed files if any, validation performed, and risks.");
+  return parts.join("\n");
+}
+
+export function contextModeForAgent(agent: Partial<AgentDef> = {}, requested?: ContextMode): ContextMode {
+  if (requested === "fresh" || requested === "recent") return requested;
+  return agent.defaultContext === "fork" ? "recent" : "fresh";
+}
+
+export function buildParentContextHandoff(ctx: any, maxChars = DEFAULT_PARENT_CONTEXT_LIMIT) {
+  try {
+    const sessionContext = ctx?.sessionManager?.buildSessionContext?.();
+    const messages = Array.isArray(sessionContext?.messages) ? sessionContext.messages : [];
+    const serialized = messages.map(serializeMessageForHandoff).filter(Boolean).join("\n\n");
+    const redacted = createSecretRedactor().redactText(serialized);
+    return limitContext(redacted, maxChars);
+  } catch {
+    return "";
+  }
+}
+
+function serializeMessageForHandoff(message: any) {
+  if (!message || typeof message !== "object") return "";
+  if (message.role === "user") return `[User]\n${contentToText(message.content)}`.trim();
+  if (message.role === "assistant") {
+    const text = contentToText(message.content);
+    const toolCalls = Array.isArray(message.content)
+      ? message.content
+          .filter((part) => part?.type === "toolCall")
+          .map((part) => part.name)
+          .filter(Boolean)
+      : [];
+    const suffix = toolCalls.length ? `\n[Assistant tool calls] ${toolCalls.join(", ")}` : "";
+    return `[Assistant]\n${text}${suffix}`.trim();
+  }
+  if (message.role === "toolResult") return `[Tool result: ${message.toolName || "tool"}]\n${contentToText(message.content)}`.trim();
+  if (message.role === "bashExecution") return `[Bash]\n$ ${message.command || ""}\n${message.output || ""}`.trim();
+  if (message.role === "custom") return `[Context: ${message.customType || "custom"}]\n${contentToText(message.content)}`.trim();
+  if (message.role === "branchSummary") return `[Branch summary]\n${message.summary || ""}`.trim();
+  if (message.role === "compactionSummary") return `[Compaction summary]\n${message.summary || ""}`.trim();
+  return "";
+}
+
+function contentToText(content: any) {
+  if (typeof content === "string") return content;
+  if (!Array.isArray(content)) return "";
+  return content
+    .map((part) => {
+      if (part?.type === "text") return part.text || "";
+      if (part?.type === "thinking") return "[thinking omitted]";
+      if (part?.type === "toolCall") return `[tool call: ${part.name || "tool"}]`;
+      if (part?.type === "image") return "[image omitted]";
+      return "";
+    })
+    .filter(Boolean)
+    .join("\n");
+}
+
+function limitContext(text: string, maxChars: number) {
+  const trimmed = text.trim();
+  const limit = Math.max(0, Math.floor(Number(maxChars) || 0));
+  if (!trimmed || !limit || trimmed.length <= limit) return trimmed;
+  return `[truncated to last ${limit} chars]\n…${trimmed.slice(-limit)}`;
+}
 
 export async function runAgentRecord(
   pi: ExtensionAPI,
@@ -19,6 +91,7 @@ export async function runAgentRecord(
   index = 0,
   signal?: AbortSignal,
   onUpdate?: (update: any) => void,
+  options: SubagentRunOptions = {},
 ): Promise<RunRecord> {
   if (!name) throw new Error("subagent run requires agent.");
   if (!task?.trim()) throw new Error("subagent run requires task.");
@@ -29,18 +102,16 @@ export async function runAgentRecord(
 
   const redactor = createSecretRedactor();
   const redactedTask = redactor.redactText(task);
-  const promptFile = path.join(os.tmpdir(), `pi-subagent-${Date.now()}-${process.pid}-${index}.md`);
-  const prompt = redactor.redactText(
-    [
-      agent.body,
-      "",
-      "Parent task:",
-      redactedTask,
-      "",
-      "Output concise findings, changed files if any, validation performed, and risks.",
-    ].join("\n"),
-  );
-  await fs.writeFile(promptFile, prompt, "utf8");
+  const promptDir = await fs.mkdtemp(path.join(os.tmpdir(), "pi-subagent-"));
+  await fs.chmod(promptDir, 0o700).catch(() => undefined);
+  const promptFile = path.join(promptDir, `prompt-${index}.md`);
+  const mode = contextModeForAgent(agent, options.contextMode);
+  const parentContext =
+    mode === "recent"
+      ? limitContext(redactor.redactText(options.parentContext || ""), options.parentContextLimit || DEFAULT_PARENT_CONTEXT_LIMIT)
+      : "";
+  const prompt = redactor.redactText(buildSubagentPrompt(agent.body, redactedTask, parentContext));
+  await fs.writeFile(promptFile, prompt, { encoding: "utf8", mode: 0o600, flag: "wx" });
 
   const runCwd = cwdOverride || cwd;
   try {
@@ -73,6 +144,9 @@ export async function runAgentRecord(
   } finally {
     await fs.unlink(promptFile).catch((error) => {
       if (error?.code !== "ENOENT") throw error;
+    });
+    await fs.rmdir(promptDir).catch((error) => {
+      if (error?.code !== "ENOENT" && error?.code !== "ENOTEMPTY") throw error;
     });
   }
 }

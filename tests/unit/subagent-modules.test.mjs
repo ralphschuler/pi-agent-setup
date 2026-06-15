@@ -4,8 +4,9 @@ import os from "node:os";
 import path from "node:path";
 import test from "node:test";
 
-import { runAgentRecord } from "../../extensions/subagents/runner.ts";
 import { writeOutput } from "../../extensions/subagents/output-writer.ts";
+import { buildParentContextHandoff, buildSubagentPrompt, contextModeForAgent, runAgentRecord } from "../../extensions/subagents/runner.ts";
+import { runParallel } from "../../extensions/subagents/scheduler.ts";
 import { readText } from "../helpers.mjs";
 
 test("subagent orchestration is split into focused internal modules", () => {
@@ -19,8 +20,9 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(entry, /renderCall: renderSubagentCall/);
   assert.match(entry, /renderResult: renderSubagentResult/);
-  assert.match(entry, /runParallel\(pi, ctx\.cwd/);
+  assert.match(entry, /runParallel\(pi, ctx, ctx\.cwd/);
   assert.match(entry, /runAgentRecord\(pi, ctx\.cwd/);
+  assert.match(entry, /contextMode/);
 
   assert.match(catalog, /export const BUILTIN_AGENTS/);
   assert.match(catalog, /export async function allAgents/);
@@ -36,6 +38,10 @@ test("subagent orchestration is split into focused internal modules", () => {
   assert.match(runner, /createSecretRedactor/);
   assert.match(runner, /redactor\.redactText\(task\)/);
   assert.match(runner, /execSubagentProcess\(\s*agent\.runtimeName/);
+  assert.match(runner, /buildParentContextHandoff/);
+  assert.match(runner, /fs\.mkdtemp/);
+  assert.match(runner, /mode: 0o600/);
+  assert.match(runner, /flag: "wx"/);
 
   assert.match(executor, /spawnFn\("bash", \["-lc", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
   assert.match(executor, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate, redactText\)/);
@@ -47,6 +53,134 @@ test("subagent orchestration is split into focused internal modules", () => {
 
   assert.match(renderer, /export function subagentDisplayContract/);
   assert.match(renderer, /renderToolDisplayContract\(subagentDisplayContract/);
+});
+
+test("subagent prompt adds bounded parent context handoff only when provided", () => {
+  const promptWithoutContext = buildSubagentPrompt("System", "Do work");
+  assert.match(promptWithoutContext, /Parent task:\nDo work/);
+  assert.doesNotMatch(promptWithoutContext, /Parent context handoff/);
+
+  const promptWithContext = buildSubagentPrompt("System", "Do work", "Important prior decision");
+  assert.match(promptWithContext, /Parent context handoff \(bounded, redacted; use only if relevant\):\nImportant prior decision/);
+});
+
+test("subagent parent context handoff serializes recent session context with a cap", () => {
+  const ctx = {
+    sessionManager: {
+      buildSessionContext: () => ({
+        messages: [
+          { role: "user", content: "old request" },
+          { role: "assistant", content: [{ type: "text", text: "old answer" }] },
+          { role: "toolResult", toolName: "read", content: [{ type: "text", text: "x".repeat(200) }] },
+          { role: "user", content: [{ type: "text", text: "new request" }] },
+        ],
+      }),
+    },
+  };
+
+  const handoff = buildParentContextHandoff(ctx, 120);
+
+  assert.ok(handoff.length <= 180, "handoff should stay bounded with truncation marker");
+  assert.match(handoff, /truncated to last 120 chars/);
+  assert.match(handoff, /new request/);
+});
+
+test("subagent context mode defaults to fresh unless custom agent requests fork", () => {
+  assert.equal(contextModeForAgent({ defaultContext: "fork" }), "recent");
+  assert.equal(contextModeForAgent({ defaultContext: "fresh" }), "fresh");
+  assert.equal(contextModeForAgent({}, "recent"), "recent");
+  assert.equal(contextModeForAgent({ defaultContext: "fork" }, "fresh"), "fresh");
+});
+
+test("subagent runner passes bounded parent context to child prompt without echoing it in result metadata", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-context-"));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-bin-"));
+  const capturePath = path.join(cwd, "captured-prompt.md");
+  const pi = path.join(binDir, "pi");
+  fs.writeFileSync(pi, "#!/usr/bin/env bash\ncat > \"$PI_SUBAGENT_CAPTURE_PROMPT\"\nprintf 'child summary only\\n'\n", "utf8");
+  fs.chmodSync(pi, 0o755);
+  const originalPath = process.env.PATH;
+  const originalCapture = process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ""}`;
+  process.env.PI_SUBAGENT_CAPTURE_PROMPT = capturePath;
+
+  try {
+    const result = await runAgentRecord({}, cwd, "scout", "summarize", false, undefined, 0, undefined, undefined, {
+      contextMode: "recent",
+      parentContext: "Important parent context that should only reach the child prompt",
+    });
+
+    assert.equal(result.text, "child summary only");
+    assert.equal(result.task, "summarize");
+    assert.doesNotMatch(JSON.stringify(result), /Important parent context/);
+    assert.match(fs.readFileSync(capturePath, "utf8"), /Important parent context/);
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalCapture === undefined) delete process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+    else process.env.PI_SUBAGENT_CAPTURE_PROMPT = originalCapture;
+  }
+});
+
+test("subagent parent context redacts full secrets before truncating", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-redaction-"));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-bin-"));
+  const capturePath = path.join(cwd, "captured-prompt.md");
+  const pi = path.join(binDir, "pi");
+  fs.writeFileSync(pi, "#!/usr/bin/env bash\ncat > \"$PI_SUBAGENT_CAPTURE_PROMPT\"\nprintf 'redacted summary\\n'\n", "utf8");
+  fs.chmodSync(pi, 0o755);
+  const originalPath = process.env.PATH;
+  const originalCapture = process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+  const originalToken = process.env.API_TOKEN;
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ""}`;
+  process.env.PI_SUBAGENT_CAPTURE_PROMPT = capturePath;
+  process.env.API_TOKEN = "super-secret-token-12345";
+
+  try {
+    await runAgentRecord({}, cwd, "scout", "summarize", false, undefined, 0, undefined, undefined, {
+      contextMode: "recent",
+      parentContext: "token: super-secret-token-12345",
+      parentContextLimit: 18,
+    });
+
+    const prompt = fs.readFileSync(capturePath, "utf8");
+    assert.doesNotMatch(prompt, /super-secret-token-12345/);
+    assert.doesNotMatch(prompt, /token-12345/);
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalCapture === undefined) delete process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+    else process.env.PI_SUBAGENT_CAPTURE_PROMPT = originalCapture;
+    if (originalToken === undefined) delete process.env.API_TOKEN;
+    else process.env.API_TOKEN = originalToken;
+  }
+});
+
+test("subagent parallel root contextMode applies to tasks by default", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-parallel-context-"));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-bin-"));
+  const capturePath = path.join(cwd, "captured-prompt.md");
+  const pi = path.join(binDir, "pi");
+  fs.writeFileSync(pi, "#!/usr/bin/env bash\ncat > \"$PI_SUBAGENT_CAPTURE_PROMPT\"\nprintf 'parallel summary\\n'\n", "utf8");
+  fs.chmodSync(pi, 0o755);
+  const originalPath = process.env.PATH;
+  const originalCapture = process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ""}`;
+  process.env.PI_SUBAGENT_CAPTURE_PROMPT = capturePath;
+
+  const ctx = {
+    sessionManager: {
+      buildSessionContext: () => ({ messages: [{ role: "user", content: "parallel parent context" }] }),
+    },
+  };
+
+  try {
+    await runParallel({}, ctx, cwd, [{ agent: "scout", task: "summarize" }], 1, "recent");
+
+    assert.match(fs.readFileSync(capturePath, "utf8"), /parallel parent context/);
+  } finally {
+    process.env.PATH = originalPath;
+    if (originalCapture === undefined) delete process.env.PI_SUBAGENT_CAPTURE_PROMPT;
+    else process.env.PI_SUBAGENT_CAPTURE_PROMPT = originalCapture;
+  }
 });
 
 test("subagent runner removes temporary prompt files after execution", async () => {

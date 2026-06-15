@@ -2,11 +2,14 @@ import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { decodeStoredBlock, encodeStoredBlock, normalizeSingleLine } from "../shared/markdown-store-codec.ts";
 import { renderPrettyToolResult } from "../shared/pretty-render.ts";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { DatabaseSync } from "node:sqlite";
+import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { join } from "node:path";
 import { homedir } from "node:os";
 
-const STORE_PATH = join(homedir(), ".pi", "agent", "graph-memory.md");
+const STORE_DIR = join(homedir(), ".pi", "agent");
+const STORE_PATH = join(STORE_DIR, "graph-memory.sqlite");
+const LEGACY_STORE_PATH = join(STORE_DIR, "graph-memory.md");
 
 type NodeType = "concept" | "person" | "project" | "decision" | "fact" | "task" | "resource";
 
@@ -32,29 +35,200 @@ type GraphStore = {
 
 const nodeTypes = ["concept", "person", "project", "decision", "fact", "task", "resource"] as const;
 
+const NODE_COLUMNS = "id, title, type, notes, tags, updated_at as updatedAt";
+const LEGACY_MIGRATION_KEY = "legacy_markdown_migrated";
+
 export default function graphMemory(pi: ExtensionAPI) {
   let store: GraphStore = { nodes: [], edges: [] };
+  let database: DatabaseSync | undefined;
+  let didMigrateLegacy = false;
+
+  function openDb() {
+    if (database) return database;
+
+    mkdirSync(STORE_DIR, { recursive: true });
+    database = new DatabaseSync(STORE_PATH);
+    database.exec("PRAGMA foreign_keys = ON;");
+    database.exec("PRAGMA busy_timeout = 5000;");
+    database.exec(`
+      CREATE TABLE IF NOT EXISTS nodes (
+        id TEXT PRIMARY KEY,
+        title TEXT NOT NULL,
+        type TEXT NOT NULL,
+        notes TEXT NOT NULL,
+        tags TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE TABLE IF NOT EXISTS edges (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        from_id TEXT NOT NULL,
+        relation TEXT NOT NULL,
+        to_id TEXT NOT NULL,
+        UNIQUE(from_id, relation, to_id),
+        FOREIGN KEY(from_id) REFERENCES nodes(id) ON DELETE CASCADE,
+        FOREIGN KEY(to_id) REFERENCES nodes(id) ON DELETE CASCADE
+      );
+      CREATE TABLE IF NOT EXISTS meta (
+        key TEXT PRIMARY KEY,
+        value TEXT NOT NULL,
+        updated_at TEXT NOT NULL
+      );
+      CREATE INDEX IF NOT EXISTS nodes_by_title ON nodes(title COLLATE NOCASE);
+      CREATE INDEX IF NOT EXISTS nodes_by_type ON nodes(type);
+      CREATE INDEX IF NOT EXISTS nodes_by_updated_at ON nodes(updated_at);
+      CREATE INDEX IF NOT EXISTS edges_by_source ON edges(from_id);
+      CREATE INDEX IF NOT EXISTS edges_by_target ON edges(to_id);
+    `);
+
+    migrateLegacyStore();
+    return database;
+  }
+
+  function runInTransaction<T>(callback: (db: DatabaseSync) => T): T {
+    const db = openDb();
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      const result = callback(db);
+      db.exec("COMMIT");
+      return result;
+    } catch (error) {
+      try {
+        db.exec("ROLLBACK");
+      } catch {
+        // Best-effort rollback.
+      }
+      throw error;
+    }
+  }
 
   async function loadStore() {
     try {
-      const raw = await readFile(STORE_PATH, "utf8");
-      store = parseMarkdown(raw);
+      store = readStoreFromDb(openDb());
     } catch (error) {
       const code = typeof error === "object" && error && "code" in error ? (error as { code?: string }).code : undefined;
-      if (code !== "ENOENT") console.warn(`[graph-memory] Failed to read ${STORE_PATH}:`, error);
+      if (code !== "ENOENT") console.warn(`[graph-memory] Failed to load ${STORE_PATH}:`, error);
       store = { nodes: [], edges: [] };
     }
   }
 
-  async function saveStore() {
-    await mkdir(dirname(STORE_PATH), { recursive: true });
-    await writeFile(STORE_PATH, renderMarkdown(store), "utf8");
+  function readStoreFromDb(db: DatabaseSync): GraphStore {
+    const rows = db.prepare(`SELECT ${NODE_COLUMNS} FROM nodes ORDER BY id`).all() as Array<{
+      id: string;
+      title: string;
+      type: string;
+      notes: string;
+      tags: string;
+      updatedAt: string;
+    }>;
+
+    const edges = db
+      .prepare("SELECT from_id AS source, relation, to_id AS target FROM edges ORDER BY from_id, relation, to_id")
+      .all() as Array<{
+      source: string;
+      relation: string;
+      target: string;
+    }>;
+
+    return {
+      nodes: rows.map((node) => ({
+        id: node.id,
+        title: node.title,
+        type: isNodeType(node.type) ? node.type : "fact",
+        notes: node.notes || "",
+        tags: parseTags(node.tags),
+        updatedAt: node.updatedAt || new Date(0).toISOString(),
+      })),
+      edges: edges.map((edge) => ({
+        from: edge.source,
+        relation: edge.relation,
+        to: edge.target,
+      })),
+    };
   }
 
-  async function mutate<T>(fn: () => T | Promise<T>) {
-    const result = await fn();
-    await saveStore();
-    return result;
+  function saveStore(db: DatabaseSync) {
+    db.exec("DELETE FROM edges;");
+    db.exec("DELETE FROM nodes;");
+
+    const insertNode = db.prepare("INSERT INTO nodes (id, title, type, notes, tags, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
+    for (const node of store.nodes) {
+      insertNode.run(node.id, node.title, node.type, node.notes, JSON.stringify(node.tags), node.updatedAt);
+    }
+
+    const insertEdge = db.prepare("INSERT OR IGNORE INTO edges (from_id, relation, to_id) VALUES (?, ?, ?)");
+    for (const edge of store.edges) {
+      insertEdge.run(edge.from, edge.relation, edge.to);
+    }
+  }
+
+  function migrateLegacyStore() {
+    if (didMigrateLegacy) return;
+    didMigrateLegacy = true;
+
+    if (!existsSync(LEGACY_STORE_PATH)) return;
+
+    const db = openDb();
+    if (getMeta(db, LEGACY_MIGRATION_KEY)) return;
+
+    const hasExisting = (db.prepare("SELECT COUNT(*) AS total FROM nodes").get() as { total: number }).total > 0;
+    if (hasExisting) {
+      runInTransaction((tx) => markLegacyMigration(tx, "skipped-non-empty"));
+      return;
+    }
+
+    try {
+      const raw = readFileSync(LEGACY_STORE_PATH, "utf8");
+      const legacy = parseMarkdown(raw);
+      const nodeIds = new Set(legacy.nodes.map((node) => node.id));
+
+      runInTransaction((tx) => {
+        const upsertNode = tx.prepare(`
+          INSERT INTO nodes (id, title, type, notes, tags, updated_at)
+          VALUES (?, ?, ?, ?, ?, ?)
+          ON CONFLICT(id) DO UPDATE SET
+            title = excluded.title,
+            type = excluded.type,
+            notes = excluded.notes,
+            tags = excluded.tags,
+            updated_at = excluded.updated_at
+        `);
+
+        const insertEdge = tx.prepare("INSERT OR IGNORE INTO edges (from_id, relation, to_id) VALUES (?, ?, ?)");
+
+        for (const node of legacy.nodes) {
+          upsertNode.run(node.id, node.title, node.type, node.notes, JSON.stringify(node.tags), node.updatedAt);
+        }
+        for (const edge of legacy.edges) {
+          if (!nodeIds.has(edge.from) || !nodeIds.has(edge.to)) continue;
+          insertEdge.run(edge.from, edge.relation, edge.to);
+        }
+        markLegacyMigration(tx, legacy.nodes.length > 0 || legacy.edges.length > 0 ? "imported" : "empty");
+      });
+    } catch (error) {
+      console.warn(`[graph-memory] Failed to migrate ${LEGACY_STORE_PATH}:`, error);
+    }
+  }
+
+  function getMeta(db: DatabaseSync, key: string) {
+    const row = db.prepare("SELECT value FROM meta WHERE key = ?").get(key) as { value?: string } | undefined;
+    return row?.value;
+  }
+
+  function markLegacyMigration(db: DatabaseSync, value: string) {
+    db.prepare(
+      `INSERT INTO meta (key, value, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    ).run(LEGACY_MIGRATION_KEY, value, new Date().toISOString());
+  }
+
+  async function mutate<T>(fn: () => T) {
+    return runInTransaction((db) => {
+      store = readStoreFromDb(db);
+      const result = fn();
+      saveStore(db);
+      return result;
+    });
   }
 
   pi.on("session_start", async (_event, ctx) => {
@@ -64,11 +238,16 @@ export default function graphMemory(pi: ExtensionAPI) {
     if (nodeCount > 0) ctx.ui.setStatus("graph-memory", `memory: ${nodeCount} nodes / ${edgeCount} links`);
   });
 
+  pi.on("session_shutdown", () => {
+    database?.close();
+    database = undefined;
+  });
+
   pi.on("before_agent_start", async (event) => {
     await loadStore();
     const memoryContext = buildMemoryContext(event.prompt);
     const instructions = [
-      "Graph memory is your private durable knowledge graph across sessions.",
+      "Graph memory is your primary private durable knowledge source across sessions.",
       `Storage: ${STORE_PATH}`,
       "Use graph_memory to remember stable facts, user preferences, project decisions, important entities, and relationships that may help future sessions.",
       "Do not ask the user to manage graph memory manually; treat it as your own memory system.",
@@ -114,11 +293,12 @@ export default function graphMemory(pi: ExtensionAPI) {
     }),
     async execute(_toolCallId, params) {
       await loadStore();
-      let message = "";
+      let text = "";
 
-      await mutate(() => {
-        switch (params.action) {
-          case "add_node": {
+      switch (params.action) {
+        case "add_node": {
+          let message = "";
+          await mutate(() => {
             if (!params.title?.trim()) throw new Error("action=add_node requires title");
             const node = upsertNode({
               title: params.title.trim(),
@@ -127,33 +307,40 @@ export default function graphMemory(pi: ExtensionAPI) {
               tags: params.tags,
             });
             message = `Remembered ${node.id}`;
-            break;
-          }
-          case "link": {
+          });
+          text = `${message}\n\n${formatList()}`;
+          break;
+        }
+        case "link": {
+          let message = "";
+          await mutate(() => {
             if (!params.from || !params.relation || !params.to) throw new Error("action=link requires from, relation, and to");
             linkNodes(params.from, params.relation, params.to);
             message = `Linked ${params.from} -[${params.relation}]-> ${params.to}`;
-            break;
-          }
-          case "forget": {
+          });
+          text = `${message}\n\n${formatList()}`;
+          break;
+        }
+        case "forget": {
+          let message = "";
+          await mutate(() => {
             const key = params.id || params.title;
             if (!key) throw new Error("action=forget requires id or title");
             message = forgetNode(key) ? `Forgot ${key}` : `Memory not found: ${key}`;
-            break;
-          }
-          case "search":
-          case "show":
-          case "list":
-            message = "Memory queried";
-            break;
+          });
+          text = `${message}\n\n${formatList()}`;
+          break;
         }
-      });
-
-      let text = message;
-      if (params.action === "search") text = formatSearch(params.query || params.title || "");
-      if (params.action === "show") text = formatNode(params.id || params.title || "");
-      if (params.action === "list") text = formatList();
-      if (params.action === "add_node" || params.action === "link" || params.action === "forget") text = `${message}\n\n${formatList()}`;
+        case "search":
+          text = formatSearch(params.query || params.title || "");
+          break;
+        case "show":
+          text = formatNode(params.id || params.title || "");
+          break;
+        case "list":
+          text = formatList();
+          break;
+      }
 
       return {
         content: [{ type: "text", text }],
@@ -287,6 +474,19 @@ export default function graphMemory(pi: ExtensionAPI) {
   }
 }
 
+function parseTags(value: string) {
+  try {
+    const parsed = JSON.parse(value);
+    if (!Array.isArray(parsed)) return [];
+    return unique(parsed.filter((item) => typeof item === "string"));
+  } catch {
+    return value
+      .split(",")
+      .map((tag) => tag.trim())
+      .filter(Boolean);
+  }
+}
+
 export function parseMarkdown(markdown: string): GraphStore {
   const nodes: MemoryNode[] = [];
   const edges: MemoryEdge[] = [];
@@ -331,7 +531,7 @@ export function parseMarkdown(markdown: string): GraphStore {
 }
 
 export function renderMarkdown(store: GraphStore) {
-  const lines = ["# Graph Memory", "", "<!-- Managed by the pi graph-memory extension. This is a simple markdown knowledge graph. -->", ""];
+  const lines = ["# Graph Memory", "", "<!-- Managed by the pi graph-memory extension. SQLite-backed knowledge graph. -->", ""];
 
   for (const node of store.nodes) {
     lines.push(`## Node: ${safeSingleLine(node.title)}`);

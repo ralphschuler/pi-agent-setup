@@ -1,7 +1,7 @@
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
 import { readFile } from "node:fs/promises";
-import { join } from "node:path";
+import { join, resolve } from "node:path";
 import { homedir } from "node:os";
 import { decodeStoredBlock, encodeStoredBlock, normalizeSingleLine } from "../shared/markdown-store-codec.ts";
 import { renderPrettyToolResult } from "../shared/pretty-render.ts";
@@ -12,6 +12,8 @@ import { randomUUID } from "node:crypto";
 const DEFAULT_STORE_PATH = join(homedir(), ".pi", "agent", "cronjobs.md");
 const CHECK_INTERVAL_MS = 30_000;
 
+type CronScope = { cwd: string; sessionId: string };
+
 type CronJob = {
   id: number;
   name: string;
@@ -21,6 +23,8 @@ type CronJob = {
   enabled: boolean;
   createdAt: string;
   updatedAt: string;
+  cwd?: string;
+  sessionId?: string;
   lastRunAt?: string;
   nextRunAt?: string;
   lastDispatchId?: string;
@@ -39,6 +43,25 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
   let nextId = 1;
   let timer: ReturnType<typeof setInterval> | undefined;
   let lastCtx: ExtensionContext | undefined;
+  let sessionToken = 0;
+
+  function sessionScope(ctx = lastCtx): CronScope | undefined {
+    const cwd = typeof ctx?.cwd === "string" && ctx.cwd.trim() ? resolve(ctx.cwd) : undefined;
+    const sessionManager = ctx?.sessionManager;
+    const sessionId = sessionManager?.getSessionId?.();
+    const sessionFile = sessionManager?.getSessionFile?.();
+    if (!cwd || typeof sessionId !== "string" || !sessionId.trim() || typeof sessionFile !== "string" || !sessionFile.trim())
+      return undefined;
+    return { cwd, sessionId };
+  }
+
+  function matchesScope(job: CronJob, scope: CronScope | undefined) {
+    return Boolean(scope && job.cwd && job.sessionId && resolve(job.cwd) === scope.cwd && job.sessionId === scope.sessionId);
+  }
+
+  function visibleJobs(scope = sessionScope()) {
+    return scope ? jobs.filter((job) => matchesScope(job, scope)) : [];
+  }
 
   async function loadStore() {
     try {
@@ -60,9 +83,10 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
 
   function updateUi(ctx = lastCtx) {
     if (!ctx?.hasUI) return;
-    const enabled = jobs.filter((job) => job.enabled).length;
+    const scopedJobs = visibleJobs(sessionScope(ctx));
+    const enabled = scopedJobs.filter((job) => job.enabled).length;
     ctx.ui.setStatus("cronjobs", enabled > 0 ? `cron: ${enabled}` : undefined);
-    const dueSoon = jobs
+    const dueSoon = scopedJobs
       .filter((job) => job.enabled && job.nextRunAt)
       .sort((a, b) => Date.parse(a.nextRunAt!) - Date.parse(b.nextRunAt!))
       .slice(0, 5);
@@ -74,18 +98,22 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
 
   function startTimer() {
     if (timer) clearInterval(timer);
-    timer = setInterval(() => void runDueJobs(), CHECK_INTERVAL_MS);
+    timer = setInterval(() => void runDueJobs(sessionToken), CHECK_INTERVAL_MS);
   }
 
-  async function runDueJobs() {
-    if (dispatching) return;
+  async function runDueJobs(expectedToken = sessionToken) {
+    if (dispatching || expectedToken !== sessionToken) return;
+    const scope = sessionScope();
+    if (!scope) return;
     dispatching = true;
     try {
       await withPrivateFileLock(storePath, async () => {
         await loadStore();
+        if (expectedToken !== sessionToken) return;
         for (const job of jobs) {
+          if (expectedToken !== sessionToken) return;
           const current = now();
-          if (!job.enabled || !job.nextRunAt || Date.parse(job.nextRunAt) > current.getTime()) continue;
+          if (!matchesScope(job, scope) || !job.enabled || !job.nextRunAt || Date.parse(job.nextRunAt) > current.getTime()) continue;
 
           const dispatchId = job.dispatchStatus === "pending" && job.lastDispatchId ? job.lastDispatchId : randomUUID();
           job.lastDispatchId = dispatchId;
@@ -125,19 +153,22 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
       });
     } finally {
       dispatching = false;
-      updateUi();
+      if (expectedToken === sessionToken) updateUi();
     }
   }
 
   pi.on("session_start", async (_event, ctx) => {
     lastCtx = ctx;
+    const currentToken = ++sessionToken;
     await loadStore();
     startTimer();
-    await runDueJobs();
+    await runDueJobs(currentToken);
     updateUi(ctx);
   });
 
   pi.on("session_shutdown", async () => {
+    sessionToken += 1;
+    lastCtx = undefined;
     if (timer) clearInterval(timer);
     timer = undefined;
   });
@@ -187,6 +218,8 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
         const parsed = parseSchedule(params.schedule.trim());
         if (!parsed) return errorResult(`Unsupported schedule: ${params.schedule}`);
         const nowIso = now().toISOString();
+        const scope = sessionScope(ctx);
+        if (!scope) return errorResult("schedule requires an active persistent pi session");
         const job: CronJob = {
           id: nextId++,
           name: safeSingleLine(params.name.trim()),
@@ -196,6 +229,8 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
           enabled: true,
           createdAt: nowIso,
           updatedAt: nowIso,
+          cwd: scope.cwd,
+          sessionId: scope.sessionId,
         };
         job.nextRunAt = computeNextRun(job, now())?.toISOString();
         jobs.push(job);
@@ -203,44 +238,47 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
         await saveStore();
         updateUi(ctx);
         return textResult(`Scheduled cronjob #${job.id}: ${job.name}\nNext run: ${job.nextRunAt ?? "never"}\n\n${formatJobs()}`, {
-          jobs,
+          jobs: visibleJobs(scope),
           storePath,
         });
       }
 
       if (params.action === "cancel") {
         if (!Number.isInteger(params.id)) return errorResult("cancel requires id");
-        const before = jobs.length;
-        jobs = jobs.filter((job) => job.id !== params.id);
+        const scope = sessionScope(ctx);
+        const before = visibleJobs(scope).length;
+        jobs = jobs.filter((job) => job.id !== params.id || !matchesScope(job, scope));
         await saveStore();
         updateUi(ctx);
-        return textResult(
-          before === jobs.length ? `Cronjob #${params.id} not found.` : `Cancelled cronjob #${params.id}.\n\n${formatJobs()}`,
-          { jobs, storePath },
-        );
+        const cancelled = visibleJobs(scope).length < before;
+        return textResult(cancelled ? `Cancelled cronjob #${params.id}.\n\n${formatJobs()}` : `Cronjob #${params.id} not found.`, {
+          jobs: visibleJobs(scope),
+          storePath,
+        });
       }
 
       if (params.action === "enable" || params.action === "disable") {
         if (!Number.isInteger(params.id)) return errorResult(`${params.action} requires id`);
-        const job = jobs.find((candidate) => candidate.id === params.id);
-        if (!job) return textResult(`Cronjob #${params.id} not found.`, { jobs, storePath });
+        const scope = sessionScope(ctx);
+        const job = visibleJobs(scope).find((candidate) => candidate.id === params.id);
+        if (!job) return textResult(`Cronjob #${params.id} not found.`, { jobs: visibleJobs(scope), storePath });
         job.enabled = params.action === "enable";
         job.updatedAt = now().toISOString();
         job.nextRunAt = job.enabled ? refreshJobNextRun(job, now())?.toISOString() : undefined;
         await saveStore();
         updateUi(ctx);
         return textResult(`${params.action === "enable" ? "Enabled" : "Disabled"} cronjob #${job.id}.\n\n${formatJobs()}`, {
-          jobs,
+          jobs: visibleJobs(scope),
           storePath,
         });
       }
 
       if (params.action === "run_due") {
-        await runDueJobs();
-        return textResult(`Checked due cronjobs.\n\n${formatJobs()}`, { jobs, storePath });
+        await runDueJobs(sessionToken);
+        return textResult(`Checked due cronjobs.\n\n${formatJobs()}`, { jobs: visibleJobs(), storePath });
       }
 
-      return textResult(formatJobs(), { jobs, storePath });
+      return textResult(formatJobs(), { jobs: visibleJobs(), storePath });
     },
   });
 
@@ -255,10 +293,11 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
   }
 
   function formatJobs() {
-    if (jobs.length === 0) return `No cronjobs scheduled.\n\nStore: ${storePath}`;
+    const scopedJobs = visibleJobs();
+    if (scopedJobs.length === 0) return `No cronjobs scheduled for this pi session.\n\nStore: ${storePath}`;
     return [
       "Cronjobs:",
-      ...jobs.map(
+      ...scopedJobs.map(
         (job) => `- #${job.id} ${job.enabled ? "enabled" : "disabled"} ${job.name} — ${job.schedule} — next: ${job.nextRunAt || "none"}`,
       ),
       "",
@@ -267,7 +306,7 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
   }
 
   function formatActiveJobsForPrompt() {
-    const active = jobs.filter((job) => job.enabled);
+    const active = visibleJobs().filter((job) => job.enabled);
     if (active.length === 0) return "No active cronjobs.";
     return [
       "Active cronjobs:",
@@ -284,7 +323,9 @@ function instructions(storePath = DEFAULT_STORE_PATH) {
     `Storage: ${storePath}`,
     "Use the cronjob tool to schedule reminders, follow-ups, periodic checks, recurring maintenance, or delayed tasks requested by the user.",
     "Supported schedules: ISO date/time, 'every <n> minutes|hours|days', 'daily HH:MM', and simple 5-field cron expressions.",
-    "When a job is due, its task is sent back to pi as a user message for the agent to execute.",
+    "Each scheduled job is bound to the originating pi session and working directory.",
+    "When a job is due, its task is sent only to that originating session as a user message.",
+    "Legacy jobs without session scope are not dispatched; schedule them again from the intended session.",
   ].join("\n");
 }
 
@@ -314,6 +355,8 @@ export function parseMarkdown(markdown: string): CronJob[] {
         else if (line.startsWith("- enabled: ")) job.enabled = line.slice(11).trim() === "true";
         else if (line.startsWith("- created: ")) job.createdAt = line.slice(11).trim();
         else if (line.startsWith("- updated: ")) job.updatedAt = line.slice(11).trim();
+        else if (line.startsWith("- cwd: ")) job.cwd = emptyToUndefined(line.slice(7).trim());
+        else if (line.startsWith("- sessionId: ")) job.sessionId = emptyToUndefined(line.slice(13).trim());
         else if (line.startsWith("- lastRun: ")) job.lastRunAt = emptyToUndefined(line.slice(11).trim());
         else if (line.startsWith("- nextRun: ")) job.nextRunAt = emptyToUndefined(line.slice(11).trim());
         else if (line.startsWith("- dispatchId: ")) job.lastDispatchId = emptyToUndefined(line.slice(14).trim());
@@ -341,6 +384,8 @@ export function renderMarkdown(jobs: CronJob[]) {
     lines.push(`- enabled: ${job.enabled}`);
     lines.push(`- created: ${job.createdAt}`);
     lines.push(`- updated: ${job.updatedAt}`);
+    lines.push(`- cwd: ${safeSingleLine(job.cwd || "")}`);
+    lines.push(`- sessionId: ${safeSingleLine(job.sessionId || "")}`);
     lines.push(`- lastRun: ${job.lastRunAt || ""}`);
     lines.push(`- nextRun: ${job.nextRunAt || ""}`);
     lines.push(`- dispatchId: ${job.lastDispatchId || ""}`);

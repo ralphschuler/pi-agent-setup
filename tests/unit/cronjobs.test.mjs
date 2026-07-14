@@ -59,11 +59,18 @@ test("cron extension recovers overdue jobs and retries the same pending dispatch
         enabled: true,
         createdAt: current.toISOString(),
         updatedAt: current.toISOString(),
+        cwd: "/repo-a",
+        sessionId: "session-a",
       },
     ]),
   );
   cronjobs(pi, { storePath, now: () => current, retryDelayMs: 1 });
-  await handlers.get("session_start")({}, { hasUI: false });
+  const sessionContext = {
+    hasUI: false,
+    cwd: "/repo-a",
+    sessionManager: { getSessionId: () => "session-a", getSessionFile: () => "/sessions/session-a.jsonl" },
+  };
+  await handlers.get("session_start")({}, sessionContext);
 
   assert.equal(sent.length, 1);
   assert.match(sent[0], /Dispatch: [0-9a-f-]{36}/);
@@ -74,13 +81,177 @@ test("cron extension recovers overdue jobs and retries the same pending dispatch
   assert.equal(saved.dispatchAttempts, 1);
 
   current = new Date(current.getTime() + 2);
-  await tool.execute("test", { action: "run_due" }, undefined, undefined, { hasUI: false });
+  await tool.execute("test", { action: "run_due" }, undefined, undefined, sessionContext);
   assert.equal(sent.length, 2);
   assert.match(sent[1], new RegExp(`Dispatch: ${firstDispatch}`));
   saved = parseMarkdown(await fs.readFile(storePath, "utf8"))[0];
   assert.equal(saved.enabled, false);
   assert.equal(saved.dispatchStatus, "sent");
   assert.equal(saved.dispatchAttempts, 2);
+  await handlers.get("session_shutdown")();
+});
+
+test("cron dispatch stays isolated to the originating session", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "pi-cron-session-isolation-"));
+  const storePath = path.join(root, "cronjobs.md");
+  const current = new Date("2026-01-02T00:00:00.000Z");
+  const sent = [];
+  const handlers = new Map();
+  const pi = {
+    on(name, handler) {
+      handlers.set(name, handler);
+    },
+    registerTool() {},
+    sendUserMessage(messages) {
+      sent.push(messages[0].text);
+    },
+  };
+
+  await fs.writeFile(
+    storePath,
+    renderMarkdown([
+      {
+        id: 1,
+        name: "session-a-job",
+        task: "only session A",
+        schedule: "2026-01-01T00:00:00.000Z",
+        kind: "once",
+        enabled: true,
+        createdAt: current.toISOString(),
+        updatedAt: current.toISOString(),
+        cwd: "/repo-a",
+        sessionId: "session-a",
+      },
+    ]),
+  );
+
+  cronjobs(pi, { storePath, now: () => current });
+  const sessionStart = handlers.get("session_start");
+  const sessionShutdown = handlers.get("session_shutdown");
+  await sessionStart(
+    {},
+    {
+      hasUI: false,
+      cwd: "/repo-b",
+      sessionManager: { getSessionId: () => "session-b", getSessionFile: () => "/sessions/session-b.jsonl" },
+    },
+  );
+  assert.equal(sent.length, 0);
+  await sessionShutdown();
+
+  await sessionStart(
+    {},
+    {
+      hasUI: false,
+      cwd: "/repo-a",
+      sessionManager: { getSessionId: () => "session-a", getSessionFile: () => "/sessions/session-a.jsonl" },
+    },
+  );
+  assert.equal(sent.length, 1);
+  assert.match(sent[0], /only session A/);
+  await sessionShutdown();
+});
+
+test("legacy unscoped jobs are not claimed by a new session", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "pi-cron-legacy-scope-"));
+  const storePath = path.join(root, "cronjobs.md");
+  const sent = [];
+  const handlers = new Map();
+  const pi = {
+    on(name, handler) {
+      handlers.set(name, handler);
+    },
+    registerTool() {},
+    sendUserMessage(messages) {
+      sent.push(messages[0].text);
+    },
+  };
+  await fs.writeFile(
+    storePath,
+    renderMarkdown([
+      {
+        id: 1,
+        name: "legacy",
+        task: "must not leak",
+        schedule: "2026-01-01T00:00:00.000Z",
+        kind: "once",
+        enabled: true,
+        createdAt: "2026-01-01T00:00:00.000Z",
+        updatedAt: "2026-01-01T00:00:00.000Z",
+      },
+    ]),
+  );
+
+  cronjobs(pi, { storePath, now: () => new Date("2026-01-02T00:00:00.000Z") });
+  await handlers.get("session_start")(
+    {},
+    {
+      hasUI: false,
+      cwd: "/new-repo",
+      sessionManager: { getSessionId: () => "new-session", getSessionFile: () => "/sessions/new-session.jsonl" },
+    },
+  );
+  assert.deepEqual(sent, []);
+  await handlers.get("session_shutdown")();
+});
+
+test("scheduled jobs persist their originating session scope", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "pi-cron-scope-"));
+  const storePath = path.join(root, "cronjobs.md");
+  let tool;
+  const handlers = new Map();
+  const pi = {
+    on(name, handler) {
+      handlers.set(name, handler);
+    },
+    registerTool(definition) {
+      tool = definition;
+    },
+    sendUserMessage() {},
+  };
+  const ctx = {
+    hasUI: false,
+    cwd: "/repo-a",
+    sessionManager: { getSessionId: () => "session-a", getSessionFile: () => "/sessions/session-a.jsonl" },
+  };
+
+  cronjobs(pi, { storePath, now: () => new Date("2026-01-01T00:00:00.000Z") });
+  await handlers.get("session_start")({}, ctx);
+  await tool.execute("test", { action: "schedule", name: "scoped", task: "task", schedule: "every 1 day" }, undefined, undefined, ctx);
+
+  const saved = parseMarkdown(await fs.readFile(storePath, "utf8"))[0];
+  assert.equal(saved.cwd, "/repo-a");
+  assert.equal(saved.sessionId, "session-a");
+  await handlers.get("session_shutdown")();
+});
+
+test("cron scheduling rejects non-persistent sessions", async () => {
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), "pi-cron-nonpersistent-"));
+  const storePath = path.join(root, "cronjobs.md");
+  let tool;
+  const handlers = new Map();
+  const pi = {
+    on(name, handler) {
+      handlers.set(name, handler);
+    },
+    registerTool(definition) {
+      tool = definition;
+    },
+    sendUserMessage() {},
+  };
+  const ctx = { hasUI: false, cwd: "/repo-a", sessionManager: { getSessionId: () => "memory-session" } };
+
+  cronjobs(pi, { storePath, now: () => new Date("2026-01-01T00:00:00.000Z") });
+  await handlers.get("session_start")({}, ctx);
+  const result = await tool.execute(
+    "test",
+    { action: "schedule", name: "memory", task: "task", schedule: "every 1 day" },
+    undefined,
+    undefined,
+    ctx,
+  );
+
+  assert.match(result.content[0].text, /active persistent pi session/);
   await handlers.get("session_shutdown")();
 });
 

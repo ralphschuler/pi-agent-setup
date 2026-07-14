@@ -122,6 +122,7 @@ export default function cronjobs(pi: ExtensionAPI, options: CronjobsOptions = {}
           job.nextRunAt = current.toISOString();
           job.updatedAt = current.toISOString();
           await saveStore();
+          if (expectedToken !== sessionToken) return;
 
           try {
             await Promise.resolve(

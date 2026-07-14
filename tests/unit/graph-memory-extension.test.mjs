@@ -13,7 +13,7 @@ function runGraphMemoryHarness(home, actions, options = {}) {
   const promptEvent = options.promptEvent || null;
   const parallel = Boolean(options.parallel);
   const script = `
-import { existsSync } from "node:fs";
+import { existsSync, readdirSync, statSync } from "node:fs";
 import { join } from "node:path";
 import { DatabaseSync } from "node:sqlite";
 import graphMemory from "./extensions/graph-memory/index.ts";
@@ -82,6 +82,11 @@ console.log(
     results,
     schema,
     promptSystemPrompt,
+    agentEntries: existsSync(base) ? readdirSync(base) : [],
+    sqliteMode: existsSync(sqlitePath) ? statSync(sqlitePath).mode & 0o777 : undefined,
+    backupModes: existsSync(base)
+      ? readdirSync(base).filter((entry) => entry.includes(".pre-uuid-")).map((entry) => statSync(join(base, entry)).mode & 0o777)
+      : [],
   }),
 );
 `;
@@ -189,25 +194,47 @@ test("graph memory preserves tool actions across sqlite reloads", () => {
     ]);
 
     assert.equal(out.nodeCount, 2);
-    assert.deepEqual(out.edges, [{ from: "alpha-memory", relation: "depends-on", to: "beta-memory" }]);
+    const alphaId = out.nodes.find((node) => node.title === "Alpha Memory").id;
+    const betaId = out.nodes.find((node) => node.title === "Beta Memory").id;
+    assert.match(alphaId, /^[0-9a-f-]{36}$/);
+    assert.match(betaId, /^[0-9a-f-]{36}$/);
+    assert.deepEqual(out.edges, [{ from: alphaId, relation: "depends-on", to: betaId }]);
     assert.match(out.results[2].text, /# Alpha Memory/);
     assert.match(out.results[3].text, /Alpha Memory/);
-    assert.match(out.results[4].text, /alpha-memory -\[depends-on\]-> beta-memory/);
+    assert.match(out.results[4].text, new RegExp(`${alphaId} -\\[depends-on\\]-> ${betaId}`));
 
     const reloaded = runGraphMemoryHarness(home, { action: "show", title: "Alpha Memory" });
     assert.match(reloaded.finalText, /A public note that should be searchable/);
-    assert.deepEqual(reloaded.edges, [{ from: "alpha-memory", relation: "depends-on", to: "beta-memory" }]);
+    assert.deepEqual(reloaded.edges, [{ from: alphaId, relation: "depends-on", to: betaId }]);
 
     const forgot = runGraphMemoryHarness(home, { action: "forget", title: "Alpha Memory" });
     assert.equal(
-      forgot.nodes.some((node) => node.id === "alpha-memory"),
+      forgot.nodes.some((node) => node.title === "Alpha Memory"),
       false,
     );
     assert.equal(
-      forgot.nodes.some((node) => node.id === "beta-memory"),
+      forgot.nodes.some((node) => node.title === "Beta Memory"),
       true,
     );
     assert.deepEqual(forgot.edges, []);
+  } finally {
+    rmSync(home, { recursive: true, force: true });
+  }
+});
+
+test("graph memory uses collision-resistant UUID ids for Unicode and long titles", () => {
+  const home = mkdtempSync(join(tmpdir(), "pi-gm-sqlite-uuid-"));
+  try {
+    const longTitle = `${"a".repeat(120)} first`;
+    const out = runGraphMemoryHarness(home, [
+      { action: "add_node", title: "Café" },
+      { action: "add_node", title: "Café" },
+      { action: "add_node", title: longTitle },
+      { action: "add_node", title: `${"a".repeat(120)} second` },
+    ]);
+    assert.equal(out.nodeCount, 4);
+    assert.equal(new Set(out.nodes.map((node) => node.id)).size, 4);
+    assert.ok(out.nodes.every((node) => /^[0-9a-f-]{36}$/.test(node.id)));
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
@@ -228,30 +255,30 @@ test("graph memory serializes parallel mutations without dropping nodes", () => 
     );
 
     assert.equal(
-      out.nodes.some((node) => node.id === "parallel-alpha"),
+      out.nodes.some((node) => node.title === "Parallel Alpha"),
       true,
     );
     assert.equal(
-      out.nodes.some((node) => node.id === "parallel-beta"),
+      out.nodes.some((node) => node.title === "Parallel Beta"),
       true,
     );
     assert.equal(
-      out.nodes.some((node) => node.id === "parallel-gamma"),
+      out.nodes.some((node) => node.title === "Parallel Gamma"),
       true,
     );
 
     const reloaded = runGraphMemoryHarness(home, { action: "list" });
     assert.equal(reloaded.nodeCount, 3);
     assert.equal(
-      reloaded.nodes.some((node) => node.id === "parallel-alpha"),
+      reloaded.nodes.some((node) => node.title === "Parallel Alpha"),
       true,
     );
     assert.equal(
-      reloaded.nodes.some((node) => node.id === "parallel-beta"),
+      reloaded.nodes.some((node) => node.title === "Parallel Beta"),
       true,
     );
     assert.equal(
-      reloaded.nodes.some((node) => node.id === "parallel-gamma"),
+      reloaded.nodes.some((node) => node.title === "Parallel Gamma"),
       true,
     );
   } finally {
@@ -270,18 +297,26 @@ test("graph memory migrates legacy markdown nodes and links into sqlite", () => 
     assert.equal(out.sqliteExists, true);
     assert.equal(out.mdExists, true);
     assert.equal(
-      out.nodes.some((node) => node.id === "legacy-source" && node.notes === "migrated source note"),
+      out.nodes.some((node) => node.title === "Legacy Source" && /^[0-9a-f-]{36}$/.test(node.id) && node.notes === "migrated source note"),
       true,
     );
     assert.equal(
-      out.nodes.some((node) => node.id === "legacy-target" && node.type === "resource"),
+      out.nodes.some((node) => node.title === "Legacy Target" && /^[0-9a-f-]{36}$/.test(node.id) && node.type === "resource"),
       true,
     );
-    assert.deepEqual(out.edges, [{ from: "legacy-source", relation: "relates-to", to: "legacy-target" }]);
+    const sourceId = out.nodes.find((node) => node.title === "Legacy Source").id;
+    const targetId = out.nodes.find((node) => node.title === "Legacy Target").id;
+    assert.deepEqual(out.edges, [{ from: sourceId, relation: "relates-to", to: targetId }]);
     assert.deepEqual(
       out.schema.meta.map((row) => [row.key, row.value]),
-      [["legacy_markdown_migrated", "imported"]],
+      [
+        ["legacy_markdown_migrated", "imported"],
+        ["node_id_scheme", "uuid-v1"],
+      ],
     );
+    assert.equal(out.backupModes.length, 1);
+    assert.equal(out.backupModes[0], 0o600);
+    assert.equal(out.sqliteMode, 0o600);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }
@@ -305,7 +340,10 @@ test("graph memory treats legacy markdown as a one-time migration source", () =>
     assert.deepEqual(out.edges, []);
     assert.deepEqual(
       out.schema.meta.map((row) => [row.key, row.value]),
-      [["legacy_markdown_migrated", "imported"]],
+      [
+        ["legacy_markdown_migrated", "imported"],
+        ["node_id_scheme", "uuid-v1"],
+      ],
     );
   } finally {
     rmSync(home, { recursive: true, force: true });
@@ -323,16 +361,19 @@ test("graph memory skips legacy markdown import when sqlite already has nodes", 
 
     assert.equal(out.nodeCount, 1);
     assert.equal(
-      out.nodes.some((node) => node.id === "existing-sqlite-memory"),
+      out.nodes.some((node) => node.title === "Existing SQLite Memory"),
       true,
     );
     assert.equal(
-      out.nodes.some((node) => node.id === "legacy-source"),
+      out.nodes.some((node) => node.title === "Legacy Source"),
       false,
     );
     assert.deepEqual(
       out.schema.meta.map((row) => [row.key, row.value]),
-      [["legacy_markdown_migrated", "skipped-non-empty"]],
+      [
+        ["legacy_markdown_migrated", "skipped-non-empty"],
+        ["node_id_scheme", "uuid-v1"],
+      ],
     );
   } finally {
     rmSync(home, { recursive: true, force: true });
@@ -351,7 +392,7 @@ test("graph memory prompt advertises the primary durable knowledge source", () =
 
     assert.match(out.promptSystemPrompt, /Graph memory is your primary private durable knowledge source across sessions\./);
     assert.match(out.promptSystemPrompt, /Storage: .*graph-memory\.sqlite/);
-    assert.match(out.promptSystemPrompt, /prompt-memory/);
+    assert.match(out.promptSystemPrompt, /Prompt Memory/);
   } finally {
     rmSync(home, { recursive: true, force: true });
   }

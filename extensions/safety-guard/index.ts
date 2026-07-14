@@ -1,8 +1,8 @@
-import fs from "node:fs/promises";
 import { join } from "node:path";
 import { homedir } from "node:os";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { isToolCallEventType } from "@mariozechner/pi-coding-agent";
+import { appendPrivateFile, withPrivateFileLock } from "../shared/private-storage.ts";
 import { dangerousShellReason, exposesNetwork, isPackageInstallCommand, isProtectedSystemPath } from "../shared/safety.ts";
 
 const AUDIT_LOG_PATH = join(homedir(), ".pi", "agent", "policy-guard-audit.log");
@@ -93,8 +93,7 @@ async function auditPolicyDecision(event: unknown, decision: PolicyDecision, app
     approved,
   };
   try {
-    await fs.mkdir(join(homedir(), ".pi", "agent"), { recursive: true });
-    await fs.appendFile(AUDIT_LOG_PATH, `${JSON.stringify(record)}\n`, "utf8");
+    await withPrivateFileLock(AUDIT_LOG_PATH, () => appendPrivateFile(AUDIT_LOG_PATH, `${JSON.stringify(record)}\n`));
   } catch {
     // Audit logging must not break safety decisions.
   }

@@ -20,6 +20,32 @@ function ctx() {
   return { cwd: process.cwd(), hasUI: false, ui: { setStatus() {}, notify() {} } };
 }
 
+test("process output redacts secrets before returning agent-visible details", async () => {
+  const tool = registeredProcessTool();
+  const originalToken = process.env.API_TOKEN;
+  process.env.API_TOKEN = "process-secret-token-123";
+  const command = `${JSON.stringify(process.execPath)} -e ${JSON.stringify("console.log(process.env.API_TOKEN)")}`;
+
+  try {
+    const start = await tool.execute(
+      "process-secret-start",
+      { action: "start", name: "secret-output", command },
+      new AbortController().signal,
+      undefined,
+      ctx(),
+    );
+    const id = start.content[0].text.match(/Started process #(\d+)/)?.[1];
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    const output = await tool.execute("process-secret-output", { action: "output", id }, new AbortController().signal, undefined, ctx());
+    assert.doesNotMatch(JSON.stringify(output), /process-secret-token-123/);
+    assert.match(output.content[0].text, /REDACTED/);
+    await tool.execute("process-secret-clear", { action: "clear" }, new AbortController().signal, undefined, ctx());
+  } finally {
+    if (originalToken === undefined) delete process.env.API_TOKEN;
+    else process.env.API_TOKEN = originalToken;
+  }
+});
+
 test("process start does not emit tool updates after execute returns", async () => {
   const tool = registeredProcessTool();
   const updates = [];

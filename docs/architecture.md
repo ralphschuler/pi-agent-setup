@@ -34,7 +34,7 @@ Several extensions store durable agent state outside the repository:
 
 - Cronjobs: `~/.pi/agent/cronjobs.md`
 - Graph memory: `~/.pi/agent/graph-memory.sqlite`
-- Todo list: `~/.pi/agent/todo.md`
+- Todo list: `~/.pi/agent/todos/<session-id>.md` (session-scoped; the extension manages the file name)
 
 ## Documentation site
 

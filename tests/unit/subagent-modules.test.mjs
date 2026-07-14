@@ -43,7 +43,7 @@ test("subagent orchestration is split into focused internal modules", () => {
   assert.match(runner, /mode: 0o600/);
   assert.match(runner, /flag: "wx"/);
 
-  assert.match(executor, /spawnFn\("bash", \["-lc", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
+  assert.match(executor, /spawnFn\("bash", \["-c", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
   assert.match(executor, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate, redactText\)/);
   assert.match(executor, /redactText\(tailText\(stdout\.join\(""\), 6, 2000\)\)/);
   assert.match(executor, /setTimeout\(emit, 500\)/);
@@ -151,6 +151,26 @@ test("subagent parent context redacts full secrets before truncating", async () 
     else process.env.PI_SUBAGENT_CAPTURE_PROMPT = originalCapture;
     if (originalToken === undefined) delete process.env.API_TOKEN;
     else process.env.API_TOKEN = originalToken;
+  }
+});
+
+test("subagent failures preserve redacted stderr diagnostics", async () => {
+  const cwd = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-stderr-"));
+  const binDir = fs.mkdtempSync(path.join(os.tmpdir(), "pi-subagent-bin-"));
+  const pi = path.join(binDir, "pi");
+  fs.writeFileSync(pi, "#!/usr/bin/env bash\nprintf 'stdout summary\\n'\nprintf 'stderr diagnostic\\n' >&2\nexit 7\n", "utf8");
+  fs.chmodSync(pi, 0o755);
+  const originalPath = process.env.PATH;
+  process.env.PATH = `${binDir}${path.delimiter}${originalPath || ""}`;
+
+  try {
+    const result = await runAgentRecord({}, cwd, "scout", "fail diagnostically", false, undefined, 0);
+    assert.equal(result.ok, false);
+    assert.equal(result.stderr, "stderr diagnostic");
+    assert.match(result.error, /Exited 7/);
+    assert.match(result.error, /stderr diagnostic/);
+  } finally {
+    process.env.PATH = originalPath;
   }
 });
 

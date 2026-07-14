@@ -82,10 +82,11 @@ test("readState loads valid JSON and falls back on missing or invalid state", ()
 test("writeState persists pretty JSON and reports filesystem errors", () => {
   const dir = tempDir("caveman-core-write");
   const statePath = path.join(dir, "nested", "state.json");
-  const result = writeState({ enabled: true, level: "lite" }, fs, path.dirname(statePath), statePath);
+  const result = writeState({ enabled: true, level: "lite" }, undefined, path.dirname(statePath), statePath);
 
   assert.deepEqual(result, { ok: true });
   assert.equal(fs.readFileSync(statePath, "utf8"), '{\n  "enabled": true,\n  "level": "lite"\n}\n');
+  assert.equal(fs.statSync(statePath).mode & 0o777, 0o600);
 
   const failingFs = {
     mkdirSync() {

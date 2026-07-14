@@ -56,6 +56,7 @@ export async function runParallel(
         `Task: ${record.task}`,
         record.output ? `Output: ${record.output}` : undefined,
         record.error ? `Error: ${record.error}` : record.text,
+        record.stderr && record.stderr !== record.text ? `Stderr: ${record.stderr}` : undefined,
       ]
         .filter(Boolean)
         .join("\n"),

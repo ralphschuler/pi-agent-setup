@@ -41,11 +41,13 @@ The extension denies archive/restore for:
 - binary files
 - paths outside the current repository
 
-Restore writes require explicit approval: the agent must use `human_in_loop` before calling `evolve restore` with `approved=true` or before applying evolved content through file tools.
+Restore writes require explicit approval: the agent must use `human_in_loop` before calling `evolve restore` with `approved=true` or before applying evolved content through file tools. Restore automatically archives the current target first when it exists.
+
+Archive growth is bounded by default to 8 MiB or 100 variants, whichever comes first. Configure `PI_EVOLVE_MAX_ARCHIVE_BYTES` or `PI_EVOLVE_MAX_ARCHIVE_VARIANTS` to increase limits; old variants are never deleted automatically.
 
 ## Rollback behavior
 
-Before restoring or applying a variant, archive the current file when safe. Use `evolve compare` to inspect differences and `evolve restore` to roll back to an archived variant after `human_in_loop` approval.
+Before restoring or applying a variant, the extension archives the current file when safe. Use `evolve compare` to inspect differences and `evolve restore` to roll back to an archived variant after `human_in_loop` approval. Symlink escapes are denied and writes are atomic.
 
 ## Validation
 

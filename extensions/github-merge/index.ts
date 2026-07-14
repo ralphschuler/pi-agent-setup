@@ -128,6 +128,7 @@ export function assertMergeReady(view: PullRequestView, options: { allowPendingC
   if (view.isDraft) throw new Error(`PR #${view.number} is draft; mark ready before merging.`);
   if (view.mergeable && view.mergeable !== "MERGEABLE") throw new Error(`PR #${view.number} is not mergeable (${view.mergeable}).`);
   const checks = checkState(view.statusCheckRollup);
+  if (checks.state === "indeterminate") throw new Error(`PR #${view.number} check rollup is missing or empty; refusing to merge.`);
   const pendingMergeStates = ["UNSTABLE", "UNKNOWN", "BLOCKED"];
   if (view.mergeStateStatus && !["CLEAN", "HAS_HOOKS"].includes(view.mergeStateStatus)) {
     if (!(options.allowPendingChecks && checks.state === "pending" && pendingMergeStates.includes(view.mergeStateStatus))) {
@@ -139,7 +140,8 @@ export function assertMergeReady(view: PullRequestView, options: { allowPendingC
   if (checks.state === "pending" && !options.allowPendingChecks) throw new Error(`PR #${view.number} still has pending checks.`);
 }
 
-export function checkState(checks: CheckRollup[] = []) {
+export function checkState(checks?: CheckRollup[]) {
+  if (!Array.isArray(checks) || checks.length === 0) return { state: "indeterminate" as const, pending: [], failed: [] };
   const pending: string[] = [];
   const failed: string[] = [];
   for (const check of checks) {

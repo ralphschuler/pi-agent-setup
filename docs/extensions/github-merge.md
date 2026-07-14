@@ -17,6 +17,7 @@ The tool stops on:
 - missing PR
 - closed or draft PR
 - non-mergeable PR
+- missing or empty check rollups (indeterminate status)
 - failed/cancelled/timed-out checks
 - checks still pending after timeout
 - failed `gh` command

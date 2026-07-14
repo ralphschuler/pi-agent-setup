@@ -57,6 +57,8 @@ export function makeFakePi() {
       PATH: `${dir}${path.delimiter}${process.env.PATH ?? ""}`,
       HOME: path.join(dir, "home"),
       npm_config_cache: path.join(dir, "npm-cache"),
+      PI_SETUP_SKIP_DEPS: "1",
+      PI_SETUP_SKIP_CHECK: "1",
     },
     calls() {
       if (!fs.existsSync(logPath)) return [];

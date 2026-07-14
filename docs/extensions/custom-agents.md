@@ -51,6 +51,7 @@ Custom-agent frontmatter may set `defaultContext`:
 
 - `fresh` — default isolated subagent run.
 - `fork` — requests `contextMode: "recent"`, which sends a bounded redacted parent-context handoff to the child prompt. This is not a true session fork.
+- `readOnly: true` — declares that the agent may run during `/plan`; absent or false is treated as not read-only.
 
 Parent agents should use the child agent's synthesized summary/result instead of copying raw conversation history into the parent context.
 

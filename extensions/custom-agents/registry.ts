@@ -27,6 +27,7 @@ export type CustomAgentInfo = {
   tools?: string;
   skills?: string;
   systemPromptMode?: string;
+  readOnly?: boolean;
   body: string;
   frontmatter: Record<string, string>;
 };
@@ -45,6 +46,7 @@ export type AgentDraft = {
   inheritProjectContext?: boolean;
   inheritSkills?: boolean;
   systemPromptMode?: "replace" | "append";
+  readOnly?: boolean;
 };
 
 async function isDirectory(p: string) {
@@ -164,6 +166,7 @@ export async function readCustomAgents(cwd: string): Promise<CustomAgentInfo[]> 
         tools: frontmatter.tools,
         skills: frontmatter.skills,
         systemPromptMode: frontmatter.systemPromptMode,
+        readOnly: frontmatter.readOnly === "true",
         frontmatter,
         body,
       });
@@ -205,6 +208,7 @@ export async function writeCustomAgent(cwd: string, draft: AgentDraft) {
     yamlLine("inheritProjectContext", draft.inheritProjectContext ?? true),
     yamlLine("inheritSkills", draft.inheritSkills ?? true),
     yamlLine("systemPromptMode", draft.systemPromptMode || "replace"),
+    yamlLine("readOnly", draft.readOnly ?? false),
   ]
     .filter(Boolean)
     .join("\n");

@@ -15,12 +15,11 @@ RUN npm install -g @mariozechner/pi-coding-agent@0.73.0
 WORKDIR /opt/pi-agent-setup
 
 COPY package.json package-lock.json ./
-RUN npm install --legacy-peer-deps
+RUN npm ci --legacy-peer-deps
 
 COPY . .
 
-RUN npm run check \
-  && npm run test:ci \
-  && npm run install:pi
+RUN npm run test:ci \
+  && PI_SETUP_SKIP_DEPS=1 PI_SETUP_SKIP_CHECK=1 npm run install:pi
 
 CMD ["pi", "--help"]

@@ -1,7 +1,11 @@
 import assert from "node:assert/strict";
+import fs from "node:fs/promises";
+import os from "node:os";
+import path from "node:path";
 import test from "node:test";
 
 import {
+  appendBoundedLog,
   appendOutput,
   checkLogWatches,
   createManagedProcess,
@@ -50,6 +54,15 @@ test("process domain matches log watches and honors non-repeat watches", () => {
   assert.equal(notifications.length, 1);
   assert.match(notifications[0].message, /matched stdout watch: ready/);
   assert.equal(notifications[0].level, "warning");
+});
+
+test("process domain persists bounded logs with private file permissions", async () => {
+  const directory = await fs.mkdtemp(path.join(os.tmpdir(), "pi-process-log-"));
+  const file = path.join(directory, "stdout.log");
+  await appendBoundedLog(file, "private output\\n", 1024);
+  assert.equal(await fs.readFile(file, "utf8"), "private output\\n");
+  assert.equal((await fs.stat(file)).mode & 0o777, 0o600);
+  assert.equal((await fs.stat(directory)).mode & 0o777, 0o700);
 });
 
 test("process domain appends bounded output and serializes without child", () => {

@@ -10,6 +10,7 @@
 - Detached stdout/stderr capture after start
 - Completion alerts
 - Log watches with unsafe-regex rejection
+- Private bounded logs with atomic truncation and secret-redacted agent-visible output
 
 ## Use for
 

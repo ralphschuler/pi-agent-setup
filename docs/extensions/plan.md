@@ -13,9 +13,15 @@ The plan workflow enforces deep drilldown planning before implementation for non
 - Codebase reconnaissance before asking discoverable questions
 - Decision-tree and risk-sweep coverage
 - Reviewable plan output
-- Write blocking until plan approval
+- Write blocking until plan approval, including indirect Bash and subagent write paths
 - Review UI with apply, change, dynamic write/update `PRD.md`, or cancel choices
 - PRD generation with problem statement, solution, user stories, implementation decisions, testing decisions, feature phases, out-of-scope items, and further notes
+
+## Planning safety boundary
+
+Before approval, `/plan` permits read-only inspection, `human_in_loop`, `todo`, and `graph_memory` metadata operations. Bash is restricted to a fail-closed inspection command set; shell indirection, redirects, package installs, and write-capable commands are blocked. Subagent creation/deletion, output files, and agents without explicit `readOnly: true` metadata are blocked.
+
+Built-in read-only planning agents are `scout`, `planner`, `reviewer`, and `researcher`. Custom agents must declare `readOnly: true` in frontmatter to run during planning; absent metadata defaults to not read-only.
 
 ## Recommended use
 

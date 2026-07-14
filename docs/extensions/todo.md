@@ -8,6 +8,7 @@
 - Active-todo injection into the system prompt
 - TUI widget for pending, in-progress, and recently completed tasks
 - Session-scoped persistent markdown stores under `~/.pi/agent/todos/`
+- Private atomic writes serialized per session file
 
 ## Purpose
 

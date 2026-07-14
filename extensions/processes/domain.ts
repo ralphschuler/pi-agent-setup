@@ -1,4 +1,5 @@
 import fs from "node:fs/promises";
+import { appendPrivateFile, atomicWritePrivateFile, withPrivateFileLock } from "../shared/private-storage.ts";
 import type { ChildProcessWithoutNullStreams } from "node:child_process";
 
 export type LogWatch = {
@@ -88,18 +89,20 @@ export async function appendBoundedLog(
   logFileLimit = Number(process.env.PI_PROCESS_LOG_FILE_LIMIT || 1024 * 1024),
 ) {
   try {
-    await fs.appendFile(file, text, "utf8");
-    const stat = await fs.stat(file);
-    if (stat.size <= logFileLimit) return;
-    const handle = await fs.open(file, "r");
-    try {
+    await withPrivateFileLock(file, async () => {
+      await appendPrivateFile(file, text);
+      const stat = await fs.stat(file);
+      if (stat.size <= logFileLimit) return;
       const keep = Math.floor(logFileLimit * 0.8);
       const buffer = Buffer.alloc(keep);
-      await handle.read(buffer, 0, keep, stat.size - keep);
-      await fs.writeFile(file, `[log truncated to last ${keep} bytes]\n${buffer.toString("utf8")}`, "utf8");
-    } finally {
-      await handle.close();
-    }
+      const handle = await fs.open(file, "r");
+      try {
+        await handle.read(buffer, 0, keep, stat.size - keep);
+      } finally {
+        await handle.close();
+      }
+      await atomicWritePrivateFile(file, `[log truncated to last ${keep} bytes]\n${buffer.toString("utf8")}`);
+    });
   } catch {
     // Log persistence is best-effort; in-memory output remains available.
   }

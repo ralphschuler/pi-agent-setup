@@ -3,7 +3,8 @@ import { Type } from "typebox";
 import { decodeStoredBlock, encodeStoredBlock, normalizeSingleLine } from "../shared/markdown-store-codec.ts";
 import { renderPrettyToolResult } from "../shared/pretty-render.ts";
 import { DatabaseSync } from "node:sqlite";
-import { existsSync, mkdirSync, readFileSync } from "node:fs";
+import { chmodSync, copyFileSync, existsSync, mkdirSync, readFileSync } from "node:fs";
+import { randomUUID } from "node:crypto";
 import { join } from "node:path";
 import { homedir } from "node:os";
 
@@ -37,6 +38,8 @@ const nodeTypes = ["concept", "person", "project", "decision", "fact", "task", "
 
 const NODE_COLUMNS = "id, title, type, notes, tags, updated_at as updatedAt";
 const LEGACY_MIGRATION_KEY = "legacy_markdown_migrated";
+const NODE_ID_SCHEME_KEY = "node_id_scheme";
+const NODE_ID_SCHEME = "uuid-v1";
 
 export default function graphMemory(pi: ExtensionAPI) {
   let store: GraphStore = { nodes: [], edges: [] };
@@ -46,8 +49,10 @@ export default function graphMemory(pi: ExtensionAPI) {
   function openDb() {
     if (database) return database;
 
-    mkdirSync(STORE_DIR, { recursive: true });
+    mkdirSync(STORE_DIR, { recursive: true, mode: 0o700 });
+    chmodSync(STORE_DIR, 0o700);
     database = new DatabaseSync(STORE_PATH);
+    chmodSync(STORE_PATH, 0o600);
     database.exec("PRAGMA foreign_keys = ON;");
     database.exec("PRAGMA busy_timeout = 5000;");
     database.exec(`
@@ -81,6 +86,8 @@ export default function graphMemory(pi: ExtensionAPI) {
     `);
 
     migrateLegacyStore();
+    migrateNodeIds(database);
+    chmodSync(STORE_PATH, 0o600);
     return database;
   }
 
@@ -161,6 +168,98 @@ export default function graphMemory(pi: ExtensionAPI) {
     }
   }
 
+  function migrateNodeIds(db: DatabaseSync) {
+    db.exec("PRAGMA foreign_keys = OFF");
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      if (getMeta(db, NODE_ID_SCHEME_KEY) === NODE_ID_SCHEME) {
+        db.exec("COMMIT");
+        return;
+      }
+
+      const nodes = db.prepare("SELECT id, title, type, notes, tags, updated_at AS updatedAt FROM nodes ORDER BY id").all() as Array<{
+        id: string;
+        title: string;
+        type: string;
+        notes: string;
+        tags: string;
+        updatedAt: string;
+      }>;
+      if (nodes.length === 0) {
+        markNodeIdScheme(db);
+        db.exec("COMMIT");
+        return;
+      }
+
+      const backupPath = `${STORE_PATH}.pre-uuid-${Date.now()}.bak`;
+      copyFileSync(STORE_PATH, backupPath);
+      chmodSync(backupPath, 0o600);
+
+      const idMap = new Map(nodes.map((node) => [node.id, randomUUID()]));
+      const edges = db.prepare("SELECT from_id AS fromId, relation, to_id AS toId FROM edges").all() as Array<{
+        fromId: string;
+        relation: string;
+        toId: string;
+      }>;
+
+      db.exec(`
+        CREATE TABLE nodes_uuid (
+          id TEXT PRIMARY KEY,
+          title TEXT NOT NULL,
+          type TEXT NOT NULL,
+          notes TEXT NOT NULL,
+          tags TEXT NOT NULL,
+          updated_at TEXT NOT NULL
+        );
+        CREATE TABLE edges_uuid (
+          id INTEGER PRIMARY KEY AUTOINCREMENT,
+          from_id TEXT NOT NULL,
+          relation TEXT NOT NULL,
+          to_id TEXT NOT NULL,
+          UNIQUE(from_id, relation, to_id),
+          FOREIGN KEY(from_id) REFERENCES nodes_uuid(id) ON DELETE CASCADE,
+          FOREIGN KEY(to_id) REFERENCES nodes_uuid(id) ON DELETE CASCADE
+        );
+      `);
+      const insertNode = db.prepare("INSERT INTO nodes_uuid (id, title, type, notes, tags, updated_at) VALUES (?, ?, ?, ?, ?, ?)");
+      for (const node of nodes) insertNode.run(idMap.get(node.id), node.title, node.type, node.notes, node.tags, node.updatedAt);
+      const insertEdge = db.prepare("INSERT OR IGNORE INTO edges_uuid (from_id, relation, to_id) VALUES (?, ?, ?)");
+      for (const edge of edges) {
+        const from = idMap.get(edge.fromId);
+        const to = idMap.get(edge.toId);
+        if (from && to) insertEdge.run(from, edge.relation, to);
+      }
+
+      db.exec("DROP TABLE edges; DROP TABLE nodes; ALTER TABLE nodes_uuid RENAME TO nodes; ALTER TABLE edges_uuid RENAME TO edges;");
+      db.exec(`
+        CREATE INDEX IF NOT EXISTS nodes_by_title ON nodes(title COLLATE NOCASE);
+        CREATE INDEX IF NOT EXISTS nodes_by_type ON nodes(type);
+        CREATE INDEX IF NOT EXISTS nodes_by_updated_at ON nodes(updated_at);
+        CREATE INDEX IF NOT EXISTS edges_by_source ON edges(from_id);
+        CREATE INDEX IF NOT EXISTS edges_by_target ON edges(to_id);
+      `);
+      markNodeIdScheme(db);
+      db.exec("COMMIT");
+    } catch (error) {
+      try {
+        db.exec("ROLLBACK");
+      } catch {
+        // Best-effort rollback.
+      }
+      throw error;
+    } finally {
+      db.exec("PRAGMA foreign_keys = ON");
+    }
+  }
+
+  function markNodeIdScheme(db: DatabaseSync) {
+    db.prepare(
+      `INSERT INTO meta (key, value, updated_at)
+       VALUES (?, ?, ?)
+       ON CONFLICT(key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+    ).run(NODE_ID_SCHEME_KEY, NODE_ID_SCHEME, new Date().toISOString());
+  }
+
   function migrateLegacyStore() {
     if (didMigrateLegacy) return;
     didMigrateLegacy = true;
@@ -179,6 +278,11 @@ export default function graphMemory(pi: ExtensionAPI) {
     try {
       const raw = readFileSync(LEGACY_STORE_PATH, "utf8");
       const legacy = parseMarkdown(raw);
+      const idCounts = new Map<string, number>();
+      for (const node of legacy.nodes) idCounts.set(node.id, (idCounts.get(node.id) || 0) + 1);
+      for (const node of legacy.nodes) {
+        if ((idCounts.get(node.id) || 0) > 1) node.id = `legacy-${randomUUID()}`;
+      }
       const nodeIds = new Set(legacy.nodes.map((node) => node.id));
 
       runInTransaction((tx) => {
@@ -351,10 +455,16 @@ export default function graphMemory(pi: ExtensionAPI) {
 
   function upsertNode(input: { title: string; type?: NodeType; notes?: string; tags?: string[] }) {
     const now = new Date().toISOString();
-    const id = slugify(input.title);
-    let node = store.nodes.find((candidate) => candidate.id === id);
+    let node = store.nodes.find((candidate) => candidate.title.toLowerCase() === input.title.toLowerCase());
     if (!node) {
-      node = { id, title: input.title, type: input.type || "fact", notes: input.notes || "", tags: input.tags || [], updatedAt: now };
+      node = {
+        id: randomUUID(),
+        title: input.title,
+        type: input.type || "fact",
+        notes: input.notes || "",
+        tags: input.tags || [],
+        updatedAt: now,
+      };
       store.nodes.push(node);
     } else {
       node.title = input.title || node.title;

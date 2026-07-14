@@ -19,7 +19,9 @@
 
 ## Behavior
 
-When a job is due, its task is sent back into pi as a user message for the agent to execute. Dispatches persist a UUID, attempt count, and pending/sent state before delivery; a failed or interrupted dispatch retries with the same ID. Overdue one-shot jobs remain due and are recovered on the next active session.
+Jobs can be scheduled only from a persistent pi session. When a job is due, its task is sent back into its originating pi session as a user message for the agent to execute. Jobs persist the originating session ID and working directory, so another repo or session cannot receive them. Dispatches persist a UUID, attempt count, and pending/sent state before delivery; a failed or interrupted dispatch retries with the same ID. Overdue one-shot jobs remain due and are recovered when their originating session resumes.
+
+Legacy jobs without session scope are not dispatched. Schedule them again from the intended session instead of allowing an unrelated session to claim them.
 
 Invalid schedules, zero intervals, out-of-range cron values, and impossible next-run searches are rejected. Cron search is bounded to one year.
 

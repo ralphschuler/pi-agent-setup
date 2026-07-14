@@ -1,10 +1,11 @@
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
-import { mkdir, readFile, writeFile } from "node:fs/promises";
-import { dirname, join } from "node:path";
+import { readFile } from "node:fs/promises";
+import { join } from "node:path";
 import { homedir } from "node:os";
 import { createHash } from "node:crypto";
 import { normalizeSingleLine } from "../shared/markdown-store-codec.ts";
+import { atomicWritePrivateFile, withPrivateFileLock } from "../shared/private-storage.ts";
 
 const STORE_DIR = join(homedir(), ".pi", "agent", "todos");
 const LEGACY_STORE_PATH = join(homedir(), ".pi", "agent", "todo.md");
@@ -57,8 +58,7 @@ export default function todo(pi: ExtensionAPI) {
   }
 
   async function saveStore() {
-    await mkdir(dirname(storePath), { recursive: true });
-    await writeFile(storePath, renderMarkdown(items), "utf8");
+    await atomicWritePrivateFile(storePath, renderMarkdown(items));
   }
 
   function visibleItems() {
@@ -105,11 +105,14 @@ export default function todo(pi: ExtensionAPI) {
     ctx?.ui?.setWidget?.("todo", renderLines());
   }
 
-  async function mutate<T>(fn: () => T | Promise<T>, ctx?: { ui?: { setWidget?: (key: string, lines: string[]) => void } }) {
-    const result = await fn();
-    await saveStore();
-    updateWidget(ctx);
-    return result;
+  async function mutate<T>(fn: () => T | Promise<T>, ctx?: any) {
+    return withPrivateFileLock(storePath, async () => {
+      await loadStore(ctx);
+      const result = await fn();
+      await saveStore();
+      updateWidget(ctx);
+      return result;
+    });
   }
 
   pi.on("session_start", async (_event, ctx) => {

@@ -3,23 +3,10 @@ import type { AssistantMessage, TextContent } from "@mariozechner/pi-ai";
 import type { ExtensionAPI, ExtensionContext } from "@mariozechner/pi-coding-agent";
 import fs from "node:fs";
 import path from "node:path";
+import { planToolBlockReason } from "./policy.ts";
 
 const PLAN_REVIEW_MARKER = "READY FOR REVIEW";
 const PLAN_IDLE_RETRY_MS = 25;
-const PLANNING_TOOLS = new Set([
-  "read",
-  "bash",
-  "grep",
-  "find",
-  "ls",
-  "ask_user_question",
-  "questionnaire",
-  "human_in_loop",
-  "subagent",
-  "todo",
-  "graph_memory",
-]);
-
 export default function planCommand(pi: ExtensionAPI) {
   let planningActive = false;
   let approvedPlan = "";
@@ -93,7 +80,7 @@ export default function planCommand(pi: ExtensionAPI) {
     };
   });
 
-  pi.on("tool_call", async (event) => {
+  pi.on("tool_call", async (event, ctx) => {
     if (!planningActive) return;
 
     if (event.toolName === "edit" || event.toolName === "write") {
@@ -103,12 +90,8 @@ export default function planCommand(pi: ExtensionAPI) {
       };
     }
 
-    if (!PLANNING_TOOLS.has(event.toolName)) {
-      return {
-        block: true,
-        reason: `The /plan workflow allows only planning/research tools before approval. Blocked tool: ${event.toolName}`,
-      };
-    }
+    const reason = await planToolBlockReason(event, ctx);
+    if (reason) return { block: true, reason };
   });
 
   pi.on("agent_end", async (event, ctx) => {

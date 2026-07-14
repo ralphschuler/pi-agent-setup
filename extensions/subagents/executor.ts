@@ -14,7 +14,7 @@ export function execSubagentProcess(
   redactText: (text: string) => string = (text) => text,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
-    const child = spawnFn("bash", ["-lc", `pi -p < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
+    const child = spawnFn("bash", ["-c", `pi -p < ${shellQuote(promptFile)}`], { cwd, stdio: "pipe", env: process.env });
     const stdout: string[] = [];
     const stderr: string[] = [];
     const killTimer = setTimeout(() => child.kill("SIGTERM"), 10 * 60 * 1000);

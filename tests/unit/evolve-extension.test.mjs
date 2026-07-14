@@ -44,7 +44,11 @@ test("evolve archives, lists, compares, and restores variants", async () => {
   assert.match(listed.content[0].text, /baseline/);
 
   const archive = await readArchive(archivePath);
-  assert.equal(archive.variants.length, 1);
+  assert.equal(archive.variants.length, 2);
+  assert.equal(
+    archive.variants.some((variant) => variant.label === "pre-restore"),
+    true,
+  );
 });
 
 test("evolve denies protected, binary, large, and escaping paths", async () => {
@@ -61,6 +65,29 @@ test("evolve denies protected, binary, large, and escaping paths", async () => {
   await assert.rejects(() => validateEvolvePath("binary.dat", dir), /Binary file denied/);
   await assert.rejects(() => validateEvolvePath("large.txt", dir), /Large file denied/);
   await assert.rejects(() => validateEvolvePath("/etc/passwd", dir), /Path escapes repository|Protected path denied/);
+});
+
+test("evolve rejects symlink escapes and enforces archive caps", async () => {
+  const { dir, archivePath } = await tmpRepo();
+  const outside = await fs.mkdtemp(path.join(os.tmpdir(), "pi-evolve-outside-"));
+  await fs.writeFile(path.join(outside, "secret.md"), "outside", "utf8");
+  await fs.symlink(path.join(outside, "secret.md"), path.join(dir, "link.md"));
+
+  await assert.rejects(() => validateEvolvePath("link.md", dir), /symlink|escapes repository/);
+
+  const previousBytes = process.env.PI_EVOLVE_MAX_ARCHIVE_BYTES;
+  const previousVariants = process.env.PI_EVOLVE_MAX_ARCHIVE_VARIANTS;
+  process.env.PI_EVOLVE_MAX_ARCHIVE_BYTES = "1";
+  process.env.PI_EVOLVE_MAX_ARCHIVE_VARIANTS = "1";
+  try {
+    await assert.rejects(() => archiveVariant({ action: "archive", path: "example.md" }, dir, archivePath), /archive limit/i);
+    assert.equal((await readArchive(archivePath)).variants.length, 0);
+  } finally {
+    if (previousBytes === undefined) delete process.env.PI_EVOLVE_MAX_ARCHIVE_BYTES;
+    else process.env.PI_EVOLVE_MAX_ARCHIVE_BYTES = previousBytes;
+    if (previousVariants === undefined) delete process.env.PI_EVOLVE_MAX_ARCHIVE_VARIANTS;
+    else process.env.PI_EVOLVE_MAX_ARCHIVE_VARIANTS = previousVariants;
+  }
 });
 
 test("evolve extension exposes local commands, tool, docs, and no third-party install", () => {

@@ -15,7 +15,7 @@
 /caveman off
 ```
 
-The extension changes assistant style, not tool behavior or repository state. It always instructs the assistant to answer in English only.
+The extension changes assistant style, not tool behavior or repository state. It always instructs the assistant to answer in English only. Its local state uses private atomic storage under `~/.pi/agent/caveman-local/state.json`.
 
 Caveman compresses prose and hidden guidance to reduce token pressure. Required templates, checklists, exact commands, paths, errors, logs, and safety details stay intact; surrounding explanation should get shorter.
 

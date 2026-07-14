@@ -4,16 +4,20 @@ import { homedir } from "node:os";
 import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { Type } from "typebox";
+import { atomicReplaceFile, atomicWritePrivateFile, withPrivateFileLock } from "../shared/private-storage.ts";
 import {
   assertSafeTextContent,
   DEFAULT_SAFE_TEXT_FILE_MAX_BYTES,
   isBinaryBuffer,
   isProtectedSecretPath,
   normalizeRelativePath,
+  resolveWritableInsideRoot,
 } from "../shared/safety.ts";
 
 export const DEFAULT_ARCHIVE_PATH = path.join(homedir(), ".pi", "evolve", "archive.json");
 export const DEFAULT_MAX_FILE_BYTES = DEFAULT_SAFE_TEXT_FILE_MAX_BYTES;
+export const DEFAULT_MAX_ARCHIVE_BYTES = 8 * 1024 * 1024;
+export const DEFAULT_MAX_ARCHIVE_VARIANTS = 100;
 export { isBinaryBuffer, normalizeRelativePath };
 export const isProtectedEvolvePath = isProtectedSecretPath;
 
@@ -138,9 +142,12 @@ export async function archiveVariant(params: EvolveParams, cwd: string, archiveP
     bytes: Buffer.byteLength(content),
     createdAt: new Date().toISOString(),
   };
-  const archive = await readArchive(archivePath);
-  archive.variants.push(variant);
-  await writeArchive(archive, archivePath);
+  await withPrivateFileLock(archivePath, async () => {
+    const archive = await readArchive(archivePath);
+    assertArchiveCapacity(archive, variant, archivePath);
+    archive.variants.push(variant);
+    await writeArchive(archive, archivePath);
+  });
   return textResult(`Archived ${variant.path} as ${variant.id}.`, { action: "archive", archivePath, variant: withoutContent(variant) });
 }
 
@@ -195,7 +202,19 @@ export async function restoreVariant(params: EvolveParams, cwd: string, archiveP
   const targetPath = params.path || variant.path;
   const safe = await validateEvolvePath(targetPath, cwd);
   assertSafeTextContent(variant.content, safe.relativePath);
-  await fs.writeFile(safe.absolutePath, variant.content, "utf8");
+  if (safe.exists) {
+    await archiveVariant(
+      {
+        action: "archive",
+        path: targetPath,
+        label: "pre-restore",
+        note: `Automatic checkpoint before restoring ${variant.id}`,
+      },
+      cwd,
+      archivePath,
+    );
+  }
+  await atomicReplaceFile(safe.absolutePath, variant.content, { maxBytes: DEFAULT_MAX_FILE_BYTES });
   return textResult(`Restored ${variant.id} to ${safe.relativePath}.`, {
     action: "restore",
     archivePath,
@@ -217,8 +236,9 @@ export async function readArchive(archivePath = DEFAULT_ARCHIVE_PATH): Promise<E
 }
 
 export async function writeArchive(archive: EvolveArchive, archivePath = DEFAULT_ARCHIVE_PATH) {
-  await fs.mkdir(path.dirname(archivePath), { recursive: true });
-  await fs.writeFile(archivePath, `${JSON.stringify(archive, null, 2)}\n`, "utf8");
+  await atomicWritePrivateFile(archivePath, `${JSON.stringify(archive, null, 2)}\n`, {
+    maxBytes: archiveLimitBytes(),
+  });
 }
 
 export async function validateEvolvePath(inputPath: string | undefined, cwd: string) {
@@ -226,8 +246,8 @@ export async function validateEvolvePath(inputPath: string | undefined, cwd: str
   const relativePath = normalizeRelativePath(inputPath);
   if (isProtectedSecretPath(relativePath)) throw new Error(`Protected path denied: ${relativePath}`);
   const root = path.resolve(cwd);
-  const absolutePath = path.resolve(root, relativePath);
-  if (!absolutePath.startsWith(`${root}${path.sep}`) && absolutePath !== root) throw new Error(`Path escapes repository: ${relativePath}`);
+  const absolutePath = resolveWritableInsideRoot(root, relativePath);
+  if (!absolutePath) throw new Error(`Path escapes repository or crosses a symlink: ${relativePath}`);
   let stat;
   try {
     stat = await fs.stat(absolutePath);
@@ -240,6 +260,32 @@ export async function validateEvolvePath(inputPath: string | undefined, cwd: str
   const buffer = await fs.readFile(absolutePath);
   if (isBinaryBuffer(buffer)) throw new Error(`Binary file denied: ${relativePath}`);
   return { absolutePath, relativePath, exists: true };
+}
+
+function assertArchiveCapacity(archive: EvolveArchive, variant: EvolveVariant, archivePath: string) {
+  const maxVariants = archiveLimitVariants();
+  if (archive.variants.length >= maxVariants) {
+    throw new Error(`Evolve archive limit reached (${maxVariants} variants): ${archivePath}. Remove old variants explicitly.`);
+  }
+  const projected = { ...archive, variants: [...archive.variants, variant] };
+  const bytes = Buffer.byteLength(`${JSON.stringify(projected, null, 2)}\n`, "utf8");
+  const maxBytes = archiveLimitBytes();
+  if (bytes > maxBytes) {
+    throw new Error(`Evolve archive limit reached (${maxBytes} bytes): ${archivePath}. Remove old variants explicitly.`);
+  }
+}
+
+function archiveLimitBytes() {
+  return positiveLimit(process.env.PI_EVOLVE_MAX_ARCHIVE_BYTES, DEFAULT_MAX_ARCHIVE_BYTES);
+}
+
+function archiveLimitVariants() {
+  return positiveLimit(process.env.PI_EVOLVE_MAX_ARCHIVE_VARIANTS, DEFAULT_MAX_ARCHIVE_VARIANTS);
+}
+
+function positiveLimit(value: string | undefined, fallback: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed > 0 ? Math.floor(parsed) : fallback;
 }
 
 function findVariant(archive: EvolveArchive, id: string) {

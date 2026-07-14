@@ -16,12 +16,16 @@ test("github merge tool classifies check rollup", () => {
   assert.equal(checkState([{ name: "legacy", state: "PENDING" }]).state, "pending");
   assert.equal(checkState([{ name: "legacy", state: "SUCCESS" }]).state, "passed");
   assert.equal(checkState([{ name: "legacy", state: "FAILURE" }]).state, "failed");
+  assert.equal(checkState(undefined).state, "indeterminate");
+  assert.equal(checkState([]).state, "indeterminate");
 });
 
 test("github merge tool blocks unsafe PR states", () => {
   assert.throws(() => assertMergeReady({ number: 1, isDraft: true }, { allowPendingChecks: true }), /draft/);
   assert.throws(() => assertMergeReady({ number: 1, state: "CLOSED" }, { allowPendingChecks: true }), /not open/);
   assert.throws(() => assertMergeReady({ number: 1, mergeable: "CONFLICTING" }, { allowPendingChecks: true }), /not mergeable/);
+  assert.throws(() => assertMergeReady({ number: 1, statusCheckRollup: [] }, { allowPendingChecks: true }), /missing or empty/);
+  assert.throws(() => assertMergeReady({ number: 1 }, { allowPendingChecks: true }), /missing or empty/);
   assert.throws(
     () =>
       assertMergeReady(

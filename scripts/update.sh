@@ -20,6 +20,7 @@ Environment:
   PI_SETUP_CHECK=0     Same as --no-check
   PI_ALIAS_DIR=path    Directory for executable command wrappers (default: ~/.local/bin).
   PI_SETUP_SHELL_RC=path  Shell startup file to update (default: detected rc file).
+  PI_SETUP_SKIP_DEPS=1    Skip npm ci (for isolated script tests).
 USAGE
 }
 
@@ -125,9 +126,9 @@ EOF
 
 preflight_aliases
 
-if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
+if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1 && [[ "${PI_SETUP_SKIP_DEPS:-0}" != "1" ]]; then
   echo "Updating package dependencies"
-  npm --prefix "$ROOT_DIR" install --legacy-peer-deps
+  npm --prefix "$ROOT_DIR" ci --legacy-peer-deps
 fi
 
 if [[ "$RUN_CHECK" == "1" ]]; then

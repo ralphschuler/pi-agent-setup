@@ -39,6 +39,7 @@ export async function allAgents(cwd: string): Promise<AgentDef[]> {
     body: agent.prompt,
     source: "built-in" as const,
     defaultContext: "fresh",
+    readOnly: ["scout", "planner", "reviewer", "researcher"].includes(agent.name),
   }));
   const custom = (await readCustomAgents(cwd)).map((agent) => ({
     name: agent.name,
@@ -48,6 +49,7 @@ export async function allAgents(cwd: string): Promise<AgentDef[]> {
     source: "custom" as const,
     scope: agent.scope,
     defaultContext: agent.defaultContext,
+    readOnly: agent.readOnly,
   }));
   return [...builtins, ...custom].sort((a, b) => a.runtimeName.localeCompare(b.runtimeName));
 }
@@ -81,6 +83,7 @@ export async function createAgent(cwd: string, config?: string) {
     inheritProjectContext: parsed.inheritProjectContext ?? true,
     inheritSkills: parsed.inheritSkills ?? true,
     systemPromptMode: parsed.systemPromptMode || "replace",
+    readOnly: parsed.readOnly === true,
   });
   return textResult(`Created ${created.runtimeName}\n${created.path}`, { action: "create", created });
 }

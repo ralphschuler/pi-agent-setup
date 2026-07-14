@@ -2,6 +2,10 @@
 
 A custom pi package for a personalized coding-agent environment. It bundles TypeScript extensions, reusable skills, prompt templates, themes, scripts, tests, a MkDocs-powered wiki, and the experimental `pi-acp` editor adapter.
 
+## Supported runtime
+
+Tested with Node.js 22.x and pi 0.73.x. The package declares this compatibility range in `package.json`; other versions are unsupported until validated.
+
 ## Wiki documentation
 
 The full repository wiki lives in `docs/` and is published to GitHub Pages from `main`.

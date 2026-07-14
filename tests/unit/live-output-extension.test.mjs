@@ -16,7 +16,7 @@ test("process tool avoids deferred updates after detached start returns", () => 
 test("subagent tool streams child stdout and stderr with throttling", () => {
   const source = readText("extensions/subagents/executor.ts");
 
-  assert.match(source, /spawnFn\("bash", \["-lc", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
+  assert.match(source, /spawnFn\("bash", \["-c", `pi -p < \$\{shellQuote\(promptFile\)\}`\]/);
   assert.match(source, /createSubagentLiveUpdate\(agent, task, index, stdout, stderr, onUpdate, redactText\)/);
   assert.match(source, /child\.stdout\.on\("data"/);
   assert.match(source, /child\.stderr\.on\("data"/);

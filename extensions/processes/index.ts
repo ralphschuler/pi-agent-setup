@@ -1,5 +1,4 @@
 import { spawn } from "node:child_process";
-import fs from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
 import type { ExtensionAPI, Theme } from "@mariozechner/pi-coding-agent";
@@ -7,6 +6,8 @@ import { appendOutput, createManagedProcess, notifyProcessExit, safeProcessName,
 import { matchesKey, Text, truncateToWidth } from "@mariozechner/pi-tui";
 import { Type } from "typebox";
 import { renderToolDisplayContract, singleLine } from "../shared/pretty-render.ts";
+import { atomicWritePrivateFile, ensurePrivateDirectory } from "../shared/private-storage.ts";
+import { createSecretRedactor } from "../secret-redaction/index.ts";
 
 type ProcessDetails = {
   action: string;
@@ -170,11 +171,11 @@ async function startProcess(params: any, cwd: string, onUpdate?: (update: any) =
   if (!params.command?.trim()) throw new Error("process start requires command.");
   const id = String(nextId++);
   const logDir = path.join(os.tmpdir(), "pi-processes");
-  await fs.mkdir(logDir, { recursive: true });
+  await ensurePrivateDirectory(logDir);
   const stdoutLog = path.join(logDir, `${id}-${safeProcessName(params.name)}.stdout.log`);
   const stderrLog = path.join(logDir, `${id}-${safeProcessName(params.name)}.stderr.log`);
-  await fs.writeFile(stdoutLog, "", "utf8");
-  await fs.writeFile(stderrLog, "", "utf8");
+  await atomicWritePrivateFile(stdoutLog, "");
+  await atomicWritePrivateFile(stderrLog, "");
 
   const child = spawn(params.command, { cwd, shell: true, stdio: "pipe", env: process.env });
   const proc = createManagedProcess({
@@ -224,13 +225,14 @@ function requiredProcess(id?: string) {
 }
 
 function outputFor(proc: ManagedProcess) {
+  const redacted = redactedProcess(proc);
   return textResult(
     [
       `#${proc.id} ${proc.name} — ${proc.status}`,
-      proc.stdout.length ? `\nstdout:\n${proc.stdout.join("\n")}` : "\nstdout: <empty>",
-      proc.stderr.length ? `\nstderr:\n${proc.stderr.join("\n")}` : "\nstderr: <empty>",
+      redacted.stdout.length ? `\nstdout:\n${redacted.stdout.join("\n")}` : "\nstdout: <empty>",
+      redacted.stderr.length ? `\nstderr:\n${redacted.stderr.join("\n")}` : "\nstderr: <empty>",
     ].join("\n"),
-    { action: "output", process: serializeProcess(proc), stdout: proc.stdout, stderr: proc.stderr },
+    { action: "output", process: redacted, stdout: redacted.stdout, stderr: redacted.stderr },
   );
 }
 
@@ -281,7 +283,18 @@ function formatList() {
 }
 
 function serializeAll() {
-  return [...processes.values()].map(serializeProcess);
+  return [...processes.values()].map(redactedProcess);
+}
+
+function redactedProcess(proc: ManagedProcess) {
+  const redact = createSecretRedactor().redactText;
+  const serialized = serializeProcess(proc);
+  return {
+    ...serialized,
+    command: redact(serialized.command),
+    stdout: serialized.stdout.map(redact),
+    stderr: serialized.stderr.map(redact),
+  };
 }
 
 function textResult(text: string, details: ProcessDetails | Record<string, unknown> = {}, isError = false) {
@@ -289,8 +302,9 @@ function textResult(text: string, details: ProcessDetails | Record<string, unkno
 }
 
 function processLiveResult(proc: ManagedProcess, stream: "stdout" | "stderr" | "start" | "exit") {
-  const stdout = proc.stdout.slice(-4);
-  const stderr = proc.stderr.slice(-4);
+  const redacted = redactedProcess(proc);
+  const stdout = redacted.stdout.slice(-4);
+  const stderr = redacted.stderr.slice(-4);
   const live = [
     `Process #${proc.id} ${proc.name} — ${proc.status}`,
     stdout.length ? `stdout:\n${stdout.join("\n")}` : undefined,
@@ -298,7 +312,7 @@ function processLiveResult(proc: ManagedProcess, stream: "stdout" | "stderr" | "
   ]
     .filter(Boolean)
     .join("\n");
-  return textResult(live, { action: "start", process: serializeProcess(proc), stdout, stderr, stream, live: true });
+  return textResult(live, { action: "start", process: redacted, stdout, stderr, stream, live: true });
 }
 
 function processDisplayContract(result: any, expanded: boolean, isPartial: boolean) {

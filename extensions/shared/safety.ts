@@ -62,6 +62,36 @@ export function resolveExistingInsideRoot(root: string, requestedPath: string) {
   }
 }
 
+export function resolveWritableInsideRoot(root: string, requestedPath: string) {
+  const safeRoot = path.resolve(root);
+  const resolved = resolveInsideRoot(safeRoot, requestedPath);
+  if (!resolved) return null;
+
+  let current = safeRoot;
+  let realRoot: string;
+  try {
+    realRoot = fs.realpathSync(safeRoot);
+  } catch {
+    return null;
+  }
+
+  const relative = path.relative(safeRoot, resolved);
+  for (const part of relative ? relative.split(path.sep) : []) {
+    current = path.join(current, part);
+    try {
+      const stat = fs.lstatSync(current);
+      if (stat.isSymbolicLink()) return null;
+      const real = fs.realpathSync(current);
+      if (!isInsideRoot(realRoot, real)) return null;
+    } catch (error) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") break;
+      return null;
+    }
+  }
+
+  return resolved;
+}
+
 export function isBinaryBuffer(buffer: Buffer) {
   if (buffer.includes(0)) return true;
   const sample = buffer.subarray(0, Math.min(buffer.length, 4096));

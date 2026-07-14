@@ -5,7 +5,7 @@ import path from "node:path";
 import type { ExtensionAPI } from "@mariozechner/pi-coding-agent";
 import { createSecretRedactor } from "../secret-redaction/index.ts";
 import { allAgents } from "./catalog.ts";
-import { execSubagentProcess } from "./executor.ts";
+import { execSubagentProcess, tailText } from "./executor.ts";
 import { writeOutput } from "./output-writer.ts";
 import type { AgentDef, ContextMode, RunRecord, SubagentRunOptions } from "./types.ts";
 
@@ -126,14 +126,17 @@ export async function runAgentRecord(
       undefined,
       redactor.redactText,
     );
-    const text = redactor.redactText(result.stdout.trim() || result.stderr.trim());
+    const stdout = redactor.redactText(result.stdout.trim());
+    const stderr = redactor.redactText(result.stderr.trim());
+    const text = stdout || stderr;
     const outPath = await writeOutput(runCwd, output, text, index);
     return {
       agent: agent.runtimeName,
       task: redactedTask,
       ok: result.code === 0,
       text,
-      error: result.code === 0 ? undefined : `Exited ${result.code}`,
+      stderr: stderr || undefined,
+      error: result.code === 0 ? undefined : `Exited ${result.code}${stderr ? `: ${tailText(stderr, 4, 1000)}` : ""}`,
       output: outPath,
       index,
     };

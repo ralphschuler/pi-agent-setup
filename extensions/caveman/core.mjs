@@ -1,6 +1,7 @@
 import * as fs from "node:fs";
 import * as os from "node:os";
 import * as path from "node:path";
+import { atomicWritePrivateFileSync } from "../shared/private-storage.ts";
 
 export const VALID_LEVELS = ["lite", "full", "ultra"];
 export const LEVEL_ALIASES = {};
@@ -49,10 +50,14 @@ export function readState(fsImpl = fs, statePath = STATE_PATH) {
   }
 }
 
-export function writeState(state, fsImpl = fs, dataDir = DATA_DIR, statePath = STATE_PATH) {
+export function writeState(state, fsImpl, dataDir = DATA_DIR, statePath = STATE_PATH) {
   try {
-    fsImpl.mkdirSync(dataDir, { recursive: true });
-    fsImpl.writeFileSync(statePath, `${JSON.stringify(normalizeState(state), null, 2)}\n`, "utf8");
+    const content = `${JSON.stringify(normalizeState(state), null, 2)}\n`;
+    if (!fsImpl) atomicWritePrivateFileSync(statePath, content);
+    else {
+      fsImpl.mkdirSync(dataDir, { recursive: true });
+      fsImpl.writeFileSync(statePath, content, "utf8");
+    }
     return { ok: true };
   } catch (error) {
     const reason = error instanceof Error ? error.message : String(error);

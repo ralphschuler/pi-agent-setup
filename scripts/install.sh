@@ -18,6 +18,8 @@ Environment:
   PI_SCOPE=global|local   Alternative way to select scope.
   PI_ALIAS_DIR=path       Directory for executable command wrappers (default: ~/.local/bin).
   PI_SETUP_SHELL_RC=path  Shell startup file to update (default: detected rc file).
+  PI_SETUP_SKIP_DEPS=1    Skip npm ci (for isolated script tests).
+  PI_SETUP_SKIP_CHECK=1   Skip validation (for isolated script tests).
 USAGE
 }
 
@@ -121,15 +123,17 @@ EOF
   echo "Added $ALIAS_DIR to PATH in $rc_file. Open a new shell or source that file to use pi-acp and pi-screen."
 }
 
-if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1; then
+if [[ -f "$ROOT_DIR/package.json" ]] && command -v npm >/dev/null 2>&1 && [[ "${PI_SETUP_SKIP_DEPS:-0}" != "1" ]]; then
   echo "Installing package dependencies"
-  npm --prefix "$ROOT_DIR" install --legacy-peer-deps
+  npm --prefix "$ROOT_DIR" ci --legacy-peer-deps
 fi
 
 preflight_aliases
 
-echo "Validating package"
-bash "$ROOT_DIR/scripts/check.sh"
+if [[ "${PI_SETUP_SKIP_CHECK:-0}" != "1" ]]; then
+  echo "Validating package"
+  bash "$ROOT_DIR/scripts/check.sh"
+fi
 
 if [[ "$SCOPE" == "local" ]]; then
   echo "Installing pi package locally: $ROOT_DIR"

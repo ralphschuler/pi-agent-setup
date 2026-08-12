@@ -90,6 +90,6 @@
     "pi-screen": "./bin/pi-screen.mjs"
   },
   "dependencies": {
-    "@modelcontextprotocol/sdk": "^1.29.0"
+    "@modelcontextprotocol/sdk": "^1.30.0"
   }
 }
